@@ -49,6 +49,20 @@ fixture.resetWallpaperPreview = () => {
   preview.streamScript = [];
   preview.failStart = false;
   preview.failRestart = false;
+  preview.mode = 'preview';
+  preview.notReadyUntil = 0;
+  // Readiness answers for the host. `statusFixed` answers that way for the whole check (a host
+  // that never becomes readable); `statusMode` answers that way only before `statusReadyAt`,
+  // which is how a recovery is observed. A fresh host starts ready.
+  preview.statusMode = 'ok';
+  preview.statusFixed = null;
+  preview.statusReadyAt = 0;
+  preview.statusDelayMs = 0;
+  preview.statusQueries = 0;
+  // Diagnostics for the readiness checks: how many times the host was reset and which start
+  // requests actually reached this mock. A test asserts on these instead of guessing.
+  preview.resets = (preview.resets ?? 0) + 1;
+  preview.startLog = null;
 };
 
 fixture.wallpaperHost = (options = {}) => {
@@ -60,6 +74,11 @@ fixture.wallpaperHost = (options = {}) => {
     unavailableReason: settings.reason,
     missingScenes: settings.available ? [] : ['lucy'],
     previewSeconds: { min: 30, max: 300, default: 180 },
+    modes: ['preview', 'daily'],
+    // The real Host defaults a request without a mode to preview; the fixture must match it,
+    // otherwise a migration default could look right in the checks and wrong in production.
+    defaultMode: 'preview',
+    mode: preview.state === 'playing' ? preview.mode : null,
     scenes: settings.scenes,
     active: preview.state === 'playing',
     failed: false,
@@ -69,8 +88,37 @@ fixture.wallpaperHost = (options = {}) => {
 
   window.fetch = async (url, init = {}) => {
     const path = String(url);
-    preview.requests.push({ path, method: init.method || 'GET' });
-    if (path.startsWith('/whale-wallpaper/status')) return json(200, hostStatus());
+    preview.requests.push({ path, method: init.method || 'GET', body: init.body ?? null });
+    if (path.startsWith('/whale-wallpaper/status')) {
+      preview.statusQueries = (preview.statusQueries ?? 0) + 1;
+      // `statusFixed` wins: it models a host that stays unreadable. Otherwise the scripted
+      // answer applies only until statusReadyAt, so the recovery after it is observable.
+      const mode = preview.statusFixed
+        ?? (preview.statusReadyAt && Date.now() < preview.statusReadyAt ? (preview.statusMode || 'error-json') : 'ok');
+      // A host that takes its time: the answer arrives after statusDelayMs unless the caller
+      // aborts first, which is what a bounded read is supposed to do.
+      if (preview.statusDelayMs) await new Promise((resolve, reject) => {
+        const signal = init?.signal;
+        const timer = setTimeout(resolve, preview.statusDelayMs);
+        if (signal) signal.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(new DOMException('Aborted', 'AbortError'));
+        }, { once: true });
+      });
+      if (mode === 'hang') return new Promise((resolve, reject) => {
+        // Honours the abort signal, like a real fetch: a bounded client read must be able to end it.
+        const signal = init?.signal;
+        if (signal) signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+      });
+      if (mode === 'error-json') return json(503, { error: 'service-starting' });
+      if (mode === 'not-found') return json(404, { error: 'no-such-route' });
+      if (mode === 'malformed') return new Response('not json at all', { status: 200, headers: { 'content-type': 'application/json' } });
+      // Simulates a host that is still starting: not ready answers with available:false.
+      if (preview.notReadyUntil && Date.now() < preview.notReadyUntil) {
+        return json(200, { ...hostStatus(), available: false, unavailableReason: 'host', active: false });
+      }
+      return json(200, hostStatus());
+    }
     if (path.startsWith('/whale-wallpaper/metrics')) { preview.metrics.push(JSON.parse(init.body)); return new Response(null, { status: 204 }); }
     if (path.startsWith('/whale-wallpaper/stop')) {
       preview.stopped++;
@@ -86,11 +134,18 @@ fixture.wallpaperHost = (options = {}) => {
       const restart = path.startsWith('/whale-wallpaper/restart');
       if (restart) preview.restarts++;
       if (!settings.available) return json(409, { ...hostStatus(), error: `wallpaper engine preview is unavailable: ${settings.reason}` });
-      if ((restart && preview.failRestart) || (!restart && preview.failStart)) return json(409, { ...hostStatus(), error: 'the preview could not be created' });
+      if ((restart && preview.failRestart) || (!restart && preview.failStart)) return json(409, { ...hostStatus(), error: 'the playback could not be created' });
       preview.starts++;
+      preview.startLog = (preview.startLog ?? []).concat([{ at: Math.round(performance.now()), starts: preview.starts, body: init.body ?? null }]);
       preview.state = 'playing';
       const body = init.body ? JSON.parse(init.body) : {};
       if (body.scene && body.scene !== 'lucy') return json(409, { ...hostStatus(), error: `unknown scene: ${body.scene}` });
+      // Same constrained enum as the Host: an unknown mode is refused before any work.
+      if (body.mode !== undefined && !['preview', 'daily'].includes(body.mode)) {
+        preview.state = 'idle';
+        return json(409, { ...hostStatus(), error: `unknown mode: ${String(body.mode)}` });
+      }
+      preview.mode = body.mode ?? 'preview';
       // Optional delay lets a test hold the reply and stop in the meantime.
       if (preview.startDelayMs) await new Promise(resolve => setTimeout(resolve, preview.startDelayMs));
       return json(200, hostStatus());

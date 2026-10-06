@@ -9,12 +9,16 @@ import assert from 'node:assert/strict';
 const qa = dirname(fileURLToPath(import.meta.url));
 const client = await readFile(join(qa, '../src/client.js'));
 const harness = await readFile(join(qa, 'appearance-harness.js'));
+// No-store plus a per-run query string: a cached client bundle would silently invalidate
+// every assertion here, which is exactly the kind of stale result these checks must avoid.
+const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const server = createServer((req, res) => {
-  if (req.url === '/client.js' || req.url === '/harness.js') {
-    res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(req.url === '/client.js' ? client : harness); return;
+  if (req.url.split('?')[0] === '/client.js' || req.url.split('?')[0] === '/harness.js') {
+    res.writeHead(200, { 'content-type': 'text/javascript', 'cache-control': 'no-store' });
+    res.end(req.url.startsWith('/client.js') ? client : harness); return;
   }
-  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-  res.end('<!doctype html><html><head><title>Isolated Whale QA</title></head><body><main id="root"><div id="fixture-base" style="background:var(--dsw-alias-bg-base)">Canvas</div><div id="fixture-card" style="background:var(--dsw-alias-bg-layer-1)">Card</div><div id="fixture-composer" style="background:var(--dsw-specific-input-major)">Composer</div></main><script src="/harness.js"></script><script src="/client.js"></script></body></html>');
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+  res.end(`<!doctype html><html><head><title>Isolated Whale QA</title></head><body><main id="root"><div id="fixture-base" style="background:var(--dsw-alias-bg-base)">Canvas</div><div id="fixture-card" style="background:var(--dsw-alias-bg-layer-1)">Card</div><div id="fixture-composer" style="background:var(--dsw-specific-input-major)">Composer</div></main><script src="/harness.js?v=${runId}"></script><script src="/client.js?v=${runId}"></script></body></html>`);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const profile = await mkdtemp(join(tmpdir(), 'whale-appearance-qa-'));

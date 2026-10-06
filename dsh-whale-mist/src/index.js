@@ -15,9 +15,17 @@ export const inject = ['webServer'];
 
 /** Themes remain browser-only outside the official Windows desktop Host. */
 export function apply(ctx) {
+  // Contract tests compose this module inside a real Cordis context to check the
+  // service declaration and the routes. That must never touch the running desktop:
+  // the flag keeps the icon helper and any window work out of the check.
+  const isolated = process.env.WM_CONTRACT_ISOLATED === '1';
   const executable = process.execPath;
   // Desktop's Host gets ELECTRON_RUN_AS_NODE; DSH_DESKTOP_NODE_EXECUTABLE is
   // only supplied to package-manager children, not to the running Host.
+  if (isolated) {
+    registerWallpaper(ctx);
+    return;
+  }
   if (process.platform !== 'win32' || process.env.ELECTRON_RUN_AS_NODE !== '1' ||
       basename(executable).toLowerCase() !== 'deepseek harness.exe' || !process.env.LOCALAPPDATA) return;
 
@@ -62,18 +70,23 @@ export function apply(ctx) {
     child.stdin.end();
   });
 
-  // Wallpaper Engine preview (experimental). `inject` above guarantees the carrier is
-  // composed before this runs; the packaged helper and the local sample can still be
-  // missing, and that must only disable the preview, never the appearance or the icon.
+  // Wallpaper Engine playback. `inject` above guarantees the carrier is composed before
+  // this runs; the packaged helper and the local sample can still be missing, and that
+  // must only disable the wallpaper, never the appearance or the icon.
+  registerWallpaper(ctx);
+}
+
+/** Registers the constrained wallpaper routes; failures only disable the wallpaper. */
+function registerWallpaper(ctx) {
   try {
     const resources = resolveHostResources();
     const availability = probeAvailability({ helper: resources.helper });
     if (!availability.available) {
-      console.warn('[Whale wallpaper] preview unavailable:', availability.reason,
+      console.warn('[Whale wallpaper] playback unavailable:', availability.reason,
         `scenes: ${describeScenes().filter(scene => scene.available).map(scene => scene.id).join(', ') || 'none'}`);
     }
     registerWallpaperRoutes(ctx, resources);
   } catch (error) {
-    console.warn('[Whale wallpaper] preview setup failed:', error.message);
+    console.warn('[Whale wallpaper] setup failed:', error.message);
   }
 }

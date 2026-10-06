@@ -61,6 +61,8 @@ window.__ModuleLoader__.load({
       background: "none",
       motion: "focus",
       weScene: "lucy",
+      weMode: "preview",
+      weAutoStart: false,
       brightness: 70,
       mask: 45,
       blur: 0,
@@ -73,10 +75,18 @@ window.__ModuleLoader__.load({
       sidebar: Object.freeze(["balanced", "deep"]),
       glass: Object.freeze(["standard", "restrained"]),
       background: Object.freeze(["none", "image", "video", "wallpaper"]),
-      motion: Object.freeze(["focus", "always"])
+      motion: Object.freeze(["focus", "always"]),
+      /** `daily` is the daily-driver mode; `preview` is the supervised time-boxed one. */
+      weMode: Object.freeze(["daily", "preview"])
     });
     /** Scene ids come from the Host whitelist; a stale stored value falls back to Lucy. */
     const WALLPAPER_SCENES = Object.freeze(["lucy"]);
+    /**
+     * The migration default, matching the Host (`DEFAULT_PLAYBACK_MODE = 'preview'`): an older
+     * stored setting that predates the mode field stays a time-boxed preview until the user
+     * explicitly picks the daily mode.
+     */
+    const DEFAULT_PLAYBACK_MODE = "preview";
     const RANGE_SETTINGS = Object.freeze({
       brightness: Object.freeze([20, 100]),
       mask: Object.freeze([0, 90]),
@@ -93,6 +103,7 @@ window.__ModuleLoader__.load({
 
     function isValidSetting(key, value) {
       if (Object.hasOwn(ALLOWED_SETTINGS, key)) return ALLOWED_SETTINGS[key].includes(value);
+      if (key === "weAutoStart") return typeof value === "boolean";
       return Object.hasOwn(RANGE_SETTINGS, key) && typeof value === "number" && Number.isFinite(value);
     }
 
@@ -104,7 +115,9 @@ window.__ModuleLoader__.load({
           allowed.includes(source[key]) ? source[key] : DEFAULT_SETTINGS[key]
         ])),
         ...Object.fromEntries(Object.keys(RANGE_SETTINGS).map((key) => [key, clampRange(key, source[key])])),
-        weScene: WALLPAPER_SCENES.includes(source.weScene) ? source.weScene : DEFAULT_SETTINGS.weScene
+        weScene: WALLPAPER_SCENES.includes(source.weScene) ? source.weScene : DEFAULT_SETTINGS.weScene,
+        // Auto playback is opt-in: anything that is not an explicit boolean stays off.
+        weAutoStart: source.weAutoStart === true
       };
     }
 
@@ -358,10 +371,11 @@ window.__ModuleLoader__.load({
      * constrained actions (`start` / `stop` / `restart` plus a scene id) and reads the
      * authenticated frame stream. It never sends a path, a command or a window handle.
      */
-    function createWallpaperEngine({ fetchImpl = (...args) => fetch(...args), now = () => Date.now(), firstFrameTimeoutMs, idleTimeoutMs, retryDelayMs } = {}) {
+    function createWallpaperEngine({ fetchImpl = (...args) => fetch(...args), now = () => Date.now(), firstFrameTimeoutMs, idleTimeoutMs, retryDelayMs, hostStatusTimeoutMs } = {}) {
       firstFrameTimeoutMs = firstFrameTimeoutMs ?? 20000;
       idleTimeoutMs = idleTimeoutMs ?? 8000;
       retryDelayMs = retryDelayMs ?? 400;
+      hostStatusTimeoutMs = hostStatusTimeoutMs ?? 4000;
       const listeners = new Set();
       const statusListeners = new Set();
       const frameListeners = new Set();
@@ -658,24 +672,59 @@ window.__ModuleLoader__.load({
         subscribeStatus(listener) { statusListeners.add(listener); listener(status); return () => statusListeners.delete(listener); },
         getStatus: () => status,
         running: () => running,
-        async loadHostStatus() {
+        /**
+         * Reads the host status with a bounded wait.
+         *
+         * Readiness must mean "the host answered successfully AND said it can run": an HTTP
+         * error body (503 while the service is still starting) or a 200 with a malformed
+         * payload is NOT ready. Without a timeout a single hanging fetch would keep the
+         * automatic start waiting forever, so the whole read is bounded and cancellable.
+         */
+        async loadHostStatus({ timeoutMs, signal = null } = {}) {
+          const boundedMs = timeoutMs ?? hostStatusTimeoutMs;
+          const controller = typeof AbortController === "function" ? new AbortController() : null;
+          const onAbort = () => controller?.abort();
+          if (signal) {
+            if (signal.aborted) return null;
+            signal.addEventListener("abort", onAbort, { once: true });
+          }
+          let timer = 0;
           try {
-            const response = await fetchImpl("/whale-wallpaper/status", { cache: "no-store" });
-            const payload = await response.json();
+            const read = async () => {
+              const response = await fetchImpl("/whale-wallpaper/status", { cache: "no-store", signal: controller?.signal });
+              if (!response.ok) throw new Error(`host-status-${response.status}`);
+              const payload = await response.json().catch(() => null);
+              // The availability answer must be a real boolean; anything else is not a ready host.
+              if (!payload || typeof payload.available !== "boolean") throw new Error("host-status-invalid");
+              return payload;
+            };
+            let payload;
+            if (controller) {
+              // Bounds the fetch AND the body read: either can hang on its own.
+              const timeout = new Promise((_, reject) => {
+                timer = window.setTimeout(() => { controller.abort(); reject(new Error("host-status-timeout")); }, boundedMs);
+              });
+              payload = await Promise.race([read(), timeout]);
+            } else {
+              payload = await read();
+            }
             emitStatus({ host: payload, error: "", previewError: "" });
             return payload;
           } catch (error) {
             emitStatus({ host: null, error: String(error?.message || "unavailable") });
             return null;
+          } finally {
+            if (timer) window.clearTimeout(timer);
+            if (signal) signal.removeEventListener("abort", onAbort);
           }
         },
-        async start(scene = "lucy") {
+        async start(scene = "lucy", mode = DEFAULT_PLAYBACK_MODE) {
           if (disposed || busy) return status;
           busy = true;
           const runGeneration = invalidate();
           emitStatus({ state: "starting", error: "", generation: runGeneration });
           try {
-            const { ok, payload } = await command("start", { scene });
+            const { ok, payload } = await command("start", { scene, mode });
             // A stop, a source switch or an unload during the request invalidates this run;
             // the late reply must not resurrect it.
             if (disposed || runGeneration !== generation) {
@@ -685,7 +734,7 @@ window.__ModuleLoader__.load({
             if (!ok) throw new Error(payload?.error || "start-failed");
             running = true; busy = false;
             startedAt = now(); lastFrameAt = now();
-            emitStatus({ host: payload, rendered: 0, decodeErrors: 0 });
+            emitStatus({ host: payload, rendered: 0, decodeErrors: 0, mode });
             connect(runGeneration);
             return status;
           } catch (error) {
@@ -695,13 +744,13 @@ window.__ModuleLoader__.load({
             return status;
           }
         },
-        async restart(scene = "lucy") {
+        async restart(scene = "lucy", mode = DEFAULT_PLAYBACK_MODE) {
           if (disposed || busy) return status;
           busy = true;
           const restartGeneration = invalidate();
           emitStatus({ state: "starting", error: "", generation: restartGeneration });
           try {
-            const { ok, payload } = await command("restart", { scene });
+            const { ok, payload } = await command("restart", { scene, mode });
             if (disposed || restartGeneration !== generation) {
               if (ok) await command("stop").catch(() => {});
               return status;
@@ -709,7 +758,7 @@ window.__ModuleLoader__.load({
             if (!ok) throw new Error(payload?.error || "restart-failed");
             running = true; busy = false;
             startedAt = now(); lastFrameAt = now();
-            emitStatus({ host: payload, rendered: 0, decodeErrors: 0 });
+            emitStatus({ host: payload, rendered: 0, decodeErrors: 0, mode });
             connect(restartGeneration);
             return status;
           } catch (error) {
@@ -1335,26 +1384,34 @@ window.__ModuleLoader__.load({
         image: "图片",
         video: "视频",
         wallpaperEngine: "Wallpaper Engine（实验）",
-        wallpaperEngineHint: "只支持已验证的 Lucy 场景；需手动开始预览，最长 5 分钟后自动停止",
+        wallpaperEngineHint: "只支持已验证的 Lucy 场景；日常模式持续播放，直到你停止或退出",
         scene: "场景",
         sceneHint: "首版只接入本机已验证的样例工程",
-        startPreview: "开始预览",
-        stopPreview: "停止预览",
+        playMode: "播放模式",
+        modeDaily: "日常（持续播放）",
+        modePreview: "预览（限时）",
+        autoStart: "随 DSH 启动自动播放",
+        autoStartHint: "只保存下一次启动的选择；本次仍需点「开始播放」",
+        startPreview: "开始播放",
+        stopPreview: "停止播放",
         restartPreview: "重新开始",
-        previewIdle: "未开始。点击「开始预览」创建本轮源窗口",
+        previewIdle: "未开始。点击「开始播放」创建本轮源窗口",
         previewStarting: "正在创建源窗口…",
         previewConnecting: "已连接，等待第一帧…",
         previewWaiting: "画面暂时中断，等待恢复…",
         previewLimit: "预览上限",
         previewPlaying: "预览中",
+        dailyPlaying: "持续播放中",
+        runningFor: "已运行",
+        framesThisRun: "本轮帧数",
         previewStopped: "已停止。停止或失效后源窗口已清理",
         previewCleanupFailed: "关闭未确认，源窗口可能仍在；可再次点击重试清理",
         retryCleanup: "重试清理",
-        errorUnavailable: "Wallpaper Engine 预览当前不可用",
+        errorUnavailable: "Wallpaper Engine 播放当前不可用",
         errorHelper: "缺少打包的原生采集程序",
         errorScene: "本机缺少已验证的样例工程",
-        errorPlatform: "此环境不支持 Wallpaper Engine 预览",
-        errorHost: "官方 Windows Desktop 之外不启动预览",
+        errorPlatform: "此环境不支持 Wallpaper Engine 播放",
+        errorHost: "官方 Windows Desktop 之外不启动播放",
         imageFile: "图片文件",
         videoFile: "视频文件",
         imageEmpty: "未选择 · 支持 JPG / PNG / WebP / GIF，≤ 64 MB",
@@ -1419,26 +1476,34 @@ window.__ModuleLoader__.load({
         image: "Image",
         video: "Video",
         wallpaperEngine: "Wallpaper Engine (experimental)",
-        wallpaperEngineHint: "Verified Lucy scene only; start the preview manually, it stops after 5 minutes",
+        wallpaperEngineHint: "Verified Lucy scene only; daily mode keeps playing until you stop it or exit",
         scene: "Scene",
         sceneHint: "This first version wires up the one verified local sample",
-        startPreview: "Start preview",
-        stopPreview: "Stop preview",
+        playMode: "Playback",
+        modeDaily: "Daily (continuous)",
+        modePreview: "Preview (time-boxed)",
+        autoStart: "Start playing with DSH",
+        autoStartHint: "Saves the choice for the next launch; this session still needs the play button",
+        startPreview: "Start playing",
+        stopPreview: "Stop playing",
         restartPreview: "Restart",
-        previewIdle: "Not running. Start preview creates this round's source window",
+        previewIdle: "Not running. Start playing creates this round's source window",
         previewStarting: "Creating the source window…",
         previewConnecting: "Connected, waiting for the first frame…",
         previewWaiting: "Frames paused; waiting to recover…",
         previewLimit: "limit",
         previewPlaying: "Previewing",
+        dailyPlaying: "Playing continuously",
+        runningFor: "running for",
+        framesThisRun: "frames this run",
         previewStopped: "Stopped. The source window was cleaned up",
         previewCleanupFailed: "Close not confirmed; the source window may still exist. Retry to clean it up",
         retryCleanup: "Retry cleanup",
-        errorUnavailable: "The Wallpaper Engine preview is unavailable",
+        errorUnavailable: "The Wallpaper Engine playback is unavailable",
         errorHelper: "The packaged native capture helper is missing",
         errorScene: "The verified local sample is missing",
-        errorPlatform: "This environment does not support the Wallpaper Engine preview",
-        errorHost: "The preview only starts inside the official Windows desktop",
+        errorPlatform: "This environment does not support Wallpaper Engine playback",
+        errorHost: "Playback only starts inside the official Windows desktop",
         imageFile: "Image file",
         videoFile: "Video file",
         imageEmpty: "None · JPG / PNG / WebP / GIF, up to 64 MB",
@@ -1565,6 +1630,19 @@ window.__ModuleLoader__.load({
         if (wallpaperStatus.state === "cleanup-failed") return `${copy.previewCleanupFailed}：${wallpaperStatus.error || ""}`;
         if (previewActionError) return `${copy.errorUnavailable}：${previewActionError}`;
         if (wallpaperStatus.error) return `${copy.errorUnavailable}：${wallpaperStatus.error}`;
+        // Which mode this run is actually in decides the wording: a daily run has no limit,
+        // so showing a preview countdown would be a false promise.
+        const mode = wallpaperStatus.mode ?? settings.weMode;
+        const daily = mode === "daily";
+        const runningClock = (seconds) => {
+          const total = Math.max(0, Math.floor(seconds));
+          const hours = Math.floor(total / 3600);
+          const minutes = Math.floor((total % 3600) / 60);
+          const rest = total % 60;
+          return hours > 0
+            ? `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`
+            : `${minutes}:${String(rest).padStart(2, "0")}`;
+        };
         switch (wallpaperStatus.state) {
           case "starting": return copy.previewStarting;
           case "connecting": return copy.previewConnecting;
@@ -1572,6 +1650,11 @@ window.__ModuleLoader__.load({
             const rendered = wallpaperStatus.rendered ?? 0;
             const seconds = Math.max(1, wallpaperStatus.seconds ?? 1);
             const rate = `${(rendered / seconds).toFixed(1)} 帧/秒`;
+            if (daily) {
+              // No countdown and no rate claim: the honest numbers are how long this run has
+              // been going and how many frames it has drawn.
+              return `${copy.dailyPlaying} · ${copy.runningFor} ${runningClock(wallpaperStatus.seconds ?? 0)} · ${copy.framesThisRun} ${rendered}`;
+            }
             return `${copy.previewPlaying} · ${rendered} 帧 · ${rate} · ${copy.previewLimit} ${previewClock(wallpaperStatus.seconds ?? 0)}`;
           }
           case "waiting": return `${copy.previewWaiting} · ${wallpaperStatus.rendered ?? 0} 帧`;
@@ -1583,7 +1666,7 @@ window.__ModuleLoader__.load({
       const previewActive = ["starting", "connecting", "playing", "waiting"].includes(wallpaperStatus.state);
       const cleanupFailed = wallpaperStatus.state === "cleanup-failed";
       /**
-       * Runs the constrained preview action behind the watched buttons.
+       * Runs the constrained playback action behind the watched buttons.
        *
        * It only uses the public controller surface: the layer itself is (re)created by the
        * render path when the first frame arrives, so this component must not reach into the
@@ -1595,24 +1678,39 @@ window.__ModuleLoader__.load({
         try {
           setPreviewBusy(true);
           setPreviewActionError("");
-          await controller.wallpaper[action](settings.weScene);
+          await controller.wallpaper[action](settings.weScene, settings.weMode);
         } catch (error) {
-          setPreviewActionError(String(error?.message || "preview-failed"));
+          setPreviewActionError(String(error?.message || "playback-failed"));
         } finally { setPreviewBusy(false); }
       };
-      const wallpaperRow = () => h("div", { className: "wm-settings-row", key: "wallpaper-engine" }, [
-        h("div", { className: "wm-settings-copy", key: "copy" }, [
+      const wallpaperRow = () => h("div", { className: "wm-settings-row wm-wallpaper-row", key: "wallpaper-engine" }, [
+        // The description needs a full-width line of its own: in a narrow panel the old
+        // two-column row squeezed this column to zero width and the text wrapped one
+        // character per line. Title above, controls below, both able to wrap.
+        h("div", { className: "wm-settings-copy wm-wallpaper-copy", key: "copy" }, [
           h("div", { className: "wm-settings-label", key: "label" }, copy.wallpaperEngine),
           h("div", { className: "wm-settings-hint", key: "hint" }, copy.wallpaperEngineHint)
         ]),
-        h("div", { className: "wm-media-actions", key: "actions" }, [
-          h("label", { className: "wm-inline-field", key: "scene" }, [
+        h("div", { className: "wm-media-actions wm-wallpaper-actions", key: "actions" }, [
+          h("label", { className: "wm-inline-field wm-wallpaper-field", key: "scene" }, [
             h("span", { className: "wm-inline-label", key: "label" }, copy.scene),
             h("select", {
               "aria-label": copy.scene, value: settings.weScene, key: "select",
               "data-wm-setting": "weScene", disabled: previewActive,
               onChange: (event) => update("weScene", event.currentTarget.value)
             }, WALLPAPER_SCENES.map(id => h("option", { value: id, key: id }, id === "lucy" ? "Lucy" : id)))
+          ]),
+          // The mode is stored for the next start; changing it never restarts the live run.
+          h("label", { className: "wm-inline-field wm-wallpaper-field", key: "mode" }, [
+            h("span", { className: "wm-inline-label", key: "label" }, copy.playMode),
+            h("select", {
+              "aria-label": copy.playMode, value: settings.weMode, key: "select",
+              "data-wm-setting": "weMode",
+              onChange: (event) => update("weMode", event.currentTarget.value)
+            }, [
+              h("option", { value: "daily", key: "daily" }, copy.modeDaily),
+              h("option", { value: "preview", key: "preview" }, copy.modePreview)
+            ])
           ]),
           h("button", { type: "button", className: "wm-settings-option", key: "start",
             "data-wm-action": "wallpaper-start", disabled: previewBusy || previewActive || cleanupFailed,
@@ -1626,6 +1724,25 @@ window.__ModuleLoader__.load({
             "data-wm-action": "wallpaper-stop", disabled: previewBusy || (!previewActive && !cleanupFailed),
             onClick: runPreview("stop") }, cleanupFailed ? copy.retryCleanup : copy.stopPreview)
         ])
+      ]);
+      // Opt-in for the next DSH start. It never starts or stops anything by itself, so
+      // toggling it cannot end a run the user is watching. This row is NOT a wm-wallpaper-row:
+      // it stays a two-column row (text left, box right). Sharing the stacked WE row class made
+      // the browser stretch the checkbox to the panel width, because that class sets
+      // `align-items: stretch` on the cross axis.
+      const autoStartRow = () => h("label", {
+        className: "wm-settings-row wm-wallpaper-auto-start",
+        key: "wallpaper-auto-start", "data-wm-auto-start": String(settings.weAutoStart)
+      }, [
+        h("span", { className: "wm-settings-copy", key: "copy" }, [
+          h("span", { className: "wm-settings-label", key: "label" }, copy.autoStart),
+          h("span", { className: "wm-settings-hint", key: "hint" }, copy.autoStartHint)
+        ]),
+        h("input", {
+          type: "checkbox", checked: settings.weAutoStart, key: "checkbox",
+          "aria-label": copy.autoStart, "data-wm-setting": "weAutoStart",
+          onChange: (event) => update("weAutoStart", event.currentTarget.checked)
+        })
       ]);
       const wallpaperStatusRow = () => h("p", {
         className: "wm-settings-hint", role: "status", "aria-live": "polite", key: "wallpaper-status",
@@ -1657,6 +1774,7 @@ window.__ModuleLoader__.load({
         h("h3", { className: "wm-settings-subtitle", key: "wallpaper-title" }, copy.wallpaper),
         row("background", copy.background, copy.backgroundHint, ALLOWED_SETTINGS.background),
         settings.background === "wallpaper" && wallpaperRow(),
+        settings.background === "wallpaper" && autoStartRow(),
         settings.background === "wallpaper" && wallpaperStatusRow(),
         settings.background === "image" && mediaRow("image"),
         settings.background === "video" && mediaRow("video"),
@@ -2363,6 +2481,70 @@ window.__ModuleLoader__.load({
       .wm-inline-label { font-size: 12px; opacity: .8; }
       .wm-inline-field select { background: var(--dsw-alias-bg-layer-2); color: inherit; border-radius: 6px;
         border: 1px solid var(--dsw-alias-border-l2, rgba(255,255,255,.2)); padding: 3px 6px; font: inherit; }
+      /* Wallpaper Engine area only: the description gets its own full-width line and the
+         controls sit below it, wrapping when the settings panel is narrow. A two-column row
+         here used to collapse the text column to zero width, which wrapped the hint one
+         character per line. The other rows (image/video, sliders, theme) keep their layout. */
+      .wm-wallpaper-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        justify-content: flex-start;
+      }
+      .wm-wallpaper-copy {
+        width: 100%;
+        max-width: none;
+        padding: 4px 0 0;
+      }
+      .wm-wallpaper-copy .wm-settings-hint {
+        max-width: 68ch;
+        overflow-wrap: anywhere;
+      }
+      .wm-wallpaper-actions {
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px 12px;
+        flex-shrink: 1;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .wm-wallpaper-field {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .wm-wallpaper-field select {
+        min-width: 0;
+        max-width: 100%;
+      }
+      /* The checkbox row keeps the two-column shape, but its text column may shrink and the
+         control itself never does, so a narrow panel cannot squeeze the label to nothing.
+         Stretching is reset explicitly: a host form rule can set align-self or a width on
+         inputs, and without this the box would fill the row instead of staying square. */
+      .wm-wallpaper-auto-start {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 20px;
+      }
+      .wm-wallpaper-auto-start .wm-settings-copy {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+      }
+      .wm-wallpaper-auto-start input[type="checkbox"] {
+        flex: 0 0 auto;
+        align-self: center;
+        inline-size: 16px;
+        block-size: 16px;
+        width: 16px;
+        height: 16px;
+        min-width: 16px;
+        max-width: 16px;
+        margin: 0;
+      }
       .wm-range-control input { width: 160px; accent-color: var(--dsw-alias-brand-primary); }
       .wm-range-control output { min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
       .wm-media-name { max-width: 32rem; overflow-wrap: anywhere; }
@@ -2397,13 +2579,48 @@ window.__ModuleLoader__.load({
         firstFrameTimeoutMs: wallpaperTimeouts.firstFrameTimeoutMs,
         idleTimeoutMs: wallpaperTimeouts.idleTimeoutMs,
         retryDelayMs: wallpaperTimeouts.retryDelayMs,
+        hostStatusTimeoutMs: wallpaperTimeouts.hostStatusTimeoutMs,
       });
       const backdrop = createBackdrop(wallpaper);
       let disposed = false;
       let selectionRevision = 0;
+      // Bumped by every explicit playback action and by leaving the source. The automatic
+      // start checks it before and after its host query, so a late answer from an older
+      // intent can never start a run the user stopped or never asked for.
+      let userActionRevision = 0;
+      /**
+       * Bumped by every playback-mode change. The automatic start captures it when the session
+       * begins, so a trip to preview and back cancels the pending request instead of letting a
+       * late host answer through: checking only the final mode value would miss that.
+       */
+      let playbackModeRevision = 0;
+      /** How many bounded host-readiness checks auto playback may make before giving up. */
+      const AUTO_START_MAX_ATTEMPTS = 5;
+      /** Total window for the automatic readiness checks, so a dead host cannot stall it. */
+      const AUTO_START_WINDOW_MS = 12000;
+      /** Read limit for one readiness check, used to shrink it when the window is nearly over. */
+      const HOST_STATUS_READ_MS = Number.isFinite(wallpaperTimeouts.hostStatusTimeoutMs) && wallpaperTimeouts.hostStatusTimeoutMs > 0
+        ? wallpaperTimeouts.hostStatusTimeoutMs
+        : 4000;
       const controller = {
         media: backdrop,
-        wallpaper,
+        wallpaper: {
+          // The settings UI talks to the public controller only. Every explicit action marks
+          // the user's intent, which is what cancels a pending automatic start.
+          ...wallpaper,
+          start: (scene = "lucy", mode = DEFAULT_PLAYBACK_MODE) => {
+            userActionRevision++;
+            return wallpaper.start(scene, mode);
+          },
+          restart: (scene = "lucy", mode = DEFAULT_PLAYBACK_MODE) => {
+            userActionRevision++;
+            return wallpaper.restart(scene, mode);
+          },
+          stop: (reason = "user") => {
+            userActionRevision++;
+            return wallpaper.stop(reason);
+          },
+        },
         read: () => ({ ...settings }),
         set: (key, value) => {
           if (disposed || !isValidSetting(key, value)) return { ...settings };
@@ -2413,14 +2630,21 @@ window.__ModuleLoader__.load({
           projectSettings(settings);
           if (key === "theme") ctx.theme.setTheme(selectedThemeId(settings));
           backdrop.update(settings, themeSignal.getSnapshot());
+          // A mode change cancels any automatic start that is still waiting for the host; it
+          // does not restart the run that is already active (that keeps its own mode).
+          if (key === "weMode") playbackModeRevision++;
           // Leaving the Wallpaper Engine source stops this round's window before any
           // other background is presented; switching back never auto-restarts it.
-          if (key === "background" && value !== "wallpaper") wallpaper.stop("background-changed").catch(() => {});
+          if (key === "background") {
+            userActionRevision++;
+            if (value !== "wallpaper") wallpaper.stop("background-changed").catch(() => {});
+          }
           return { ...settings };
         },
         reset: () => {
           if (disposed) return { ...settings };
           selectionRevision++;
+          userActionRevision++;
           wallpaper.stop("reset").catch(() => {});
           settings = { ...DEFAULT_SETTINGS };
           persistSettings(settings);
@@ -2446,6 +2670,84 @@ window.__ModuleLoader__.load({
       };
 
       ctx.effect(() => () => { disposed = true; selectionRevision++; }, "whale: controller lifetime");
+
+      // Auto playback: the persisted choice is only a statement about the NEXT DSH start.
+      // This effect fires at most once per page lifetime, only when the source and the theme
+      // still apply and the host says the scene is available. A manual stop stays stopped:
+      // nothing here re-runs on a settings change, a theme re-sync or a re-mounted component.
+      ctx.effect(() => {
+        // The choice is frozen here, at the start of this DSH session: toggling the checkbox
+        // later only saves the NEXT launch and must never start playback in this one.
+        const autoStartWanted = settings.weAutoStart === true && settings.weMode === "daily";
+        let cancelled = false;
+        let starting = false;
+        let started = false;
+        // Any explicit user action invalidates the automatic request that is still waiting,
+        // so a late host answer can never restart what the user just stopped. Leaving the daily
+        // mode also counts as intent: a trip to preview and back must cancel the old request,
+        // because checking only the final mode would let it through again.
+        const actionsAtStart = userActionRevision;
+        const modeAtStart = playbackModeRevision;
+        let retry = 0;
+        const timers = new Set();
+        const deadline = Date.now() + AUTO_START_WINDOW_MS;
+        const eligible = () => !cancelled && !disposed && !started && autoStartWanted
+          && userActionRevision === actionsAtStart && playbackModeRevision === modeAtStart
+          && settings.background === "wallpaper" && settings.weMode === "daily"
+          && themeSignal.getSnapshot();
+        /** The declared window is the whole budget: nothing may start after it has passed. */
+        const windowOpen = () => Date.now() < deadline;
+        const remainingMs = () => Math.max(0, deadline - Date.now());
+        const clearTimers = () => {
+          for (const timer of timers) clearTimeout(timer);
+          timers.clear();
+        };
+        const schedule = (delay) => {
+          const timer = setTimeout(() => { timers.delete(timer); attempt().catch(() => {}); }, delay);
+          timers.add(timer);
+        };
+        // A host that answers "not ready" gets another bounded try inside the total window, so
+        // a late-ready host still starts exactly one run and a dead one gives up cleanly. The
+        // backoff keeps its usual interval but never reaches past the window.
+        const scheduleRetry = () => {
+          if (!eligible() || retry >= AUTO_START_MAX_ATTEMPTS || !windowOpen()) return;
+          retry += 1;
+          schedule(Math.min(1500, remainingMs()));
+        };
+        const attempt = async () => {
+          // The deadline also bounds the attempt itself: a timer that fired just before the
+          // window closed must not begin a new query.
+          if (!eligible() || starting || !windowOpen()) return;
+          starting = true;
+          try {
+            // A readiness query is bounded twice over: by the read limit and by what is left of
+            // the total window, so a query started inside the window cannot answer after it.
+            const host = await wallpaper.loadHostStatus({ timeoutMs: Math.min(HOST_STATUS_READ_MS, remainingMs()) });
+            if (!eligible()) return;
+            // A reply that arrives after the window (the read was cut at the deadline) is too
+            // late to start anything, and there is nothing left to retry.
+            if (!windowOpen()) { clearTimers(); return; }
+            if (!host || host.available !== true) { scheduleRetry(); return; }
+            started = true;
+            await wallpaper.start(settings.weScene, settings.weMode);
+          } finally { starting = false; }
+        };
+        const run = () => {
+          if (!eligible() || starting || timers.size > 0) return;
+          if (retry >= AUTO_START_MAX_ATTEMPTS || !windowOpen()) return;
+          retry += 1;
+          schedule(retry === 1 ? 300 : 1500);
+        };
+        // The theme becomes active slightly after boot, so wait for its signal instead of
+        // polling; the retries cover a host that answers "not ready" for a little while.
+        const unsubscribeTheme = themeSignal.subscribe(run);
+        run();
+        return () => {
+          cancelled = true;
+          unsubscribeTheme();
+          clearTimers();
+        };
+      }, "whale: wallpaper auto playback");
 
       ctx.effect(() => {
         const disposeMist = ctx.theme.register(theme);

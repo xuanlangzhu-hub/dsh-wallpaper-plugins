@@ -10,9 +10,14 @@ using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 
 // Diagnostic only: reads ONE explicitly selected WE window; never captures the desktop.
-// Stop with Esc, stop.txt, target close, or the bounded duration.
+// Stop with Esc, stop.txt, target close, the bounded duration, or (daily mode) the
+// parent's stop command and pipe lifetime.
 // Window lifecycle helpers verify the target identity before any side effect.
 // CLI results use camelCase so scripts read the same field names everywhere.
+const int OffscreenCoordinate = -32000;
+// Daily playback runs indefinitely, so the per-frame log must be bounded: the file keeps
+// the most recent window of records plus a header that states the bound and the totals.
+const int FrameLogCapacity = 1200;
 var cliJson = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 try
 {
@@ -23,13 +28,19 @@ if (args.Length >= 3 && args[0] == "--we-open") {
     string loc = args[1]; string file = args[2];
     int w = args.Length >= 4 && int.TryParse(args[3], out var pw) ? pw : 1280;
     int h = args.Length >= 5 && int.TryParse(args[4], out var ph) ? ph : 720;
-    int launchPid = SourceWindowHelper.OpenWallpaper(loc, file, w, h);
+    // Optional, explicit experiment entry: create the window at an off-screen position
+    // instead of moving it there after the first frame. Off unless the caller asks.
+    (int X, int Y)? initialPosition = Array.IndexOf(args, "--initial-offscreen") >= 0
+        ? (OffscreenCoordinate, OffscreenCoordinate)
+        : null;
+    int launchPid = SourceWindowHelper.OpenWallpaper(loc, file, w, h, null, initialPosition);
     Console.WriteLine(JsonSerializer.Serialize(new
     {
         opened = true,
         location = loc,
         file = SourceWindowHelper.RequireProjectFile(file),
         wePid = launchPid,
+        initialPosition,
         note = "launcher process; the rendering window belongs to the existing wallpaper64 process",
     }));
     return;
@@ -59,6 +70,8 @@ if (args.Length >= 3 && args[0] == "--window-ensure-closed") {
     return;
 }
 if (args.Length == 2 && args[0] == "--self-test-publish") { await AtomicFile.SelfTest(args[1]); return; }
+if (args.Length == 2 && args[0] == "--parse-check") { await CaptureArguments.ParseCheck(args[1]); return; }
+if (args.Length == 2 && args[0] == "--self-test-frame-log") { await SelfTestFrameLog(args[1]); return; }
 if (args.Length == 1 && args[0] == "--self-test-lifecycle") { SelfTestLifecycle(); return; }
 if (args.Length == 2 && args[0] == "--window-tree" && long.TryParse(args[1], out var treeHwnd)) { Native.PrintTree((nint)treeHwnd); return; }
 if (args.Length == 2 && args[0] == "--window-inspect" && long.TryParse(args[1], out var inspectHwnd)) { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.Inspect((nint)inspectHwnd), cliJson)); return; }
@@ -84,25 +97,21 @@ if (args.Length == 2 && args[0] == "--window-onscreen" && long.TryParse(args[1],
 { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.OnScreenArea((nint)onHwnd), cliJson)); return; }
 if (args.Length == 4 && args[0] == "--window-at" && int.TryParse(args[1], out var atX) && int.TryParse(args[2], out var atY) && long.TryParse(args[3], out var atProbe))
 { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.HitTest(atX, atY, atProbe), cliJson)); return; }
-var echoMode = Array.IndexOf(args, "--echo-on-stderr") >= 0;
-// --owned-location <this round's window name>: the probe accepts ownership of
-// that window and closes it if the parent disconnects. Without it the probe
-// only reads the handle it was given and never closes another component's window.
-string? ownedLocation = null;
-var ownedIndex = Array.IndexOf(args, "--owned-location");
-if (ownedIndex >= 0)
-{
-    if (ownedIndex + 1 >= args.Length) throw new ArgumentException("--owned-location requires a window name.");
-    ownedLocation = SourceWindowHelper.RequireProbeLocation(args[ownedIndex + 1]);
-    args = args.Where((_, index) => index != ownedIndex && index != ownedIndex + 1).ToArray();
-}
-if (echoMode) args = args.Where(a => a != "--echo-on-stderr").ToArray();
-if (args.Length is < 4 or > 5 || !long.TryParse(args[0], out var handle) ||
-    !int.TryParse(args[2], out var duration) || duration < 1 || duration > 1800 ||
-    !int.TryParse(args[3], out var fps) || fps < 1 || fps > 30)
-    throw new ArgumentException("Usage: WallpaperProbe <HWND> <output-directory> <seconds 1..1800> <fps 1..30> [disk|memory|readback|staging|frames|pipe]");
-var mode = args.Length == 5 ? args[4] : "disk";
-if (mode is not ("disk" or "memory" or "readback" or "staging" or "frames" or "pipe")) throw new ArgumentException("Unknown capture mode.");
+// The echo diagnostic flag is part of the shared parse, so an old QA invocation that still
+// passes it keeps working instead of turning into an extra positional argument.
+// The capture command line (owned-location, --forever, duration, fps, mode) is parsed by
+// CaptureArguments, the same type the packaged-argument check exercises, so the exact argv the
+// Host produces cannot be rejected by a difference between two hand-rolled parsers.
+// --owned-location <this round's window name>: the probe accepts ownership of that window and
+// closes it if the parent disconnects; without it the probe only reads the handle it was given.
+var parsed = CaptureArguments.Parse(args);
+var echoMode = parsed.EchoMode;
+var ownedLocation = parsed.OwnedLocation;
+var forever = parsed.Forever;
+var handle = parsed.Handle;
+var fps = parsed.Fps;
+var duration = parsed.Duration;
+var mode = parsed.CaptureMode;
 var diagnostics = mode == "pipe" || echoMode ? Console.Error : Console.Out;
 using var pipeOutput = mode == "pipe" ? Console.OpenStandardOutput() : Stream.Null;
 using var stopSignal = new CancellationTokenSource();
@@ -115,7 +124,7 @@ if (mode == "pipe") _ = Task.Run(async () => {
 });
 
 var hwnd = (nint)handle;
-var output = Path.GetFullPath(args[1]);
+var output = Path.GetFullPath(parsed.OutputDirectory);
 Directory.CreateDirectory(output);
 if (File.Exists(Path.Combine(output, "frames.jsonl")) || File.Exists(Path.Combine(output, "summary.json")))
     throw new InvalidOperationException("Use a fresh output directory; existing capture evidence is preserved.");
@@ -149,13 +158,17 @@ bool closed = false;
 item.Closed += (_, _) => closed = true;
 session.StartCapture();
 diagnostics.WriteLine(JsonSerializer.Serialize(new { started = true, pid, hwnd = handle, size.Width, size.Height, fps, mode }));
-await using var log = new StreamWriter(Path.Combine(output, "frames.jsonl"), append: false);
+await using var log = new FrameLog(Path.Combine(output, "frames.jsonl"), FrameLogCapacity);
 try
 {
-    while (clock.Elapsed.TotalSeconds < duration)
+    while (forever || clock.Elapsed.TotalSeconds < duration)
     {
         if (stopSignal.IsCancellationRequested) { reason = "parent-stop"; break; }
-        if ((Native.GetAsyncKeyState(0x1B) & 0x8000) != 0) { reason = "escape"; break; }
+        // Daily playback must not stop because the user pressed Esc in some other
+        // application: that poll belongs to the supervised experiment only. Daily runs end
+        // on the parent's stop command, the parent pipe closing, the window closing, or a
+        // failure; the supervised forms keep the Esc escape hatch.
+        if (!forever && (Native.GetAsyncKeyState(0x1B) & 0x8000) != 0) { reason = "escape"; break; }
         if (File.Exists(Path.Combine(output, "stop.txt"))) { reason = "stop-file"; break; }
         if (closed || !Native.IsWindow(hwnd)) { reason = "target-closed"; break; }
         var start = clock.Elapsed.TotalMilliseconds;
@@ -214,7 +227,7 @@ try
             jpegMs = encodedAt - copiedAt, packHashMs = packedAt - encodedAt,
             imageWriteMs = writtenAt - packedAt,
             encodeMs = Math.Round(clock.Elapsed.TotalMilliseconds - start, 2) };
-        await log.WriteLineAsync(JsonSerializer.Serialize(record));
+        log.Add(frames, JsonSerializer.Serialize(record));
         if (clock.Elapsed.TotalMilliseconds >= nextStatusMs)
         {
             await log.FlushAsync();
@@ -258,10 +271,11 @@ finally
         }
     }
 
-    var summary = JsonSerializer.Serialize(new { frames, changed, skippedPublications, reason, seconds = clock.Elapsed.TotalSeconds, mode,
+    var summary = JsonSerializer.Serialize(new { frames, changed, skippedPublications, reason, seconds = clock.Elapsed.TotalSeconds, mode = forever ? "forever" : mode,
         captureSource,
         ownedLocation,
         windowClose,
+        frameLog = new { bounded = true, retained = log.Retained, capacity = FrameLogCapacity, total = log.Total },
         cpuSeconds = (self.TotalProcessorTime - cpuStart).TotalSeconds, workingSetBytes = self.WorkingSet64 },
         new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
     await File.WriteAllTextAsync(Path.Combine(output, "summary.json"), summary);
@@ -276,6 +290,73 @@ catch (Exception error)
     ProbeJournal.Error("Probe", error.GetType().Name, error.Message);
     if (error is not ArgumentException) ProbeJournal.Error("Probe", error.ToString().Split('\n')[0].Trim());
     Environment.ExitCode = 1;
+}
+
+// The bounded frame log: a long daily run must not grow the evidence file without limit.
+// This replays 5000 frames into a tiny window and checks the ceiling, the header, and the
+// retention policy on the real frame numbers (dense tail plus every Nth older frame). It
+// touches only the directory it is given and writes the same records production writes.
+static async Task SelfTestFrameLog(string directory)
+{
+    Directory.CreateDirectory(directory);
+    var path = Path.Combine(directory, "bounded-frames.jsonl");
+    if (File.Exists(path)) throw new IOException("Use a new self-test directory.");
+    const int capacity = 40;
+    const int sampleEvery = 5;
+    const int denseTail = 10;
+    const int totalFrames = 5000;
+    var log = new FrameLog(path, capacity, sampleEvery, denseTail);
+    for (int frame = 1; frame <= totalFrames; frame++)
+        log.Add(frame, $"{{\"kind\":\"frame\",\"frames\":{frame},\"changed\":{frame},\"seconds\":{frame * 0.033:F3},\"mode\":\"forever\"}}");
+    await log.DisposeAsync();
+
+    var lines = await File.ReadAllLinesAsync(path);
+    var header = JsonSerializer.Deserialize<JsonElement>(lines[0]);
+    var retained = header.GetProperty("retained").GetInt32();
+    var total = header.GetProperty("total").GetInt64();
+    var policy = header.GetProperty("policy").GetString();
+    var oldestHeader = header.GetProperty("oldestRetainedFrame").GetInt64();
+    var newestHeader = header.GetProperty("newestRetainedFrame").GetInt64();
+    var body = lines.Skip(1).Where(line => line.Length > 0).ToArray();
+    var frames = body.Select(line => JsonSerializer.Deserialize<JsonElement>(line).GetProperty("frames").GetInt64()).ToArray();
+    var payloadBytes = new FileInfo(path).Length;
+
+    var denseStart = totalFrames - denseTail + 1;
+    var dense = frames.Where(frame => frame >= denseStart).ToArray();
+    var sparse = frames.Where(frame => frame < denseStart).ToArray();
+    var sparseSampled = sparse.Where(frame => frame % sampleEvery == 0).ToArray();
+    var ascending = frames.Zip(frames.Skip(1), (previous, next) => next > previous).All(ok => ok);
+    // A real frame record is ~110 bytes; the stub used to be ~12. Report the measured ceiling
+    // in bytes per record so the production bound can be stated from a measurement.
+    var bytesPerRecord = body.Length == 0 ? 0 : (double)(payloadBytes - lines[0].Length) / body.Length;
+    var projectedProductionBytes = (long)(bytesPerRecord * capacity + lines[0].Length * 2);
+
+    var checks = new (string Name, bool Ok, string Detail)[]
+    {
+        ("total counts every frame", total == totalFrames, total.ToString()),
+        ("retained stays within capacity", retained <= capacity, retained.ToString()),
+        ("header matches the body", retained == body.Length, $"{retained} vs {body.Length}"),
+        ("header states the retention policy", policy == "dense-tail-plus-frame-sampling", policy ?? "null"),
+        ("the newest frame survives", frames[^1] == totalFrames, frames[^1].ToString()),
+        ("the whole dense tail is present", dense.Length == denseTail && dense[0] == denseStart, $"{dense.Length} from {denseStart}"),
+        ("older frames follow frame-number sampling", sparse.Length == sparseSampled.Length && sparse.All(frame => frame % sampleEvery == 0), $"{sparse.Length} sparse, {sparseSampled.Length} multiples of {sampleEvery}"),
+        ("retained frames are in order", ascending, "ascending"),
+        ("header frames match the body", oldestHeader == frames[0] && newestHeader == frames[^1], $"{oldestHeader}..{newestHeader}"),
+        ("file size stays bounded", payloadBytes < 64 * 1024, payloadBytes.ToString()),
+    };
+    var failed = checks.Where(check => !check.Ok).ToArray();
+    Console.WriteLine(JsonSerializer.Serialize(new
+    {
+        capacity, sampleEvery, denseTail, totalFrames, retained, total, policy,
+        retainedFrames = frames,
+        sparseFrames = sparse,
+        bytes = payloadBytes,
+        bytesPerRecord = Math.Round(bytesPerRecord, 1),
+        projectedProductionBytesAtCapacity = projectedProductionBytes,
+        checks,
+        failed = failed.Length,
+    }, new JsonSerializerOptions { WriteIndented = true }));
+    if (failed.Length != 0) Environment.ExitCode = 1;
 }
 
 // Argument and identity guards of the window lifecycle helpers. No window is

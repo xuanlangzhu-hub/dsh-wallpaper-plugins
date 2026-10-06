@@ -2,7 +2,9 @@
 
 为官方 DeepSeek Harness 开发的 Whale Appearance / 鲸系外观插件，提供鲸渊、鲸雾主题、自定义配色、图片和视频背景，以及 Wallpaper Engine 实验预览。
 
-主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码版本为 **0.6.0-rc.7**，设置入口的短实机验收已通过。当前状态与接续边界见 [项目状态](docs/PROJECT_STATUS.md)，实际桌面证据见 [验收记录](dsh-whale-mist/docs/wallpaper-settings-desktop-acceptance.md)。
+主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码候选版为 **0.6.0-rc.13**，代码与隔离 DOM 短复审已通过；日常持续播放仍待实机验收。rc.7 的手动预览曾通过短实机验收。当前状态与接续边界见 [项目状态](docs/PROJECT_STATUS.md)，实际桌面证据见 [验收记录](dsh-whale-mist/docs/wallpaper-settings-desktop-acceptance.md)。
+
+下一轮已选定 [B：日常持续播放与启动闪窗优化](docs/NEXT_B_DAILY_PLAYBACK.md)，由 DS 实现、Codex 审查；实现与短复审已完成，下一步先核对真实设置布局，再做至少 35 分钟、自动播放与清理实机验收。
 
 ## 功能与当前边界
 
@@ -11,7 +13,7 @@
 - 官方 Windows Desktop 的透明白鲸运行时窗口图标。
 - Wallpaper Engine 原始渲染 → Windows Graphics Capture → 内存画面流 → DSH 背景层。
 
-Wallpaper Engine 部分仍是单 **Lucy** 场景的受监督预览：用户手动开始，默认 180 秒、最多 300 秒；需要已安装的 Wallpaper Engine、对应场景与 .NET 10 运行时。场景路径由 Host 的 `src/wallpaper/scenes.js` 白名单配置，仓库不包含壁纸本体。
+Wallpaper Engine 部分仍限于单 **Lucy** 场景。默认限时预览为 180 秒、最多 300 秒；候选版新增无定时结束的日常模式与默认关闭的下次启动自动播放，后两者尚待实机验收。需要已安装的 Wallpaper Engine、对应场景与 .NET 10 运行时。场景路径由 Host 的 `src/wallpaper/scenes.js` 白名单配置，仓库不包含壁纸本体。
 
 源窗口收在屏幕外，任务栏 / Alt-Tab 仍可能显示入口。音频、鼠标交互、其它壁纸兼容性和长期常驻播放尚未验收。
 

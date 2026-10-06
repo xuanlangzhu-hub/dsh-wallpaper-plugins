@@ -267,7 +267,15 @@ public static class SourceWindowHelper
         return Path.GetFullPath(value);
     }
 
-    public static int OpenWallpaper(string location, string file, int width = 1280, int height = 720, string? weExe = null)
+    /// <summary>
+    /// Opens this round's wallpaper window.
+    ///
+    /// `initialPosition` is the unverified "start off screen" experiment: WE's own
+    /// `-control openWallpaper` accepts x/y, so the window can be created at the
+    /// off-screen coordinates instead of being moved there after the first frame.
+    /// It stays opt-in; the accepted order is create visible, capture, then move.
+    /// </summary>
+    public static int OpenWallpaper(string location, string file, int width = 1280, int height = 720, string? weExe = null, (int X, int Y)? initialPosition = null)
     {
         string exe = weExe ?? DefaultWeExe;
         location = RequireProbeLocation(location);
@@ -275,6 +283,14 @@ public static class SourceWindowHelper
         if (width < 160 || width > 7680 || height < 120 || height > 4320)
             throw new ArgumentException("Wallpaper window size is out of range.");
         string args = $"-control openWallpaper -file {QuoteArgument(file)} -playInWindow {QuoteArgument(location)} -width {width} -height {height}";
+        if (initialPosition is { } position)
+        {
+            // Same bound as the off-screen tuck of the accepted path. The window keeps its
+            // normal visible attributes; it is only placed outside the virtual screen.
+            if (position.X is < -32000 or > 32000 || position.Y is < -32000 or > 32000)
+                throw new ArgumentException("Wallpaper window position is out of range.");
+            args += $" -x {position.X} -y {position.Y}";
+        }
         return LaunchOnDefaultDesktop(exe, args);
     }
 

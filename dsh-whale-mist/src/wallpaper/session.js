@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { FrameHub, streamFrames } from './frame-hub.js';
 import { ProbeJournal } from './probe-log.js';
 import { runHelper, waitForWindow, validateLocation, newLocation } from './managed-window.js';
-import { SCENES, PREVIEW_SECONDS, WINDOW_SIZE, resolveSceneRequest, describeScenes } from './scenes.js';
+import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_SIZE, resolveSceneRequest, describeScenes } from './scenes.js';
 
 /**
  * Wallpaper Engine preview for the Whale Appearance theme.
@@ -25,7 +25,7 @@ import { SCENES, PREVIEW_SECONDS, WINDOW_SIZE, resolveSceneRequest, describeScen
 
 export const MAX_RUN_DIRECTORIES = 8;
 
-export { SCENES, PREVIEW_SECONDS, describeScenes, resolveSceneRequest };
+export { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, describeScenes, resolveSceneRequest };
 
 /** Resolves the helper and log root from this module's own package location. */
 export function resolveHostResources(moduleUrl = import.meta.url, env = process.env) {
@@ -182,29 +182,35 @@ export function createPreviewSession(options = {}) {
     return cleanup();                                    // retry after an unproven close
   };
 
-  async function create({ helper: helperPath, output, scene }) {
-    if (cleaning) throw new Error('this preview run has already ended');
-    if (config) throw new Error('this preview session already started a run');
-    const request = resolveSceneRequest({ scene: scene?.sceneId, seconds: scene?.seconds }, { exists });
+  async function create({ helper: helperPath, output, scene, offscreenStart = false }) {
+    if (cleaning) throw new Error('this playback run has already ended');
+    if (config) throw new Error('this session already started a run');
+    const request = resolveSceneRequest(scene ?? {}, { exists });
     config = {
       helper: helperPath,
       output,
       location: validateLocation(scene?.location ?? newLocation(now())),
       project: request.project,
+      mode: request.mode,
       seconds: request.seconds,
       width: request.width,
       height: request.height,
       fps: request.fps,
       sceneId: request.sceneId,
+      // The start-off-screen experiment stays off unless the caller asks for it; the
+      // accepted order (create visible, capture, then move off screen) remains the default.
+      offscreenStart,
     };
     location = config.location;
-    if (stopRequested) { await stop(); throw new Error('this preview run was stopped before it started'); }
+    if (stopRequested) { await stop(); throw new Error('this playback run was stopped before it started'); }
 
     // 1. Create this run's own window; the name is claimed before the side effect.
     windowCreated = true;
     try {
       const polls = waitForWindow(helper, location, { sleep });
-      const opened = helper(['--we-open', location, config.project, String(config.width), String(config.height)]);
+      const openArgs = ['--we-open', location, config.project, String(config.width), String(config.height)];
+      if (config.offscreenStart) openArgs.push('--initial-offscreen');
+      const opened = helper(openArgs);
       const settledWithFailure = opened.then(() => null, error => error);
       let openSettled = false;
       settledWithFailure.then(() => { openSettled = true; }).catch(() => {});
@@ -244,11 +250,15 @@ export function createPreviewSession(options = {}) {
       await stop();
       throw new Error(failure);
     }
-    if (stopRequested) { await stop(); throw new Error('this preview run was stopped before capture started'); }
+    if (stopRequested) { await stop(); throw new Error('this playback run was stopped before capture started'); }
 
     // 2. Capture. The native side builds the capture item while the window is still
     //    visible (WGC refuses hidden and tool windows), then the window is tucked away.
-    child = spawnChild(config.helper, [String(config.window), output, String(config.seconds), String(config.fps), 'pipe',
+    //    Daily mode has no timer at all: the capture loop runs until this run is stopped
+    //    by the user, the child exits, the source window goes away, or the parent pipe
+    //    closes. Preview mode keeps its bounded seconds.
+    const durationArg = config.mode === 'daily' ? '--forever' : String(config.seconds);
+    child = spawnChild(config.helper, [String(config.window), output, durationArg, String(config.fps), 'pipe',
       '--owned-location', location], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     child.stdin.on('error', () => {});
     attachCapture();
@@ -363,8 +373,11 @@ export function createPreviewSession(options = {}) {
  *    that is still closing;
  *  - when a close cannot be proven, the failed run is retained and reported, so the UI
  *    can say "cleanup failed" instead of showing a false success.
+ *
+ * `offscreenStart` selects the unverified "open off screen from the first frame" path.
+ * It is off by default and only the explicit experiment entry turns it on.
  */
-export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, onWarn = message => console.warn(message) } = {}) {
+export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START === '1', onWarn = message => console.warn(message) } = {}) {
   const buildSession = () => sessionFactory({ exists });
 
   let ownership = null;          // { kind: 'start' | 'stop', generation, promise }
@@ -397,8 +410,13 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       unavailableReason: availability.reason,
       missingScenes: availability.missing,
       previewSeconds: PREVIEW_SECONDS,
+      modes: PLAYBACK_MODES,
+      defaultMode: DEFAULT_PLAYBACK_MODE,
       scenes: describeScenes({ scenes, exists }),
       active: running,
+      // The mode of the run that is actually live, so the UI never shows a countdown for a
+      // daily run or a stale mode after a restart.
+      mode: session?.state?.().config?.mode ?? null,
       // A retained session whose close failed is reported as failed, never as stopped. The
       // caller's own close result (when there is one) decides this instead of stale evidence.
       failed: extra.cleanup ? extra.cleanup.closed !== true : Boolean(lastCleanup && lastCleanup.closed !== true),
@@ -475,7 +493,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       session = next;
       token.started = true;
       try {
-        await next.create({ helper, output, scene: { sceneId: request.sceneId, seconds: request.seconds } });
+        await next.create({ helper, output, scene: body, offscreenStart });
       } catch (error) {
         await next.stop().catch(() => {});
         const result = next.state().cleanup ?? { outcome: 'absent', closed: true };

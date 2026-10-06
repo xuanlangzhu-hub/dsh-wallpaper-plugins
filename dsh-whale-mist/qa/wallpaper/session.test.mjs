@@ -54,7 +54,7 @@ const status = (child, value) => child.stderr.emit('data', `${JSON.stringify({ k
 
 test('a run creates one uniquely named window, then captures with owned-location', async () => {
   const { session, calls, children } = sessionHarness();
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   const opened = calls.find(args => args[0] === '--we-open');
   assert.ok(opened, 'the helper must create the window');
   assert.match(opened[1], /^WhaleWallpaperProbe-\d{12}-[0-9a-f]{4}$/, 'the window name is round unique');
@@ -67,7 +67,7 @@ test('a run creates one uniquely named window, then captures with owned-location
 
 test('the window is tucked away only after frames provably come from it', async () => {
   const { session, calls, children } = sessionHarness();
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   status(children[0].child, { frames: 4, captureSource: 'window' });
   await new Promise(resolve => setImmediate(resolve));
   const tuck = calls.filter(args => args[0] === '--window-apply').at(-1);
@@ -79,7 +79,7 @@ test('the window is tucked away only after frames provably come from it', async 
 
 test('a capture start that is not from this window never triggers a window action', async () => {
   const { session, calls, children } = sessionHarness();
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   status(children[0].child, { frames: 4, captureSource: 'monitor' });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.filter(args => args[0] === '--window-apply').length, 0);
@@ -88,7 +88,7 @@ test('a capture start that is not from this window never triggers a window actio
 
 test('stop is idempotent and closes exactly this run once', async () => {
   const { session, calls } = sessionHarness();
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   await Promise.all([session.stop(), session.stop(), session.stop()]);
   await session.stop();
   const closes = calls.filter(args => args[0] === '--window-ensure-closed');
@@ -110,7 +110,7 @@ test('a stop that lands during window creation still closes the late window', as
     throw new Error('unexpected ' + args.join(' '));
   };
   const session = createPreviewSession({ helperRun, spawnChild: () => fakeChild(() => {}), sleep: ms => new Promise(resolve => setTimeout(resolve, Math.min(ms, 5))) });
-  const creating = session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  const creating = session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   const stopping = session.stop();
   const early = await Promise.race([stopping.then(() => 'settled'), new Promise(resolve => setTimeout(() => resolve('pending'), 50))]);
   assert.equal(early, 'pending', 'teardown must wait for the in-flight creation');
@@ -135,7 +135,7 @@ test('a helper reported failure still rolls back a window that appears late', as
     throw new Error('unexpected ' + args.join(' '));
   };
   const session = createPreviewSession({ helperRun, spawnChild: () => fakeChild(() => {}), sleep: () => new Promise(resolve => setTimeout(resolve, 0)) });
-  const creating = session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  const creating = session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   release();
   await new Promise(resolve => setTimeout(resolve, 5));
   windowVisible = true;
@@ -146,7 +146,7 @@ test('a helper reported failure still rolls back a window that appears late', as
 
 test('a capture error stops the run and reports the reason', async () => {
   const { session, children } = sessionHarness();
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   children[0].child.stderr.emit('data', `${JSON.stringify({ kind: 'log', level: 'error', scope: 'Probe', message: 'InvalidOperationException', detail: 'this window cannot be captured' })}\n`);
   await session.stop();
   assert.match(session.report().failure, /this window cannot be captured/);
@@ -154,7 +154,7 @@ test('a capture error stops the run and reports the reason', async () => {
 
 test('a close reported as unfinished is a recorded failure, never a silent success', async () => {
   const { session } = sessionHarness({ closeResult: { outcome: 'timeout', closed: false, error: 'still there' } });
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
   await session.stop();
   assert.equal(session.state().cleanup.outcome, 'timeout');
   assert.match(session.report().failure, /Window cleanup incomplete \(timeout\)/);
@@ -162,21 +162,66 @@ test('a close reported as unfinished is a recorded failure, never a silent succe
 
 test('a session instance refuses a second run', async () => {
   const { session } = sessionHarness();
-  await session.create({ helper: HELPER, output: 'F:\\out', scene: { sceneId: 'lucy' } });
-  await assert.rejects(() => session.create({ helper: HELPER, output: 'F:\\out2', scene: { sceneId: 'lucy' } }), /already started a run/);
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  await assert.rejects(() => session.create({ helper: HELPER, output: 'F:\\out2', scene: { scene: 'lucy' } }), /already started a run/);
   await session.stop();
-  await assert.rejects(() => session.create({ helper: HELPER, output: 'F:\\out3', scene: { sceneId: 'lucy' } }), /already (started a run|ended)/);
+  await assert.rejects(() => session.create({ helper: HELPER, output: 'F:\\out3', scene: { scene: 'lucy' } }), /already (started a run|ended)/);
 });
 
-test('scene payloads are constrained to the whitelist', () => {
+test('daily mode runs the capture without a duration and preview keeps its bounds', async () => {
+  const { session, children } = sessionHarness();
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy', mode: 'daily' } });
+  const dailyArgs = children[0].args;
+  assert.equal(dailyArgs[2], '--forever', 'the capture child gets the no-timer form');
+  assert.equal(session.state().config.mode, 'daily');
+  assert.equal(session.state().config.seconds, null);
+  await session.stop();
+
+  const second = sessionHarness();
+  await second.session.create({ helper: HELPER, output: 'F:\\out2', scene: { scene: 'lucy', seconds: 30 } });
+  assert.equal(second.children[0].args[2], '30', 'preview still passes its bounded duration');
+  assert.equal(second.session.state().config.mode, 'preview');
+  await second.session.stop();
+});
+
+test('the off-screen start experiment stays off unless it is requested', async () => {
+  const plain = sessionHarness();
+  await plain.session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const plainOpen = plain.calls.find(args => args[0] === '--we-open');
+  assert.equal(plainOpen.includes('--initial-offscreen'), false, 'the accepted order is used by default');
+  await plain.session.stop();
+
+  const experiment = sessionHarness();
+  await experiment.session.create({ helper: HELPER, output: 'F:\\out2', scene: { scene: 'lucy' }, offscreenStart: true });
+  const experimentOpen = experiment.calls.find(args => args[0] === '--we-open');
+  assert.equal(experimentOpen.includes('--initial-offscreen'), true, 'the experiment entry is opt-in');
+  assert.equal(experiment.session.state().config.offscreenStart, true);
+  await experiment.session.stop();
+});
+test('scene payloads are constrained to the whitelist and to the playback modes', () => {
   const request = resolveSceneRequest({ scene: 'lucy', seconds: 999 }, { exists });
   assert.equal(request.project, SCENE_FILE);
   assert.equal(request.seconds, PREVIEW_SECONDS.max, 'the preview limit is enforced host side');
+  assert.equal(request.mode, 'preview', 'a request without a mode keeps the preview behaviour');
   assert.equal(request.width, 1280);
   assert.equal(resolveSceneRequest({}, { exists }).sceneId, 'lucy', 'the default scene is Lucy');
   assert.throws(() => resolveSceneRequest({ scene: '../../etc/passwd' }, { exists }), /unknown scene/);
   assert.throws(() => resolveSceneRequest({ scene: 'lucy' }, { exists: () => false }), /scene file is missing/);
   assert.equal(describeScenes({ exists }).find(scene => scene.id === 'lucy').available, true);
+
+  // Daily playback has no timer: the request carries no duration and the host must not
+  // invent one, because a duration would silently end a run the user meant to keep.
+  const daily = resolveSceneRequest({ scene: 'lucy', mode: 'daily' }, { exists });
+  assert.equal(daily.mode, 'daily');
+  assert.equal(daily.seconds, null, 'daily mode has no duration');
+  assert.equal(daily.fps, 30);
+  assert.throws(() => resolveSceneRequest({ scene: 'lucy', mode: 'daily', seconds: 180 }, { exists }), /daily mode does not take a duration/);
+  assert.throws(() => resolveSceneRequest({ scene: 'lucy', mode: 'forever' }, { exists }), /unknown mode/);
+  assert.throws(() => resolveSceneRequest({ scene: 'lucy', mode: 7 }, { exists }), /unknown mode/);
+  // Preview keeps its bounds, including the default when the caller omits seconds.
+  const preview = resolveSceneRequest({ scene: 'lucy', mode: 'preview' }, { exists });
+  assert.equal(preview.seconds, PREVIEW_SECONDS.default);
+  assert.equal(resolveSceneRequest({ scene: 'lucy', seconds: 1 }, { exists }).seconds, PREVIEW_SECONDS.min);
 });
 
 test('host resources resolve from the package, not from a development path', () => {
@@ -316,7 +361,7 @@ test('run metadata is written under the controlled directory only', async () => 
   try {
     const output = await prepareRunDirectory(root, 'lucy');
     const { session } = sessionHarness();
-    await session.create({ helper: HELPER, output, scene: { sceneId: 'lucy' } });
+    await session.create({ helper: HELPER, output, scene: { scene: 'lucy' } });
     await session.stop();
     const files = await readdir(output);
     assert.deepEqual(files.sort(), ['preview-final.json']);

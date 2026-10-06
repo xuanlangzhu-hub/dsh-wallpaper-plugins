@@ -13,6 +13,8 @@
 /NEXT_TASK.md
 /dsh-whale-mist/*.tgz
 /dsh-whale-gitbash/*.tgz
+# Check output: the contract check writes its result next to the script by default.
+/dsh-whale-mist/qa/wallpaper/sdk-contract-result.json
 
 # Dependency and build caches
 **/node_modules/
