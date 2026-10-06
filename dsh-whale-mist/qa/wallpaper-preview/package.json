@@ -1,0 +1,20 @@
+{
+  "name": "dsh-whale-wallpaper-probe",
+  "version": "0.0.7",
+  "private": true,
+  "type": "module",
+  "description": "Temporary, manually supervised Wallpaper Engine capture preview",
+  "main": "./index.js",
+  "exports": { ".": "./index.js", "./client": "./client.js", "./cordis.patch.yml": "./cordis.patch.yml" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" }, "client": { "platform": "web", "inject": [] } },
+  "files": ["index.js", "client.js", "frame-hub.js", "frame-protocol.js", "probe-log.js", "managed-window.js", "cordis.patch.yml", "README.md"],
+  "peerDependencies": { "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2" },
+  "scripts": {
+    "build": "node build-client.mjs",
+    "check": "node --check index.js && node --check client.js && node --check frame-hub.js && node --check probe-log.js && node --check managed-window.js",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e-lifecycle": "node tests/managed-session.e2e.mjs",
+    "regression": "node --test tests/*.test.mjs && node browser-regression.mjs",
+    "prepack": "npm run build && npm run check"
+  }
+}

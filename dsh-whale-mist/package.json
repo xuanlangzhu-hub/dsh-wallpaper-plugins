@@ -1,0 +1,59 @@
+{
+  "name": "dsh-whale-mist",
+  "version": "0.6.0-rc.7",
+  "description": "Whale Mist and Whale Abyss themes for the DeepSeek Harness Web UI",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings-general"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings-general": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-theme": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2"
+  },
+  "files": [
+    "src/index.js",
+    "src/client.js",
+    "src/wallpaper",
+    "src/windows/WhaleDesktopIcon.cs",
+    "assets/DeepSeek-Harness.ico",
+    "assets/whale-icon-helper.exe",
+    "assets/wallpaper",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "check": "node --check src/index.js && node --check src/client.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js",
+    "build:client-protocol": "node scripts/build-wm-protocol.mjs",
+    "build:desktop-icon": "powershell.exe -NoProfile -File scripts/build-desktop-icon.ps1",
+    "test:appearance": "node qa/appearance-regression.mjs",
+    "test:appearance-wallpaper": "node qa/appearance-wallpaper-regression.mjs",
+    "test:wallpaper-host": "node --test qa/wallpaper/*.test.mjs",
+    "test:sdk-contract": "cmd /c qa\\\\wallpaper\\\\sdk-contract.cmd"
+  },
+  "license": "MIT",
+  "private": true
+}
