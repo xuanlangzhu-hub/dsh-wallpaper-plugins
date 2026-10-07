@@ -231,6 +231,25 @@ try {
             return hit === autoBox || autoBox.contains(hit);
           })(),
         },
+        // The per-region switches: two independent checkboxes that must keep the same square
+        // geometry as the auto-start row in every panel width, including the narrowest one.
+        regionRows: ['opaqueSidebar', 'opaqueChat'].map((key) => {
+          const regionRow = panel.querySelector('[data-wm-region="' + key + '"]');
+          if (!regionRow) return { key, missing: true };
+          const regionCopy = regionRow.querySelector('.wm-settings-copy');
+          const regionBox = regionRow.querySelector('input[type="checkbox"]');
+          return {
+            key,
+            type: regionBox.getAttribute('type'),
+            label: regionRow.querySelector('.wm-settings-label').textContent,
+            checkboxWidth: Math.round(rect(regionBox).width),
+            checkboxHeight: Math.round(rect(regionBox).height),
+            checkboxInside: inside(regionBox, panel, 1),
+            boxRightOfText: rect(regionBox).left >= rect(regionCopy).right - 1,
+            labelReadable: rect(regionCopy.querySelector('.wm-settings-label')).height > 0,
+            overflowX: regionRow.scrollWidth - Math.round(rect(regionRow).width),
+          };
+        }),
         // The other rows must keep their previous two-column layout.
         imageRowDirection: (() => {
           const row = [...panel.querySelectorAll('.wm-settings-row')].find(el => el.querySelector('[data-wm-setting="weScene"]') === null && el.className.includes('wm-settings-row'));
@@ -447,6 +466,23 @@ try {
       assert.ok(entry.autoRow.sameLine, where + ': the box shares the text line');
     }
     assert.ok(entry.autoRow.checkboxHitIsBox, where + ': the checkbox centre is the checkbox itself');
+    // R6: both region switches are plain square checkboxes, inside the panel, with a readable
+    // label, in every panel width including 280px.
+    assert.equal(entry.regionRows.length, 2, `${where}: both region switches are rendered`);
+    for (const region of entry.regionRows) {
+      assert.ok(!region.missing, `${where}: ${region.key} row exists`);
+      assert.equal(region.type, 'checkbox', `${where}: ${region.key} is a checkbox`);
+      assert.ok(region.checkboxWidth >= 12 && region.checkboxWidth <= 24,
+        `${where}: ${region.key} keeps a normal width, got ${region.checkboxWidth}px`);
+      assert.ok(region.checkboxHeight >= 12 && region.checkboxHeight <= 24,
+        `${where}: ${region.key} keeps a normal height, got ${region.checkboxHeight}px`);
+      assert.ok(region.checkboxInside, `${where}: ${region.key} checkbox stays inside the panel`);
+      assert.ok(region.labelReadable, `${where}: ${region.key} keeps a readable label`);
+      assert.ok(region.overflowX <= 1, `${where}: ${region.key} row does not overflow, got ${region.overflowX}px`);
+      if (entry.panelWidth >= 400) {
+        assert.ok(region.boxRightOfText, `${where}: ${region.key} box sits to the right of its text`);
+      }
+    }
     assert.ok(entry.autoRow.hintHeight <= 18 * 6, `${where}: the auto playback hint stays a paragraph`);
   }
   assert.deepEqual(measured.map(entry => entry.panelWidth), [720, 640, 560, 480, 400, 280], 'every panel width was measured');

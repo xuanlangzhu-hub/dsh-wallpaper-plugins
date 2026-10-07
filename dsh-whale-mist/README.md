@@ -8,7 +8,7 @@ DeepSeek Harness Web UI 的一组可安装主题，包含浅色 `Whale Mist / �
 本插件继续维护。原 Whale Tauri 桌面壳已冻结，Windows 的当前使用入口为官方
 DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
-## 0.6.0-rc.17 日常播放候选版（实验）
+## 0.6.0-rc.18 日常播放候选版（实验）
 
 当前源码新增深海、石墨、暗紫、墨绿四种深色配色，本地图片/视频背景，以及
 **Wallpaper Engine（实验）** 背景来源。本机日常 Desktop 仍使用已安装的旧版；
@@ -43,11 +43,14 @@ DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
 rc.13 已通过代码/隔离 DOM 短复审和本机单 Lucy 场景的核心实机验收：真实布局、同轮至少 35 分钟、限时预览、自动播放及正常清理。见 [实机记录](../docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md) 与 [代码复审](../docs/B_DAILY_PLAYBACK_RC13_REVIEW.md)。启动仍闪出独立窗口、任务栏入口仍可能保留；GPU 数据包含原桌面与源窗口，不能据此宣称低开销。多场景和数小时/数天运行尚未验收。
 
-rc.16 的短实机仍被用户反馈为「渐变的大片黑」，未通过观感验收，见
-[rc.16 实机记录](../docs/RC16_DESKTOP_VISUAL_REVIEW.md)。rc.17 改为仅输入卡片不透明，
-外围与底部显示壁纸；按卡片在滚动区内的实际位置裁剪消息内容层，不再用宽黑渐变遮字。
-跟踪滚动、输入增高、窗口尺寸和会话节点替换，停止/来源切换/卸载时撤销裁剪。
-顶部局部遮挡与按钮布局保留，未改 Host、原生或播放语义。隔离页检查不能替代官方 Desktop 实机验收。
+rc.16 的短实机被反馈为「渐变的大片黑」，见 [rc.16 实机记录](../docs/RC16_DESKTOP_VISUAL_REVIEW.md)；
+rc.17 改为仅输入卡片不透明、外围与底部显示壁纸，并按卡片在滚动区内的实际位置裁剪消息内容层，
+已通过 [rc.17 短实机](../docs/RC17_DESKTOP_VISUAL_ACCEPTANCE.md)。
+
+rc.18 在此之上加入**区域底色**：用户可分别决定左侧项目／会话栏与聊天区是否用自己的主题实色盖住壁纸，
+两个独立复选框，默认都不勾选（视觉与 rc.17 相同）；勾选只作用于该区域的局部容器，未勾选的区域保持原样，
+顶部、输入卡片、菜单与窄窗口布局不受影响。偏好随外观设置保存，与图片/视频/WE 共用，停止背景后保留偏好但不产生任何绘制。
+隔离页检查不能替代官方 Desktop 实机验收。
 
 候选版检查与打包：
 
@@ -57,6 +60,7 @@ npm run test:appearance
 npm run test:appearance-wallpaper
 npm run test:appearance-wallpaper-layout
 npm run test:appearance-wallpaper-pixels
+npm run test:appearance-wallpaper-regions
 npm run test:wallpaper-host
 npm run test:sdk-contract
 npm run build:client-protocol
