@@ -8,7 +8,7 @@ DeepSeek Harness Web UI 的一组可安装主题，包含浅色 `Whale Mist / �
 本插件继续维护。原 Whale Tauri 桌面壳已冻结，Windows 的当前使用入口为官方
 DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
-## 0.6.0-rc.13 日常播放候选版（实验）
+## 0.6.0-rc.15 日常播放候选版（实验）
 
 当前源码新增深海、石墨、暗紫、墨绿四种深色配色，本地图片/视频背景，以及
 **Wallpaper Engine（实验）** 背景来源。本机日常 Desktop 仍使用已安装的旧版；
@@ -43,6 +43,12 @@ DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
 rc.13 已通过代码/隔离 DOM 短复审和本机单 Lucy 场景的核心实机验收：真实布局、同轮至少 35 分钟、限时预览、自动播放及正常清理。见 [实机记录](../docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md) 与 [代码复审](../docs/B_DAILY_PLAYBACK_RC13_REVIEW.md)。启动仍闪出独立窗口、任务栏入口仍可能保留；GPU 数据包含原桌面与源窗口，不能据此宣称低开销。多场景和数小时/数天运行尚未验收。
 
+rc.15 按实机反馈与 rc.14 复审修正三处视觉问题（见 [整改范围](../docs/NEXT_RC14_VISUAL_POLISH.md)）：
+顶栏只遮挡顶部那一条（rc.14 曾把整个应用框架涂成实色，挡住整张壁纸）、输入区恢复实色遮挡、
+设置区字段与按钮分成两组、按钮带真实间距并在极窄容器整组单列。只改客户端样式与 WE 设置区结构，
+未改 Host、原生与播放语义；结论来自隔离 DOM 与**渲染像素**检查（含负对照），
+真实高透明度、缩放/最大化与多行输入滚动仍待用户实机确认。
+
 候选版检查与打包：
 
 ```powershell
@@ -50,6 +56,7 @@ npm run check
 npm run test:appearance
 npm run test:appearance-wallpaper
 npm run test:appearance-wallpaper-layout
+npm run test:appearance-wallpaper-pixels
 npm run test:wallpaper-host
 npm run test:sdk-contract
 npm run build:client-protocol

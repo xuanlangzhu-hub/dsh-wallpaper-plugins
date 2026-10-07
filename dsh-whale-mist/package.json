@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-mist",
-  "version": "0.6.0-rc.13",
+  "version": "0.6.0-rc.15",
   "description": "Whale Mist and Whale Abyss themes for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "./src/index.js",
@@ -46,12 +46,14 @@
     "README.md"
   ],
   "scripts": {
-    "check": "node --check src/index.js && node --check src/client.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js",
+    "check": "node --check src/index.js && node --check src/client.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js && node qa/css-template-guard.mjs",
     "build:client-protocol": "node scripts/build-wm-protocol.mjs",
     "build:desktop-icon": "powershell.exe -NoProfile -File scripts/build-desktop-icon.ps1",
     "test:appearance": "node qa/appearance-regression.mjs",
     "test:appearance-wallpaper": "node qa/appearance-wallpaper-regression.mjs",
     "test:appearance-wallpaper-layout": "node qa/appearance-wallpaper-layout.mjs",
+    "test:appearance-wallpaper-overlay": "node qa/appearance-wallpaper-overlay.mjs",
+    "test:appearance-wallpaper-pixels": "node qa/appearance-wallpaper-pixels.mjs",
     "test:wallpaper-host": "node --test qa/wallpaper/*.test.mjs",
     "test:sdk-contract": "cmd /c qa\\\\wallpaper\\\\sdk-contract.cmd"
   },

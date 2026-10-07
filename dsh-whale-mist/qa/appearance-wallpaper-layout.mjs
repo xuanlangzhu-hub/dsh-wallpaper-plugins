@@ -114,7 +114,9 @@ try {
       return a.left >= b.left - tolerance && a.right <= b.right + tolerance;
     };
     const results = [];
-    for (const width of [720, 640, 560, 480, 400]) {
+    // 280px is included because that is where the three actions stopped fitting one row: the
+    // group then switches to a deliberate single column instead of leaving stop on its own line.
+    for (const width of [720, 640, 560, 480, 400, 280]) {
       panel.style.width = width + 'px';
       await pause(60);
       const panelRect = rect(panel);
@@ -139,6 +141,12 @@ try {
       const hit = document.elementFromPoint(startRect.left + startRect.width / 2, startRect.top + startRect.height / 2);
       const labelSize = parseFloat(getComputedStyle(label).fontSize);
       const lineHeight = parseFloat(getComputedStyle(hint).lineHeight) || 18;
+      const fields = weRow.querySelector('.wm-wallpaper-fields');
+      const startStyle = getComputedStyle(start);
+      const buttons = [start, restart, stop];
+      const buttonRects = buttons.map(el => rect(el));
+      const buttonHeights = buttonRects.map(r => Math.round(r.height));
+      const buttonWidths = buttonRects.map(r => Math.round(r.width));
       results.push({
         viewport: innerWidth,
         panelWidth: width,
@@ -160,9 +168,42 @@ try {
           labelWritingMode: getComputedStyle(label).writingMode,
           actionsWidth: Math.round(rect(actions).width),
           actionsFlexWrap: getComputedStyle(actions).flexWrap,
+          // rc.14 shipped this group as a block box: the declared 8px gap and the children's
+          // flex did nothing and the three buttons touched each other.
+          actionsDisplay: getComputedStyle(actions).display,
+          actionsFlexDirection: getComputedStyle(actions).flexDirection,
+          actionsGap: getComputedStyle(actions).gap,
+          // Distance between neighbouring buttons along their real axis, taken from the rects
+          // rather than from flex-direction: the computed direction can still read "row" while
+          // the buttons actually sit in a column, which made an earlier probe report -280px.
+          actualFirstGap: Math.round(
+            buttonRects[1].top !== buttonRects[0].top
+              ? buttonRects[1].top - buttonRects[0].bottom
+              : buttonRects[1].left - buttonRects[0].right),
+          actualSecondGap: Math.round(
+            buttonRects[2].top !== buttonRects[1].top
+              ? buttonRects[2].top - buttonRects[1].bottom
+              : buttonRects[2].left - buttonRects[1].right),
+          // Whether the actions share one row, and whether they stack as one full-width column.
+          actionRows: new Set(buttonRects.map(r => Math.round(r.top))).size,
+          actionColumns: new Set(buttonRects.map(r => Math.round(r.left))).size,
           actionsRows: new Set([start, restart, stop, scene, mode].map(el => Math.round(rect(el).top))).size,
           controlsInsidePanel: [start, restart, stop, scene, mode].every(el => inside(el, panel, 1)),
           fieldWidths: { start: Math.round(startRect.width), scene: Math.round(rect(scene).width), mode: Math.round(rect(mode).width) },
+          // V3: fields and actions are separate groups; the three actions share one row, one
+          // height, one font size and one visible surface, so stop is never a lone small label.
+          fieldsAreOwnGroup: Boolean(fields) && !fields.contains(start) && fields.contains(scene) && fields.contains(mode),
+          actionsAreOwnGroup: actions.contains(start) && actions.contains(restart) && actions.contains(stop) && !actions.contains(scene),
+          buttonsOnOneRow: new Set(buttonRects.map(r => Math.round(r.top))).size === 1,
+          buttonHeights,
+          buttonWidths,
+          buttonWidthSpread: Math.max(...buttonWidths) - Math.min(...buttonWidths),
+          buttonFontSize: startStyle.fontSize,
+          buttonBackground: startStyle.backgroundColor,
+          buttonBorderWidth: startStyle.borderTopWidth,
+          buttonBorderStyle: startStyle.borderTopStyle,
+          stopEnabledWidth: Math.round(rect(stop).width),
+          stopFontSize: getComputedStyle(stop).fontSize,
           clickedStart: hit === start || start.contains(hit),
         },
         autoRow: {
@@ -271,7 +312,7 @@ try {
     const original = hint.textContent;
     hint.textContent = 'Wallpaper Engine 桌面壁纸接入：开始后由本机采集进程把画面送到 DSH，停止会关闭本轮源窗口；日常模式持续播放，预览模式有最长时限。';
     const out = [];
-    for (const width of [720, 640, 560, 480, 400]) {
+    for (const width of [720, 640, 560, 480, 400, 280]) {
       panel.style.width = width + 'px';
       await pause(60);
       const measure = () => {
@@ -359,6 +400,34 @@ try {
     assert.ok(entry.weRow.clickedStart, `${where}: the start button is the topmost element at its own centre (hit ${entry.weRow.hitTag} at ${JSON.stringify(entry.weRow.startRect)})`);
     assert.ok(entry.weRow.fieldWidths.start >= 40, `${where}: the start button keeps a clickable width`);
     assert.ok(entry.weRow.fieldWidths.scene >= 40 && entry.weRow.fieldWidths.mode >= 40, `${where}: the selects keep a usable width`);
+    // V3: the fields and the three actions form two groups, and the actions are one visible,
+    // equally sized, full-height row instead of leaving stop alone and transparent.
+    assert.ok(entry.weRow.fieldsAreOwnGroup, `${where}: the scene/mode fields are their own group`);
+    assert.ok(entry.weRow.actionsAreOwnGroup, `${where}: the three actions are their own group`);
+    // R3: the group must be a flex container with a real gap. rc.14 declared a gap on a block box,
+    // so the buttons touched and `flex: 1 1 0` did nothing.
+    assert.equal(entry.weRow.actionsDisplay, 'flex', `${where}: the action group is a flex container, got ${entry.weRow.actionsDisplay}`);
+    assert.equal(entry.weRow.actualFirstGap, 8, `${where}: the first real gap is the declared 8px, got ${entry.weRow.actualFirstGap}px dir ${entry.weRow.actionsFlexDirection} widths ${JSON.stringify(entry.weRow.buttonWidths)} rows ${entry.weRow.actionRows}`);
+    assert.equal(entry.weRow.actualSecondGap, 8, `${where}: the second real gap is the declared 8px, got ${entry.weRow.actualSecondGap}px`);
+    if (entry.panelWidth >= 400) {
+      // A normal panel: one row, three equally wide buttons.
+      assert.equal(entry.weRow.actionRows, 1, `${where}: the three actions share one row, got ${entry.weRow.actionRows} rows`);
+      assert.equal(entry.weRow.buttonsOnOneRow, true, `${where}: the three actions share one row`);
+      assert.ok(entry.weRow.buttonWidthSpread <= 2,
+        `${where}: the three actions are equally wide, got ${JSON.stringify(entry.weRow.buttonWidths)}`);
+    } else {
+      // Too narrow for one row: every action takes its own full-width line, so stop is never the
+      // lone straggler next to two other buttons.
+      assert.equal(entry.weRow.actionRows, 3, `${where}: each action gets its own row, got ${entry.weRow.actionRows} rows`);
+      assert.equal(entry.weRow.actionColumns, 1, `${where}: the actions share one column, got ${entry.weRow.actionColumns} columns`);
+    }
+    assert.ok(entry.weRow.buttonHeights.every(height => height >= 36),
+      `${where}: every action is at least 36px tall, got ${JSON.stringify(entry.weRow.buttonHeights)}`);
+    assert.equal(entry.weRow.buttonFontSize, '14px', `${where}: the action labels use 14px text`);
+    assert.notEqual(entry.weRow.buttonBackground, 'rgba(0, 0, 0, 0)', `${where}: the actions have a visible surface`);
+    assert.notEqual(entry.weRow.buttonBorderStyle, 'none', `${where}: the actions have a visible border`);
+    assert.ok(parseFloat(entry.weRow.buttonBorderWidth) >= 1, `${where}: the action border is drawn`);
+    assert.ok(entry.weRow.stopEnabledWidth >= 96, `${where}: the stop control keeps a real hit area`);
     assert.ok(entry.autoRow.overflowX <= 1, `${where}: the auto playback row does not overflow`);
     assert.ok(entry.autoRow.labelWidth >= 120, `${where}: the auto playback label keeps a readable width, got ${entry.autoRow.labelWidth}`);
     // U1: the box must stay a normal square control, not stretch to the row width.
@@ -370,12 +439,17 @@ try {
       where + ': the checkbox keeps a normal height, got ' + entry.autoRow.checkboxHeight + 'px');
     assert.ok(entry.autoRow.checkboxWidth <= entry.autoRow.copyWidth,
       where + ': the box does not stretch past the text column');
-    assert.ok(entry.autoRow.boxRightOfText, where + ': the box sits to the right of the text');
-    assert.ok(entry.autoRow.sameLine, where + ': the box shares the text line');
+    // U1: the box must stay a normal square control, not stretch to the row width. In a 280px
+    // container the label needs the whole line, so the box wraps below it by design; a stretched
+    // box must not appear there either.
+    if (entry.panelWidth >= 400) {
+      assert.ok(entry.autoRow.boxRightOfText, where + ': the box sits to the right of the text');
+      assert.ok(entry.autoRow.sameLine, where + ': the box shares the text line');
+    }
     assert.ok(entry.autoRow.checkboxHitIsBox, where + ': the checkbox centre is the checkbox itself');
     assert.ok(entry.autoRow.hintHeight <= 18 * 6, `${where}: the auto playback hint stays a paragraph`);
   }
-  assert.deepEqual(measured.map(entry => entry.panelWidth), [720, 640, 560, 480, 400], 'every panel width was measured');
+  assert.deepEqual(measured.map(entry => entry.panelWidth), [720, 640, 560, 480, 400, 280], 'every panel width was measured');
   assert.ok(measured.every(entry => Math.abs(entry.panelWidthMeasured - entry.panelWidth) <= 1), 'the panel really had the requested width');
   for (const entry of longHint) {
     const where = `long hint, panel ${entry.panelWidth}px`;

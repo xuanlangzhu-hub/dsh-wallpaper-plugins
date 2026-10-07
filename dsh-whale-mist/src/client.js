@@ -1691,7 +1691,10 @@ window.__ModuleLoader__.load({
           h("div", { className: "wm-settings-label", key: "label" }, copy.wallpaperEngine),
           h("div", { className: "wm-settings-hint", key: "hint" }, copy.wallpaperEngineHint)
         ]),
-        h("div", { className: "wm-media-actions wm-wallpaper-actions", key: "actions" }, [
+        // Fields and actions are two groups: the scene/mode fields describe the next run, the
+        // buttons act on it. Keeping them apart is also what keeps the three buttons together
+        // on one row and equally sized instead of leaving stop alone on a line of its own.
+        h("div", { className: "wm-wallpaper-fields", key: "fields" }, [
           h("label", { className: "wm-inline-field wm-wallpaper-field", key: "scene" }, [
             h("span", { className: "wm-inline-label", key: "label" }, copy.scene),
             h("select", {
@@ -1711,16 +1714,18 @@ window.__ModuleLoader__.load({
               h("option", { value: "daily", key: "daily" }, copy.modeDaily),
               h("option", { value: "preview", key: "preview" }, copy.modePreview)
             ])
-          ]),
-          h("button", { type: "button", className: "wm-settings-option", key: "start",
+          ])
+        ]),
+        h("div", { className: "wm-wallpaper-actions", key: "actions" }, [
+          h("button", { type: "button", className: "wm-settings-option wm-wallpaper-button", key: "start",
             "data-wm-action": "wallpaper-start", disabled: previewBusy || previewActive || cleanupFailed,
             onClick: runPreview("start") }, copy.startPreview),
-          h("button", { type: "button", className: "wm-settings-option", key: "restart",
+          h("button", { type: "button", className: "wm-settings-option wm-wallpaper-button", key: "restart",
             "data-wm-action": "wallpaper-restart", disabled: previewBusy || cleanupFailed,
             onClick: runPreview("restart") }, copy.restartPreview),
           // A close that could not be proven keeps the stop control available so the user
           // can retry it; a start stays blocked until the old window is confirmed gone.
-          h("button", { type: "button", className: "wm-settings-option", key: "stop",
+          h("button", { type: "button", className: "wm-settings-option wm-wallpaper-button", key: "stop",
             "data-wm-action": "wallpaper-stop", disabled: previewBusy || (!previewActive && !cleanupFailed),
             onClick: runPreview("stop") }, cleanupFailed ? copy.retryCleanup : copy.stopPreview)
         ])
@@ -2469,6 +2474,38 @@ window.__ModuleLoader__.load({
         --dsw-specific-tip: rgb(var(--wm-layer2-rgb)) !important;
         --dsw-specific-input-major: linear-gradient(rgb(var(--wm-layer2-rgb)), rgb(var(--wm-layer1-rgb))) !important;
       }
+      /* V1: the Windows title bar strip must stay opaque whatever the surface transparency is.
+         The host paints BOTH the top strip and the whole application frame with the sidebar
+         fill: the frame gets padding-top equal to the title bar height plus that same fill as
+         its background, while its ::before is the drag strip covering inset 0 0 auto at exactly
+         the title bar height. Making the frame opaque therefore covered the entire wallpaper
+         (rc.14 defect); the frame background is cleared instead and only the top strip is
+         painted, which still covers the padded top band. The sidebar and the content column keep
+         their own backgrounds, so they stay translucent.
+         V2: the same transparency wiped out the composer's protective gradients, because they
+         are painted with --dsw-alias-bg-base, which the active state sets to transparent. The
+         composer seat, its overlay form and the input card are painted with the theme's solid
+         colours again, so chat text scrolling under the input area stays hidden.
+         Scope note: these selectors rely on the hooks the current host ships (the
+         data-windows-titlebar attribute, data-phase, and its component class names). They are
+         not a public stable API, so if a host update renames them the rules simply stop
+         matching and the theme looks like it did before this fix; nothing else breaks. */
+      html[data-windows-titlebar]:has(${backdropSelector}) .BynINW_frame {
+        background: transparent !important;
+      }
+      html[data-windows-titlebar]:has(${backdropSelector}) .BynINW_frame::before {
+        background: rgb(var(--wm-base-rgb)) !important;
+      }
+      html:has(${backdropSelector}) [data-phase="active"] .Dc7zOa_composerSeat {
+        background: linear-gradient(180deg, rgb(var(--wm-base-rgb)) 0px, rgb(var(--wm-base-rgb)) 100%) !important;
+      }
+      html:has(${backdropSelector}) .Dc7zOa_composerSeat,
+      html:has(${backdropSelector}) [data-conversation-composer-overlay] {
+        background-color: rgb(var(--wm-base-rgb)) !important;
+      }
+      html:has(${backdropSelector}) .Dc7zOa_composerSeat .RlGAzG_card {
+        background: rgb(var(--wm-base-rgb)) !important;
+      }
       @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
         ${backdropSelector} { --wm-ui-alpha: 1 !important; --dsw-alias-bg-base: rgb(var(--wm-base-rgb)) !important;
           --dsw-alias-bg-primary: rgb(var(--wm-base-rgb)) !important; }
@@ -2501,11 +2538,22 @@ window.__ModuleLoader__.load({
         overflow-wrap: anywhere;
       }
       .wm-wallpaper-actions {
+        /* display is required: flex-wrap/gap/flex on the children do nothing in a block box,
+           which is why rc.14 shipped a group with a declared 8px gap and an actual 0px one. */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 8px;
+        flex-shrink: 1;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .wm-wallpaper-fields {
+        display: flex;
         flex-wrap: wrap;
         align-items: center;
-        justify-content: flex-start;
         gap: 8px 12px;
-        flex-shrink: 1;
         min-width: 0;
         max-width: 100%;
       }
@@ -2517,6 +2565,47 @@ window.__ModuleLoader__.load({
       .wm-wallpaper-field select {
         min-width: 0;
         max-width: 100%;
+      }
+      /* V3: the three actions are one equally sized group with a visible surface, so stop is
+         never left as a small transparent label on a line of its own. Only the WE buttons get
+         this treatment; the shared settings option style is untouched for other settings. */
+      .wm-wallpaper-button {
+        flex: 1 1 0;
+        min-width: 96px;
+        min-height: 36px;
+        padding: 0 14px;
+        font-size: 14px;
+        line-height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(var(--wm-layer2-rgb)) !important;
+        border: 1px solid var(--dsw-alias-border-l2) !important;
+        color: var(--dsw-alias-label-primary);
+      }
+      .wm-wallpaper-button:hover:not(:disabled) {
+        background: rgb(var(--wm-layer3-rgb)) !important;
+        border-color: var(--dsw-alias-brand-primary) !important;
+      }
+      /* Below this width the three buttons genuinely cannot share one row, so the whole group
+         becomes one column on purpose: every action is full width and stop is never the lone
+         straggler on a second line. A container query keeps the decision tied to the group's own
+         width, which is what the settings panel changes; hosts without container query support
+         just keep the wrapping row above. */
+      @supports (container-type: inline-size) {
+        .wm-wallpaper-actions {
+          container-type: inline-size;
+        }
+        @container (max-width: 320px) {
+          .wm-wallpaper-actions {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .wm-wallpaper-button {
+            flex: 0 0 auto;
+            width: 100%;
+          }
+        }
       }
       /* The checkbox row keeps the two-column shape, but its text column may shrink and the
          control itself never does, so a narrow panel cannot squeeze the label to nothing.
