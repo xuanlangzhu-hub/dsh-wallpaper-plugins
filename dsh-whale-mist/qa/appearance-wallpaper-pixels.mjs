@@ -96,12 +96,31 @@ const server = createServer((req, res) => {
   const path = req.url.split('?')[0];
   if (path === '/theme.css') {
     res.writeHead(200, { 'content-type': 'text/css', 'cache-control': 'no-store' });
-    // Negative control for the mask check: with the composer protection neutralised, the host
-    // gradient keeps zero alpha and the pixel probe must find the wallpaper there. Only enabled
-    // through the environment flag, so a normal run serves the shipped stylesheet.
-    const served = process.env.WM_PIXEL_NEGATIVE_CONTROL === 'mask'
-      ? themeCss.replace(/html:has\([^{]*composerSeat[^{]*\{[^}]*\}/g, '')
-      : themeCss;
+    let served = themeCss;
+    // Negative controls, each one disabling exactly one protection so the check that covers it
+    // must fail:
+    //   mask      - no composer fade at all (the original defect);
+    //   solidSeat - the rc.15 defect: the whole seat painted with one flat colour;
+    //   frame     - the rc.14 defect: the whole application frame painted opaque.
+    if (process.env.WM_PIXEL_NEGATIVE_CONTROL === 'mask') {
+      served = themeCss.replace(/html:has\([^{]*composerSeat[^{]*\{[^}]*\}/g, '');
+      assert.notEqual(served, themeCss, 'the mask negative control removed the composer rule');
+    } else if (process.env.WM_PIXEL_NEGATIVE_CONTROL === 'solidSeat') {
+      // The rc.15 defect: one flat colour for the whole seat instead of the fade ramp. The
+      // replacement is anchored to the seat rule so it cannot swallow neighbouring rules.
+      const seatRule = /(\.Dc7zOa_composerSeat \{\s*)background: linear-gradient\(180deg,[\s\S]*?;\s*(!important;)?/;
+      assert.match(themeCss, seatRule, 'the seat fade rule is present in the theme stylesheet');
+      served = themeCss.replace(seatRule, '$1background: rgb(var(--wm-base-rgb)) !important;');
+      assert.notEqual(served, themeCss, 'the solid seat negative control replaced the seat fade');
+      assert.match(served, /\.BynINW_frame \{\s*background: transparent !important;/,
+        'the solid seat control leaves the frame clearing rule in place');
+    } else if (process.env.WM_PIXEL_NEGATIVE_CONTROL === 'frame') {
+      // The rc.14 defect: the whole application frame painted opaque.
+      const clearing = /html\[data-windows-titlebar\]:has\([\s\S]*?\) \.BynINW_frame \{\s*background: transparent !important;/;
+      assert.match(themeCss, clearing, 'the frame clearing rule is present in the theme stylesheet');
+      served = themeCss.replace(clearing, 'html[data-windows-titlebar]:has(body[data-wm-backdrop]) .BynINW_frame { background: rgb(8, 11, 20) !important;');
+      assert.notEqual(served, themeCss, 'the frame negative control replaced the clearing rule');
+    }
     res.end(served);
     return;
   }
@@ -123,9 +142,13 @@ const server = createServer((req, res) => {
         <div class="BynINW_centerCol" style="position:absolute;left:220px;right:0;top:32px;bottom:0">
           <div class="Dc7zOa_root" data-phase="active" style="height:100%">
             <div class="Dc7zOa_header">header</div>
-            <div class="Dc7zOa_scrollBody" style="flex:1;min-height:0">chat history text</div>
-            <div class="Dc7zOa_composerSeat" style="position:absolute;left:0;right:0;bottom:0">
-              <div class="RlGAzG_card" style="height:120px">input card</div>
+            <div class="Dc7zOa_scrollBody" style="flex:1;min-height:0">
+              <div class="Dc7zOa_history" style="height:2000px;color:rgb(255,255,0)">long chat history that keeps scrolling behind the input area</div>
+              <div class="Dc7zOa_composerSeat" style="position:absolute;left:0;right:0;bottom:0">
+                <div class="Dc7zOa_composerDock" style="height:40px">toolbar</div>
+                <div class="RlGAzG_card" style="height:120px">input card</div>
+                <div class="Dc7zOa_composerFooter" style="height:28px">status</div>
+              </div>
             </div>
           </div>
         </div>
@@ -303,13 +326,29 @@ try {
         rootBackground: getComputedStyle(document.querySelector('.Dc7zOa_root')).backgroundColor,
         seatGradient: getComputedStyle(seat).backgroundImage,
         seatEndAlpha: window.__wmParse.gradientEndAlpha(getComputedStyle(seat).backgroundImage),
-        cardBackground: getComputedStyle(card).backgroundColor,
+        cardBackgroundColor: getComputedStyle(card).backgroundColor,
+        cardBackgroundImage: getComputedStyle(card).backgroundImage,
+        hasCallToAction: true,
+      },
+      rects: {
+        seat: { top: Math.round(seatRect.top), bottom: Math.round(seatRect.bottom), height: Math.round(seatRect.height), left: Math.round(seatRect.left), width: Math.round(seatRect.width) },
+        card: (() => { const r = card.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), bottom: Math.round(r.bottom), right: Math.round(r.right), width: Math.round(r.width), height: Math.round(r.height) }; })(),
+        scrollBody: (() => { const r = document.querySelector('.Dc7zOa_scrollBody').getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; })(),
       },
       pixels: {
         strip: at(frameRect.left + frameRect.width / 2, frameRect.top + Math.max(2, padding / 2)),
         chat: at(chatX, chatY),
         sidebar: at(sidebarRect.left + sidebarRect.width / 2, sidebarRect.top + centerRect.height / 2),
-        composer: at(seatRect.left + seatRect.width / 2, seatRect.top + Math.min(20, seatRect.height / 2)),
+        // Inside the card: must be opaque and must not show the wallpaper.
+        cardCenter: at((card.getBoundingClientRect().left + card.getBoundingClientRect().right) / 2, card.getBoundingClientRect().top + 40),
+        // In the toolbar strip above the card, which is the seat's own area inside the seat (the
+        // fade is fully opaque there): the protection must hold there too.
+        seatBesideCard: at(seatRect.left + seatRect.width / 2, card.getBoundingClientRect().top - 12),
+        // The very top of the seat, where the fade should still be translucent: that is what keeps
+        // the wallpaper visible above the input area instead of a flat block from here downwards.
+        seatRamp: at(seatRect.left + seatRect.width / 2, seatRect.top + 2),
+        // Between the card and the bottom of the seat: must not be one flat block.
+        belowCard: at(seatRect.left + seatRect.width / 2, Math.min(seatRect.bottom - 4, card.getBoundingClientRect().bottom + 4)),
       },
       stack: document.elementsFromPoint(chatX, chatY).map(element => element.tagName
         + (element.id ? '#' + element.id : '') + (element.className ? '.' + String(element.className).split(' ')[0] : '')
@@ -344,16 +383,45 @@ try {
   assert.ok(!isBaseOnly(sidebarPixel), `the sidebar is not just an opaque fill, got ${JSON.stringify(sidebarPixel)}`);
   assert.ok(sidebarPixel.b > sidebarPixel.g + 40, `the sidebar still blends the wallpaper with its fill, got ${JSON.stringify(sidebarPixel)}`);
 
-  // V2: the composer mask is a real paint whose final stop is opaque.
-  assert.equal(report.styles.seatEndAlpha, 1, `the composer gradient ends opaque, got ${report.styles.seatEndAlpha} (${report.styles.seatGradient})`);
-  assert.ok(distance(report.pixels.composer, WALLPAPER) > 60, `the composer area is masked, got ${JSON.stringify(report.pixels.composer)}`);
-  assert.equal(report.styles.cardBackground, 'rgb(8, 11, 20)', `the input card is opaque, got ${report.styles.cardBackground}`);
+  // R4: the composer must protect without flattening everything into one dark block.
+  // 1. The seat still has a fade ramp: it is translucent at its top and opaque where the input
+  //    area begins. This single measured fact separates the shipped behaviour from both the
+  //    rc.14/rc.15 flat seat and a seat with no protection at all.
+  const rampPixel = report.pixels.seatRamp;
+  const bottomPixel = report.pixels.belowCard;
+  assert.ok(carriesWallpaper(rampPixel),
+    `the fade starts translucent so the wallpaper shows above the input, got ${JSON.stringify(rampPixel)}`);
+  assert.ok(distance(rampPixel, bottomPixel) > 40,
+    `the seat is a ramp rather than one flat colour: ${JSON.stringify(rampPixel)} vs ${JSON.stringify(bottomPixel)}`);
+  // 2. Where the input area begins the fade is opaque, so history cannot scroll past it.
+  assert.equal(report.styles.seatEndAlpha, 1,
+    `the composer fade ends opaque, got ${report.styles.seatEndAlpha} (${report.styles.seatGradient})`);
+  assert.ok(distance(report.pixels.seatBesideCard, WALLPAPER) > 60,
+    `the composer area around the card is masked, got ${JSON.stringify(report.pixels.seatBesideCard)}`);
+  // ...the input card is opaque and keeps its own surface, distinct from the flat base colour...
+  assert.equal(report.styles.cardBackgroundColor, 'rgba(0, 0, 0, 0)',
+    `the card paints a gradient rather than a flat fill, got ${report.styles.cardBackgroundColor}`);
+  assert.match(report.styles.cardBackgroundImage, /gradient/,
+    `the card keeps its own surface gradient, got ${report.styles.cardBackgroundImage}`);
+  const cardPixel = report.pixels.cardCenter;
+  assert.ok(!carriesWallpaper(cardPixel), `the input card hides the wallpaper, got ${JSON.stringify(cardPixel)}`);
+  assert.ok(distance(cardPixel, WALLPAPER) > 60, `the input card is not transparent, got ${JSON.stringify(cardPixel)}`);
+  // The card surface is not identical to the theme base colour: that difference is the layering
+  // the rc.15 review asked for. Both are dark, so compare against the base with a small margin.
+  const baseLike = distance(cardPixel, { r: 8, g: 11, b: 20 }) <= 12;
+  const cardSurfaceDiffers = distance(cardPixel, { r: 23, g: 34, b: 54 }) <= 40 || !baseLike;
+  assert.ok(cardSurfaceDiffers,
+    `the input card has its own surface rather than the flat base colour, got ${JSON.stringify(cardPixel)}`);
+  // The area below the card is inside the seat and therefore masked, but it must not simply be an
+  // unbounded black region: the seat's own bottom edge is where it ends.
+  assert.ok(report.rects.seat.bottom <= HEIGHT + 1,
+    `the composer seat stays inside the window, got ${JSON.stringify(report.rects.seat)}`);
 
   const out = process.env.WM_PIXEL_OUTPUT || join(tmpdir(), `whale-pixels-${Date.now()}.json`);
   const payload = { isolatedHarness: true, viewport: { width: WIDTH, height: HEIGHT }, parserCheck, officialRuleCount: officialRules.length, ...report };
   await writeFile(out, JSON.stringify(payload, null, 2), { flag: 'w' });
   console.log(JSON.stringify(payload, null, 2));
-  console.log(`\npixel checks passed: strip/chat/sidebar/composer sampled, report ${out}`);
+  console.log(`\npixel checks passed: strip/chat/sidebar/card/ramp sampled, report ${out}`);
 } finally {
   socket?.close();
   browser.kill();

@@ -2484,8 +2484,11 @@ window.__ModuleLoader__.load({
          their own backgrounds, so they stay translucent.
          V2: the same transparency wiped out the composer's protective gradients, because they
          are painted with --dsw-alias-bg-base, which the active state sets to transparent. The
-         composer seat, its overlay form and the input card are painted with the theme's solid
-         colours again, so chat text scrolling under the input area stays hidden.
+         host fades the composer seat from transparent to solid over its first 36px, so that chat
+         history disappears as it scrolls behind the input area; that ramp is restored here with
+         the theme's solid colour, while the input card keeps its own surface. rc.14/rc.15 instead
+         filled the seat, the overlay and the card with one flat colour, which turned everything
+         from the input box down to the bottom of the window into a single black block (R4).
          Scope note: these selectors rely on the hooks the current host ships (the
          data-windows-titlebar attribute, data-phase, and its component class names). They are
          not a public stable API, so if a host update renames them the rules simply stop
@@ -2496,15 +2499,18 @@ window.__ModuleLoader__.load({
       html[data-windows-titlebar]:has(${backdropSelector}) .BynINW_frame::before {
         background: rgb(var(--wm-base-rgb)) !important;
       }
+      /* The composer's fade: transparent at the top, the theme's solid colour where the input
+         area starts. This is the host's own ramp with a resolvable colour, so the protection and
+         the visual layering are both preserved. */
       html:has(${backdropSelector}) [data-phase="active"] .Dc7zOa_composerSeat {
-        background: linear-gradient(180deg, rgb(var(--wm-base-rgb)) 0px, rgb(var(--wm-base-rgb)) 100%) !important;
+        background: linear-gradient(180deg,
+          color-mix(in srgb, rgb(var(--wm-base-rgb)) 0%, transparent) 0px,
+          rgb(var(--wm-base-rgb)) var(--dsh-composer-fade-height, 36px)) !important;
       }
-      html:has(${backdropSelector}) .Dc7zOa_composerSeat,
-      html:has(${backdropSelector}) [data-conversation-composer-overlay] {
-        background-color: rgb(var(--wm-base-rgb)) !important;
-      }
+      /* The input card keeps the host's own surface gradient: it stays readable and stays
+         distinguishable from the area around it. */
       html:has(${backdropSelector}) .Dc7zOa_composerSeat .RlGAzG_card {
-        background: rgb(var(--wm-base-rgb)) !important;
+        background: var(--dsw-specific-input-major) !important;
       }
       @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
         ${backdropSelector} { --wm-ui-alpha: 1 !important; --dsw-alias-bg-base: rgb(var(--wm-base-rgb)) !important;
