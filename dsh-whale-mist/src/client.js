@@ -829,11 +829,96 @@ window.__ModuleLoader__.load({
         else video.pause();
       };
 
+      // A sticky composer shares the scrollport with a potentially very tall view. A mask
+      // anchored to the view's bottom follows the content, not the visible input position.
+      // Clip only that sibling view, using viewport coordinates for both boxes. No wrapper,
+      // composer, footer, or portal is clipped, and no background is painted to hide messages.
+      const HISTORY_CLIP = "--wm-history-clip-bottom";
+      const HISTORY_ATTRIBUTE = "data-wm-history-clip";
+      const clippedViews = new Map();
+      let historyResize = null;
+      let historyMutation = null;
+      let historyFrame = null;
+      let historyTracking = false;
+      let historyObserved = new Set();
+      const restoreHistoryView = (view, previous) => {
+        if (previous.value) view.style.setProperty(HISTORY_CLIP, previous.value, previous.priority);
+        else view.style.removeProperty(HISTORY_CLIP);
+        if (previous.attribute === null) view.removeAttribute(HISTORY_ATTRIBUTE);
+        else view.setAttribute(HISTORY_ATTRIBUTE, previous.attribute);
+        clippedViews.delete(view);
+      };
+      const measureHistory = () => {
+        historyFrame = null;
+        if (!historyTracking) return;
+        const found = new Set();
+        const observed = new Set();
+        for (const scroll of document.querySelectorAll("[data-conversation-scroll]")) {
+          const content = scroll.closest("[data-conversation-content]");
+          if (content?.dataset.contentPhase !== "active") continue;
+          const seat = scroll.querySelector(":scope > [data-composer-seat]");
+          const card = seat?.querySelector(".RlGAzG_card");
+          if (!card || !card.getClientRects().length) continue;
+          const cardTop = card.getBoundingClientRect().top;
+          observed.add(scroll); observed.add(seat); observed.add(card);
+          for (const view of scroll.querySelectorAll(":scope > .Dc7zOa_viewArea, :scope > [data-slot='conversation.session'] > .Dc7zOa_viewArea")) {
+            if (!view.getClientRects().length) continue;
+            found.add(view); observed.add(view);
+            if (!clippedViews.has(view)) clippedViews.set(view, {
+              value: view.style.getPropertyValue(HISTORY_CLIP),
+              priority: view.style.getPropertyPriority(HISTORY_CLIP),
+              attribute: view.getAttribute(HISTORY_ATTRIBUTE),
+            });
+            const rect = view.getBoundingClientRect();
+            // Rounding outward hides subpixel text at the boundary rather than leaving a sliver.
+            const bottom = Math.ceil(Math.max(0, Math.min(rect.height, rect.bottom - cardTop)));
+            const value = `${bottom}px`;
+            if (view.style.getPropertyValue(HISTORY_CLIP) !== value) view.style.setProperty(HISTORY_CLIP, value);
+            if (!view.hasAttribute(HISTORY_ATTRIBUTE)) view.setAttribute(HISTORY_ATTRIBUTE, "");
+          }
+        }
+        for (const [view, previous] of clippedViews) if (!found.has(view)) restoreHistoryView(view, previous);
+        if (historyResize) {
+          for (const target of historyObserved) if (!observed.has(target)) historyResize.unobserve(target);
+          for (const target of observed) if (!historyObserved.has(target)) historyResize.observe(target);
+        }
+        historyObserved = observed;
+      };
+      const queueHistoryMeasure = () => {
+        if (historyTracking && historyFrame === null) historyFrame = requestAnimationFrame(measureHistory);
+      };
+      const startHistoryTracking = () => {
+        if (historyTracking) return; // Wallpaper frames must not rebuild observers every frame.
+        historyTracking = true;
+        if (typeof ResizeObserver === "function") historyResize = new ResizeObserver(queueHistoryMeasure);
+        if (typeof MutationObserver === "function") {
+          historyMutation = new MutationObserver(queueHistoryMeasure);
+          historyMutation.observe(document.getElementById("root") || document.body, {
+            childList: true, subtree: true, attributes: true, attributeFilter: ["data-content-phase"],
+          });
+        }
+        document.addEventListener("scroll", queueHistoryMeasure, true);
+        window.addEventListener("resize", queueHistoryMeasure);
+        measureHistory();
+      };
+      function stopHistoryTracking() {
+        historyTracking = false;
+        historyResize?.disconnect(); historyResize = null;
+        historyMutation?.disconnect(); historyMutation = null;
+        if (historyFrame !== null) cancelAnimationFrame(historyFrame);
+        historyFrame = null;
+        document.removeEventListener("scroll", queueHistoryMeasure, true);
+        window.removeEventListener("resize", queueHistoryMeasure);
+        for (const [view, previous] of clippedViews) restoreHistoryView(view, previous);
+        historyObserved.clear();
+      }
+
       const unmount = () => {
         loadId += 1;
         pendingLoad?.abort();
         pendingLoad = null;
         mountedKey = "";
+        stopHistoryTracking();
         delete document.body.dataset.wmBackdrop;
         if (layer) releaseMedia(layer.querySelector(".wm-backdrop-media"));
         video = null;
@@ -844,6 +929,7 @@ window.__ModuleLoader__.load({
       };
 
       const unmountWallpaper = () => {
+        stopHistoryTracking();
         wallpaperLayer?.remove();
         wallpaperLayer = null;
         wallpaperPainted = false;
@@ -876,6 +962,7 @@ window.__ModuleLoader__.load({
         wallpaperPainted = true;
         wallpaperLayer.hidden = false;
         document.body.dataset.wmBackdrop = "wallpaper";
+        startHistoryTracking();
         wallpaperLayer.dataset.wmSequence = String(frame.sequence);
       };
 
@@ -1013,6 +1100,7 @@ window.__ModuleLoader__.load({
         objectUrl = url;
         if (previousUrl) URL.revokeObjectURL(previousUrl);
         document.body.dataset.wmBackdrop = kind;
+        startHistoryTracking();
         updatePlayback();
         emit({ status: "ready", error: "" });
       };
@@ -2482,13 +2570,14 @@ window.__ModuleLoader__.load({
          (rc.14 defect); the frame background is cleared instead and only the top strip is
          painted, which still covers the padded top band. The sidebar and the content column keep
          their own backgrounds, so they stay translucent.
-         V2: the same transparency wiped out the composer's protective gradients, because they
-         are painted with --dsw-alias-bg-base, which the active state sets to transparent. The
-         host fades the composer seat from transparent to solid over its first 36px, so that chat
-         history disappears as it scrolls behind the input area; that ramp is restored here with
-         the theme's solid colour, while the input card keeps its own surface. rc.14/rc.15 instead
-         filled the seat, the overlay and the card with one flat colour, which turned everything
-         from the input box down to the bottom of the window into a single black block (R4).
+         V2: the same transparency removed the composer's protection. rc.14/rc.15 painted the seat,
+         the overlay and the card with one flat colour, rc.16 turned the seat into a wide dark ramp,
+         and both covered the wallpaper around the input box (R4/R5). The model is now:
+           - only the input card is opaque, with the surface the host already gives it;
+           - nothing else in the composer is painted, so the wallpaper stays visible around and
+             below the card;
+           - the chat history is cut off by a mask on the message layer itself, so text reaching
+             the input area fades out without drawing any background over the wallpaper.
          Scope note: these selectors rely on the hooks the current host ships (the
          data-windows-titlebar attribute, data-phase, and its component class names). They are
          not a public stable API, so if a host update renames them the rules simply stop
@@ -2499,18 +2588,14 @@ window.__ModuleLoader__.load({
       html[data-windows-titlebar]:has(${backdropSelector}) .BynINW_frame::before {
         background: rgb(var(--wm-base-rgb)) !important;
       }
-      /* The composer's fade: transparent at the top, the theme's solid colour where the input
-         area starts. This is the host's own ramp with a resolvable colour, so the protection and
-         the visual layering are both preserved. */
-      html:has(${backdropSelector}) [data-phase="active"] .Dc7zOa_composerSeat {
-        background: linear-gradient(180deg,
-          color-mix(in srgb, rgb(var(--wm-base-rgb)) 0%, transparent) 0px,
-          rgb(var(--wm-base-rgb)) var(--dsh-composer-fade-height, 36px)) !important;
-      }
-      /* The input card keeps the host's own surface gradient: it stays readable and stays
-         distinguishable from the area around it. */
+      /* The input card alone is opaque, with the surface it already has. */
       html:has(${backdropSelector}) .Dc7zOa_composerSeat .RlGAzG_card {
         background: var(--dsw-specific-input-major) !important;
+      }
+      /* Only measured message siblings receive this attribute. Insets refer to their border
+         box, updated on scroll/resize/session changes; the card and its surroundings stay intact. */
+      html:has(${backdropSelector}) [data-wm-history-clip] {
+        clip-path: inset(0px 0px var(--wm-history-clip-bottom, 0px) 0px) !important;
       }
       @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
         ${backdropSelector} { --wm-ui-alpha: 1 !important; --dsw-alias-bg-base: rgb(var(--wm-base-rgb)) !important;

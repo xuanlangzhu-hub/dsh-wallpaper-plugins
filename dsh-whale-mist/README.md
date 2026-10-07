@@ -8,7 +8,7 @@ DeepSeek Harness Web UI 的一组可安装主题，包含浅色 `Whale Mist / �
 本插件继续维护。原 Whale Tauri 桌面壳已冻结，Windows 的当前使用入口为官方
 DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
-## 0.6.0-rc.16 日常播放候选版（实验）
+## 0.6.0-rc.17 日常播放候选版（实验）
 
 当前源码新增深海、石墨、暗紫、墨绿四种深色配色，本地图片/视频背景，以及
 **Wallpaper Engine（实验）** 背景来源。本机日常 Desktop 仍使用已安装的旧版；
@@ -43,10 +43,11 @@ DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
 rc.13 已通过代码/隔离 DOM 短复审和本机单 Lucy 场景的核心实机验收：真实布局、同轮至少 35 分钟、限时预览、自动播放及正常清理。见 [实机记录](../docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md) 与 [代码复审](../docs/B_DAILY_PLAYBACK_RC13_REVIEW.md)。启动仍闪出独立窗口、任务栏入口仍可能保留；GPU 数据包含原桌面与源窗口，不能据此宣称低开销。多场景和数小时/数天运行尚未验收。
 
-rc.16 按 rc.15 短实机反馈（见 [rc.15 短实机记录](../docs/RC15_DESKTOP_VISUAL_REVIEW.md)）修正输入区观感：
-保留顶部局部遮挡、frame 透明与按钮分组，把输入区改回官方层次——渐隐带用主题实色遮挡历史文字、
-输入卡片保留自身表面渐变、座位外围不再整片刷成同一底色，解决了「从输入框到页面底部一整片黑」的问题。
-只改客户端样式，未改 Host、原生与播放语义；结论来自渲染像素检查与三组负对照，真实观感仍待用户实机确认。
+rc.16 的短实机仍被用户反馈为「渐变的大片黑」，未通过观感验收，见
+[rc.16 实机记录](../docs/RC16_DESKTOP_VISUAL_REVIEW.md)。rc.17 改为仅输入卡片不透明，
+外围与底部显示壁纸；按卡片在滚动区内的实际位置裁剪消息内容层，不再用宽黑渐变遮字。
+跟踪滚动、输入增高、窗口尺寸和会话节点替换，停止/来源切换/卸载时撤销裁剪。
+顶部局部遮挡与按钮布局保留，未改 Host、原生或播放语义。隔离页检查不能替代官方 Desktop 实机验收。
 
 候选版检查与打包：
 
@@ -66,6 +67,10 @@ npm pack --pack-destination ../release/plugins
 `test:appearance` 与 `test:appearance-wallpaper` 使用独立临时 Edge Profile，真实验证 DOM、CSS、
 IndexedDB、媒体解码与设置按钮回调，用轻量替身提供 DSH 服务和 React 设置树；
 `test:wallpaper-host` 与 `test:sdk-contract` 在 Node 内验证 Host 生命周期、route 时序和官方 Cordis 注入契约。
+`test:appearance-wallpaper-pixels` 加载真实客户端与记录的官方 CSS 子集，比较同位置隐藏/显示消息的
+截图像素，覆盖长消息滚动、多行输入、窄高窗口、会话替换、图片/视频共享规则和撤销清理。
+通过 `WM_PIXEL_MUTANT=unclipped/solidSeat/solidFrame` 可运行应失败的对照；`WM_CLIENT_SOURCE`
+可指定旧客户端进行对照。`test:appearance-wallpaper-overlay` 转发此检查，不转发其它通过项。
 这些都不接触日常 Profile、不创建真实 WE 窗口，也不代替官方桌面验收。
 接续记录见 [外观候选版](docs/appearance-candidate-20261004.md) 与
 [设置入口候选包](docs/wallpaper-settings-candidate.md)。

@@ -1,0 +1,45 @@
+/* Official Desktop 0.2.0-rc.2 CSS subset, recorded 2026-10-07. 44 host rules; no theme fixes in this fixture. DOM source: DefaultConversationViews / ConversationBody. */
+.Dc7zOa_root{background:var(--dsw-alias-bg-base);flex-direction:column;min-width:0;height:100%;display:flex;position:relative}
+.Dc7zOa_viewArea{flex-direction:column;flex:1;min-height:0;display:flex}
+.Dc7zOa_root:has([data-conversation-composer-overlay]) .Dc7zOa_widthHandle{display:none}
+.Dc7zOa_composerSeat{--dsh-composer-text-max-height:336px;flex-direction:column;flex:none;display:flex}
+.Dc7zOa_root[data-phase=active]{overflow:hidden}
+.Dc7zOa_root[data-phase=active] .Dc7zOa_header{flex:none}
+.Dc7zOa_body{--dsh-chat-content-width:var(--dsh-chat-user-width,clamp(680px, calc(var(--dsh-conversation-column-width,0px) * .64), 920px));--dsh-composer-card-max-width:calc(var(--dsh-chat-content-width) + 32px);--dsh-composer-side-clearance:16px;--dsh-composer-dock-inset:8px;flex-direction:column;flex:1;min-height:0;display:flex;position:relative}
+.Dc7zOa_embeddedBody{--dsh-chat-content-width:min(calc(100% - 32px), 920px);--dsh-composer-card-max-width:min(calc(100% - 16px), 952px);--dsh-composer-side-clearance:8px;--dsh-composer-dock-inset:8px;overflow:hidden}
+.Dc7zOa_scrollBody{scrollbar-gutter:stable;flex-direction:column;flex:1;min-height:0;margin-right:2px;display:flex;overflow-y:auto}
+.Dc7zOa_scrollBody::-webkit-scrollbar-track{margin:2px}
+.Dc7zOa_root[data-phase=active] .Dc7zOa_viewArea,.Dc7zOa_embeddedBody[data-content-phase=active] .Dc7zOa_viewArea{flex:1 0 auto;min-height:auto}
+.Dc7zOa_root[data-phase=active] .Dc7zOa_composerSeat,.Dc7zOa_embeddedBody[data-content-phase=active] .Dc7zOa_composerSeat{z-index:7;background:linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-bg-base) 0%, transparent) 0px, var(--dsw-alias-bg-base) 36px);position:sticky;bottom:0}
+.Dc7zOa_root[data-phase=active] .Dc7zOa_composerSeat:has([data-trigger-menu]){z-index:9}
+.Dc7zOa_scrollBody:has([data-conversation-composer-overlay]){scrollbar-gutter:auto;position:relative;overflow:hidden auto}
+.Dc7zOa_scrollBody:has([data-conversation-composer-overlay])>[data-slot=conversation\.session]>.Dc7zOa_viewArea{flex:1 1 0;min-height:0;overflow:hidden}
+.Dc7zOa_scrollBody:has([data-conversation-composer-overlay])>.Dc7zOa_composerSeat{right:var(--dsh-scrollbar-width);position:absolute;bottom:0;left:0}
+.Dc7zOa_root[data-phase=hero] .Dc7zOa_scrollBody,.Dc7zOa_embeddedBody[data-content-phase=hero] .Dc7zOa_scrollBody{justify-content:center;overflow-y:auto}
+.Dc7zOa_root[data-phase=settling] .Dc7zOa_composerSeat,.Dc7zOa_embeddedBody[data-content-phase=settling] .Dc7zOa_composerSeat{visibility:hidden}
+.RlGAzG_card{box-sizing:border-box;width:100%;max-width:var(--dsh-composer-card-max-width);--dsw-elevation-stroke-color:var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-panel);background:var(--dsw-specific-input-major);box-shadow:var(--dsw-elevation-soft);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;flex-direction:column;gap:12px;padding-top:8px;display:flex;position:relative}
+.RlGAzG_cardWorkspaceTrigger{--dsw-elevation-stroke-color:transparent;cursor:pointer}
+.RlGAzG_cardWorkspaceTrigger:after{content:"";box-sizing:border-box;border-radius:var(--dsw-radius-panel);color:var(--dsw-alias-border-l4);pointer-events:none;border:1px dashed;transition:color .1s;position:absolute;inset:0}
+.RlGAzG_cardWorkspaceTrigger :disabled{pointer-events:none}
+.RlGAzG_cardWorkspaceTrigger:hover:after{color:var(--dsw-alias-state-business-primary)}
+.BynINW_frame{background:var(--dsw-alias-bg-base);grid-template-rows:100%;height:100%;display:grid;position:relative;overflow:hidden}
+.BynINW_frame[data-animating]{transition:grid-template-columns var(--ds-transition-duration-slow) var(--ds-ease-in-out)}
+.BynINW_frame[data-dragging]{transition:none}
+[data-windows-titlebar] .BynINW_frame{--dsh-windows-content-radius:16px;box-sizing:border-box;padding-top:var(--dsh-windows-titlebar-height);background:var(--dsw-specific-sidebar-fill);grid-template-rows:minmax(0,1fr)}
+[data-windows-titlebar] .BynINW_centerCol{background:var(--dsw-alias-bg-base);border-radius:var(--dsh-windows-content-radius) 0 0 0;corner-shape:round}
+[data-windows-titlebar] .BynINW_frame:before{content:"";height:var(--dsh-windows-titlebar-height);background:var(--dsw-specific-sidebar-fill);-webkit-app-region:drag;position:absolute;inset:0 0 auto}
+[data-windows-titlebar] .BynINW_sidebarCol{border-right:none}
+.BynINW_frame[data-animating]{transition:none}
+.BynINW_sidebarCol{background:var(--dsw-specific-sidebar-fill);border-right:.5px solid var(--dsw-alias-border-l3);min-width:0;overflow:hidden}
+.BynINW_centerCol{flex-direction:column;min-width:0;display:flex;overflow:hidden}
+[data-platform=darwin] .BynINW_frame{background:0 0}
+[data-platform=darwin] .BynINW_sidebarCol{background:linear-gradient(to bottom, #7a9bf01a, #7a9bf000 35%, #8f89b800 68%, #8f89b817), color-mix(in srgb, color-mix(in srgb, var(--dsw-specific-sidebar-fill) 97%, #7a9bf0) 40%, transparent);border-right:none}
+[data-platform=darwin] [data-ds-dark-theme] .BynINW_sidebarCol{background:linear-gradient(to bottom, #7a9bf014, #7a9bf000 35%, #8f89b800 68%, #8f89b812), color-mix(in srgb, var(--dsw-specific-sidebar-fill) 50%, transparent)}
+[data-platform=darwin] .BynINW_sidebarCol,[data-platform=darwin] [data-ds-dark-theme] .BynINW_sidebarCol{background:color-mix(in srgb, var(--dsw-specific-sidebar-fill) 90%, transparent)}
+[data-platform=darwin] .BynINW_centerCol{background:var(--dsw-alias-bg-base);border-left:.5px solid var(--dsw-alias-border-l3)}
+[data-platform=darwin] [data-sidebar-collapsed] .BynINW_centerCol{border-left:none}
+[data-platform=darwin] .BynINW_frame[data-sidebar-collapsed]{--dsh-frame-leading-clearance:160px}
+[data-platform=darwin][data-fullscreen] .BynINW_frame[data-sidebar-collapsed]{--dsh-frame-leading-clearance:84px}
+.BynINW_frame[data-animating] .BynINW_handle{transition:left var(--ds-transition-duration-slow) var(--ds-ease-in-out)}
+.BynINW_frame[data-dragging] .BynINW_handle,.BynINW_frame[data-rightbar-fullscreen],.BynINW_frame[data-rightbar-fullscreen] .BynINW_handle,.BynINW_frame[data-rightbar-instant],.BynINW_frame[data-rightbar-instant] .BynINW_handle{transition:none}
+.BynINW_frame[data-animating] .BynINW_handle{transition:none}
