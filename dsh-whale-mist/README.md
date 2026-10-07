@@ -41,7 +41,7 @@ DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 - 逐帧日志是有界的（保留最近一段并抽样更早的记录，上限约 1200 条），不会随运行时长无限增长。
 - 实机证据与仍待验收项见 [Desktop 验收记录](docs/wallpaper-settings-desktop-acceptance.md)。
 
-rc.13 已通过代码与隔离 DOM 短复审；真实设置布局、至少 35 分钟播放、自动播放与资源/清理验收仍待进行。见 [复审记录](../docs/B_DAILY_PLAYBACK_RC13_REVIEW.md)。
+rc.13 已通过代码/隔离 DOM 短复审和本机单 Lucy 场景的核心实机验收：真实布局、同轮至少 35 分钟、限时预览、自动播放及正常清理。见 [实机记录](../docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md) 与 [代码复审](../docs/B_DAILY_PLAYBACK_RC13_REVIEW.md)。启动仍闪出独立窗口、任务栏入口仍可能保留；GPU 数据包含原桌面与源窗口，不能据此宣称低开销。多场景和数小时/数天运行尚未验收。
 
 候选版检查与打包：
 
