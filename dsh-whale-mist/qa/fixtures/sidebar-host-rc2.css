@@ -1,0 +1,16 @@
+/* Official Desktop 0.2.0-rc.2 sidebar rules, recorded 2026-10-07.
+   Extracted read-only from the installed app.asar: the sidebar shell and the workspace/session list,
+   including `._9lTDKa_fade`, the 24px gradient at the bottom of the list. Used to reproduce the
+   reported dark band with a runnable fixture; no theme rule lives here. */
+.BynINW_sidebarCol{background:var(--dsw-specific-sidebar-fill);border-right:.5px solid var(--dsw-alias-border-l3);min-width:0;overflow:hidden}
+._2H3hWW_root{--dsh-sidebar-inline-padding:12px;height:100%;padding:6px var(--dsh-sidebar-inline-padding);box-sizing:border-box;background:var(--dsw-specific-sidebar-fill);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);flex-direction:column;display:flex;position:relative}
+._2H3hWW_regionArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-sidebar-inline-padding));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:hidden}
+._2H3hWW_footArea{flex-direction:column;flex:none;display:flex}
+._2H3hWW_panelList{flex-direction:column;flex:none;gap:4px;margin-bottom:8px;display:flex}
+._9lTDKa_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:5px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}
+._9lTDKa_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}
+._9lTDKa_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}
+._9lTDKa_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}
+._9lTDKa_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}
+._9lTDKa_sectionHeader{box-sizing:border-box;border-radius:var(--dsw-radius-md);height:36px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:space-between;align-items:center;padding:0 8px;display:flex}
+._9lTDKa_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%}

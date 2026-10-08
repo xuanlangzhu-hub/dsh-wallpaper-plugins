@@ -1539,8 +1539,8 @@ window.__ModuleLoader__.load({
         regionTitle: "区域底色",
         opaqueSidebar: "左侧项目／会话栏使用不透明底色",
         opaqueSidebarHint: "勾选后用主题侧栏实色，未勾选沿用现有底色与界面不透明度",
-        opaqueChat: "聊天区使用不透明底色",
-        opaqueChatHint: "勾选后用主题底色盖住聊天区壁纸；输入卡片与顶部不受影响",
+        opaqueChat: "聊天区（含会话标题与标签栏）使用不透明底色",
+        opaqueChatHint: "勾选后盖住整个右侧聊天列，包括会话标题与「对话／轨迹」标签栏；输入卡片与窗口顶条不受影响",
         motion: "视频播放",
         motionHint: "窗口最小化或隐藏时总是暂停",
         focus: "失焦暂停",
@@ -1636,8 +1636,8 @@ window.__ModuleLoader__.load({
         regionTitle: "Region backgrounds",
         opaqueSidebar: "Give the project/session sidebar an opaque background",
         opaqueSidebarHint: "Uses the theme's sidebar colour; unchecked keeps the current fill and surface opacity",
-        opaqueChat: "Give the chat area an opaque background",
-        opaqueChatHint: "Covers the wallpaper behind the conversation; the composer and title bar are unaffected",
+        opaqueChat: "Give the chat area (session title and tabs included) an opaque background",
+        opaqueChatHint: "Covers the whole right-hand column, including the session title and the conversation/trace tabs; the composer and the window title bar are unaffected",
         motion: "Video playback",
         motionHint: "Always pauses while minimized or hidden",
         focus: "Pause when unfocused",
@@ -2651,13 +2651,26 @@ window.__ModuleLoader__.load({
          active, so the frame, the input surroundings, menus and every other region keep the
          behaviour above. The colours are the theme's own: the sidebar colour it already uses
          (including the deep variant and each palette) and the base colour for the chat column.
-         The chat column is painted through its content container rather than the whole centre
-         column, so the title bar strip and the composer keep their own behaviour. */
+         The chat switch covers the whole right-hand column, which is the centre column: the session
+         title and the conversation/trace tabs live in that column above the body, so painting only
+         the body left them showing the wallpaper (R7). The column, not the frame, is painted, so the
+         window title bar strip and the left region stay as they are. */
       ${backdropSelector}[data-wm-opaque-sidebar] .BynINW_sidebarCol {
         background: rgb(var(--wm-sidebar-rgb)) !important;
       }
-      ${backdropSelector}[data-wm-opaque-chat] .Dc7zOa_body {
+      ${backdropSelector}[data-wm-opaque-chat] .BynINW_centerCol {
         background: rgb(var(--wm-base-rgb)) !important;
+      }
+      /* The session list ends with its own 24px fade to the sidebar fill, which softens the last
+         rows against the account area in the normal theme. In the wallpaper state that fill is
+         translucent, so the fade lays a second layer of the same colour over the wallpaper and the
+         bottom of the list turns into a measurably darker rectangle (reproduced in
+         qa/sidebar-bottom-band.mjs: 39.3 to 32.4 luminance across the band, with hard left and right
+         edges). It is removed only when it would do that: with a background active and the sidebar
+         still allowed to show it. With the sidebar set to its own solid colour, and in the normal
+         theme, the host's fade is left alone. */
+      ${backdropSelector}:not([data-wm-opaque-sidebar]) ._9lTDKa_fade {
+        background: none !important;
       }
       /* Only measured message siblings receive this attribute. Insets refer to their border
          box, updated on scroll/resize/session changes; the card and its surroundings stay intact. */

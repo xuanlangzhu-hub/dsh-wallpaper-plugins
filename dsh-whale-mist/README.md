@@ -8,7 +8,7 @@ DeepSeek Harness Web UI 的一组可安装主题，包含浅色 `Whale Mist / �
 本插件继续维护。原 Whale Tauri 桌面壳已冻结，Windows 的当前使用入口为官方
 DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
-## 0.6.0-rc.18 日常播放候选版（实验）
+## 0.6.0-rc.19 日常播放候选版（实验）
 
 当前源码新增深海、石墨、暗紫、墨绿四种深色配色，本地图片/视频背景，以及
 **Wallpaper Engine（实验）** 背景来源。本机日常 Desktop 仍使用已安装的旧版；
@@ -47,9 +47,15 @@ rc.16 的短实机被反馈为「渐变的大片黑」，见 [rc.16 实机记录
 rc.17 改为仅输入卡片不透明、外围与底部显示壁纸，并按卡片在滚动区内的实际位置裁剪消息内容层，
 已通过 [rc.17 短实机](../docs/RC17_DESKTOP_VISUAL_ACCEPTANCE.md)。
 
-rc.18 在此之上加入**区域底色**：用户可分别决定左侧项目／会话栏与聊天区是否用自己的主题实色盖住壁纸，
-两个独立复选框，默认都不勾选（视觉与 rc.17 相同）；勾选只作用于该区域的局部容器，未勾选的区域保持原样，
-顶部、输入卡片、菜单与窄窗口布局不受影响。偏好随外观设置保存，与图片/视频/WE 共用，停止背景后保留偏好但不产生任何绘制。
+rc.18 加入**区域底色**：两个独立复选框，分别决定左侧项目／会话栏与聊天区是否用自己的主题实色盖住壁纸，
+默认都不勾选（视觉与 rc.17 相同）。rc.19 按短实机反馈修两处：
+
+- **聊天区范围**：勾选后覆盖整个右侧聊天列，包括会话标题与「对话／轨迹」标签栏（rc.18 只画了正文，
+  标题栏仍透出壁纸）；文案同步为「聊天区（含会话标题与标签栏）」。
+- **侧栏底部暗带**：透明壁纸态下，官方会话列表底部的 24px 渐隐会再叠一层半透明侧栏色，
+  形成一条带硬左右边界的暗矩形（实测亮度 39.3 → 32.4）。该渐隐只在「背景激活且侧栏仍透出壁纸」时移除；
+  侧栏选择实色或不使用背景时，宿主原样保留。
+
 隔离页检查不能替代官方 Desktop 实机验收。
 
 候选版检查与打包：
@@ -61,6 +67,7 @@ npm run test:appearance-wallpaper
 npm run test:appearance-wallpaper-layout
 npm run test:appearance-wallpaper-pixels
 npm run test:appearance-wallpaper-regions
+npm run test:appearance-sidebar-band
 npm run test:wallpaper-host
 npm run test:sdk-contract
 npm run build:client-protocol

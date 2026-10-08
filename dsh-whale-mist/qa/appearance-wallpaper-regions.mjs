@@ -141,27 +141,32 @@ try {
       const box = selector => document.querySelector(selector).getBoundingClientRect();
       const at = (x, y) => Array.from(context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data).slice(0, 3);
       const sidebar = box('.BynINW_sidebarCol');
-      const body = box('.Dc7zOa_body');
-      const frame = box('.BynINW_frame');
       const center = box('.BynINW_centerCol');
+      const frame = box('.BynINW_frame');
+      const header = box('.Dc7zOa_header');
+      const body = box('.Dc7zOa_body');
       const card = box('.RlGAzG_card');
       const seat = box('[data-composer-seat]');
       return {
         sidebarPixel: at(sidebar.left + sidebar.width / 2, sidebar.top + sidebar.height / 2),
+        // The conversation header (session title and the conversation/trace tabs) and the body are
+        // sampled separately: the chat switch has to cover both, which is what R7 fixed.
+        headerPixel: at(header.left + 20, header.top + header.height / 2),
+        headerMiddlePixel: at((header.left + header.right) / 2, header.top + header.height / 2),
         chatPixel: at(body.left + 20, body.top + 40),
         chatMiddle: at((body.left + body.right) / 2, body.top + body.height * 0.55),
-        // further than its container would show up here. The message layer does not reach the very
-        // top, so this reads the column's background.
+        // The column corner, above the header: also part of the right-hand column.
         columnCorner: at(center.left + 20, center.top + 6),
         strip: at(frame.left + frame.width / 2, 12),
-        // The centre column's own corner: inside the chat column's region, so a switch that paints
         card: at(card.left + 8, card.top + 40),
         seatBeside: at(seat.left + 8, seat.top + 8),
         below: at((card.left + card.right) / 2, card.bottom + 8),
-        backgrounds: { frame: getComputedStyle(document.querySelector('.BynINW_frame')).backgroundColor,
-          center: getComputedStyle(center.target ?? document.querySelector('.BynINW_centerCol')).backgroundColor,
+        backgrounds: {
+          frame: getComputedStyle(document.querySelector('.BynINW_frame')).backgroundColor,
+          center: getComputedStyle(document.querySelector('.BynINW_centerCol')).backgroundColor,
           body: getComputedStyle(document.querySelector('.Dc7zOa_body')).backgroundColor,
-          header: getComputedStyle(document.querySelector('.Dc7zOa_header')).backgroundColor },
+          header: getComputedStyle(document.querySelector('.Dc7zOa_header')).backgroundColor,
+        },
         region: { sidebar: document.body.dataset.wmOpaqueSidebar ?? null, chat: document.body.dataset.wmOpaqueChat ?? null },
         read: (() => { const value = fixture.controller.read(); return { sidebar: value.opaqueSidebar, chat: value.opaqueChat }; })(),
       };
@@ -184,8 +189,18 @@ try {
       css: 'body[data-wm-opaque-sidebar] .Dc7zOa_body{background:rgb(var(--wm-base-rgb))!important}',
       expect: 'sidebar on: the chat column still shows the wallpaper',
     },
-    // A rule that painted the whole centre column rather than the chat column's container: that is
-    // "the other regions must not be dragged along" in its most likely form.
+    // The rc.18 shape of this feature: with the chat switch on, only the body was painted, so the
+    // conversation header and its tabs kept showing the wallpaper. It must fail on the header.
+    // The paint and the override are two separate rules: the theme's own rule carries `!important`,
+    // so an override that is merely more specific loses, and one without `!important` changes
+    // nothing at all. Both mistakes were made here before the control actually reproduced rc.18.
+    bodyOnlyPainter: {
+      css: 'body[data-wm-opaque-chat] .Dc7zOa_body{background:rgb(var(--wm-base-rgb))!important} body[data-wm-opaque-chat] .BynINW_centerCol:not(#wm-a):not(#wm-b){background:transparent!important}',
+      expect: 'default: the conversation header is covered when the chat switch is on',
+    },
+    // A rule that painted the whole centre column unconditionally: that is "the other regions must
+    // not be dragged along". Note that painting the column when the chat switch is ON is now the
+    // intended behaviour, so this control is about doing it with the switch off.
     outsidePainter: {
       css: '#root .BynINW_centerCol{background:rgb(8,11,20)!important}',
       expect: 'default: the column corner still shows the wallpaper',
@@ -225,13 +240,19 @@ try {
     mutantState = await snapshot();
   }
   const expectFailure = mutant ? mutants[mutant].expect : null;
-  // The independence control targets a specific combination, so that combination is measured with
-  // the mutation in place rather than assuming the default state speaks for it.
+  // The controls target specific combinations, so those combinations are measured with the mutation
+  // in place rather than assuming the default state speaks for them.
   let mutantSidebarOnly = null;
   if (mutant === 'linkRegions') {
     await evaluate(`(async () => { fixture.controller.set('opaqueSidebar', true); fixture.controller.set('opaqueChat', false); return true; })()`);
     await sleep(120);
     mutantSidebarOnly = await snapshot();
+  }
+  let mutantChatOnly = null;
+  if (mutant === 'bodyOnlyPainter') {
+    await evaluate(`(async () => { fixture.controller.set('opaqueSidebar', false); fixture.controller.set('opaqueChat', true); return true; })()`);
+    await sleep(120);
+    mutantChatOnly = await snapshot();
   }
 
   const out = process.env.WM_REGION_OUTPUT || join(profile, 'regions.json');
@@ -249,13 +270,21 @@ try {
   // Sidebar switch: that region alone becomes the theme's sidebar colour, the chat column does not.
   check(near(sidebarOn.sidebarPixel, SIDEBAR_COLOUR), `sidebar on: the sidebar is the theme colour, got ${JSON.stringify(sidebarOn.sidebarPixel)}`);
   check(isWallpaper(sidebarOn.chatPixel), `sidebar on: the chat column still shows the wallpaper, got ${JSON.stringify(sidebarOn.chatPixel)}`);
-  // Chat switch: that region alone becomes the base colour, the sidebar does not.
-  check(near(chatOn.chatPixel, CHAT_COLOUR), `chat on: the chat column is the theme colour, got ${JSON.stringify(chatOn.chatPixel)}`);
+  check(isWallpaper(sidebarOn.headerPixel), `sidebar on: the conversation header still shows the wallpaper, got ${JSON.stringify(sidebarOn.headerPixel)}`);
+  // Chat switch: that region alone becomes the base colour, header and tabs included, and the
+  // sidebar does not. The header is checked separately because that is exactly what rc.18 missed.
+  check(near(chatOn.chatPixel, CHAT_COLOUR), `chat on: the chat body is the theme colour, got ${JSON.stringify(chatOn.chatPixel)}`);
   check(near(chatOn.chatMiddle, CHAT_COLOUR), `chat on: the whole column is covered, got ${JSON.stringify(chatOn.chatMiddle)}`);
+  check(near(chatOn.headerPixel, CHAT_COLOUR), `chat on: the conversation header is covered, got ${JSON.stringify(chatOn.headerPixel)}`);
+  check(near(chatOn.headerMiddlePixel, CHAT_COLOUR), `chat on: the tab strip is covered, got ${JSON.stringify(chatOn.headerMiddlePixel)}`);
+  check(near(chatOn.columnCorner, CHAT_COLOUR), `chat on: the top of the column is covered, got ${JSON.stringify(chatOn.columnCorner)}`);
   check(isWallpaper(chatOn.sidebarPixel), `chat on: the sidebar still shows the wallpaper, got ${JSON.stringify(chatOn.sidebarPixel)}`);
   // Both: independently satisfied, which is what rules out one switch driving the other.
   check(near(bothOn.sidebarPixel, SIDEBAR_COLOUR), `both on: the sidebar is the theme colour, got ${JSON.stringify(bothOn.sidebarPixel)}`);
-  check(near(bothOn.chatPixel, CHAT_COLOUR), `both on: the chat column is the theme colour, got ${JSON.stringify(bothOn.chatPixel)}`);
+  check(near(bothOn.chatPixel, CHAT_COLOUR), `both on: the chat body is the theme colour, got ${JSON.stringify(bothOn.chatPixel)}`);
+  check(near(bothOn.headerPixel, CHAT_COLOUR), `both on: the conversation header is covered, got ${JSON.stringify(bothOn.headerPixel)}`);
+  // With the chat switch off, the header must keep the wallpaper like the rest of the column.
+  check(isWallpaper(offOff.headerPixel), `default: the wallpaper reaches the conversation header, got ${JSON.stringify(offOff.headerPixel)}`);
   // The regions report themselves consistently with the requested combination: the controller holds
   // booleans and the projected attributes appear exactly when a region is on.
   for (const report of reports) {
@@ -465,7 +494,9 @@ try {
     const start=fixture.preview.starts,stop=fixture.preview.stopped;
     const inspect=async(label)=>{
       fixture.controller.set('opaqueSidebar',true);fixture.controller.set('opaqueChat',true);await tick();
-      const row={label,background:document.body.dataset.wmBackdrop,sidebar:css('.BynINW_sidebarCol').backgroundColor,chat:css('.Dc7zOa_body').backgroundColor,sidebarExpected:expected('--wm-sidebar-rgb'),chatExpected:expected('--wm-base-rgb'),frame:css('.BynINW_frame').backgroundColor};
+      // The chat region is now painted on the column, so that is the drawing container to compare.
+      // The body keeps its own background from the host, which is why comparing it would be wrong.
+      const row={label,background:document.body.dataset.wmBackdrop,sidebar:css('.BynINW_sidebarCol').backgroundColor,chat:css('.BynINW_centerCol').backgroundColor,sidebarExpected:expected('--wm-sidebar-rgb'),chatExpected:expected('--wm-base-rgb'),frame:css('.BynINW_frame').backgroundColor};
       must(row.sidebar===row.sidebarExpected,label+': active sidebar uses opaque palette colour');
       must(row.chat===row.chatExpected,label+': active chat uses opaque palette colour');
       must(row.frame==='rgba(0, 0, 0, 0)',label+': frame remains clear');
@@ -518,6 +549,12 @@ try {
   }
   if (mutantSidebarOnly) {
     check(isWallpaper(mutantSidebarOnly.chatPixel), `sidebar on: the chat column still shows the wallpaper, got ${JSON.stringify(mutantSidebarOnly.chatPixel)}`);
+  }
+  if (mutantChatOnly) {
+    // The rc.18 shape: with the chat switch on, the body only. The header must be reported as still
+    // showing the wallpaper, which is the failure this control exists to produce.
+    check(near(mutantChatOnly.headerPixel, CHAT_COLOUR),
+      `default: the conversation header is covered when the chat switch is on, got ${JSON.stringify(mutantChatOnly.headerPixel)}`);
   }
   if (mutantState) {
     check(isWallpaper(mutantState.columnCorner), `default: the column corner still shows the wallpaper, got ${JSON.stringify(mutantState.columnCorner)}`);
