@@ -1,5 +1,7 @@
 # 下一轮 R8：滚动时发送框下方瞬时闪字
 
+第三轮最新：先读 [R8_THIRD_REVIEW.md](R8_THIRD_REVIEW.md)。绘制帧配对把 Date.now 与 performance.now 混用，使所有帧落到最后 tick；“98 帧都旧了”和“截图泄漏是假象”不能定案。输出保护常规路径有进展，但 junction 可绕过、自定义 run 目录仍可能同毫秒重名，合成复现已确认。下一轮只修 T1/T3/T4、收回 T2 的过强解释，再用一个可信帧入口与目标裁剪延迟对照定位。生产 client 未变、未修闪字、无 rc.21；不安装或重复实机。
+
 第二轮最新：按 [R8_SECOND_REVIEW.md](R8_SECOND_REVIEW.md) 继续，只补自然滚动的真正渲染帧/有效延迟负对照，以及自定义报告输出的 profile 外保护。单一 RAF、默认报告落盘与目录所有权的改进保留，不再重复返工。当前几何回调与静态 0→1740→0 证明潜在机制，尚未证明用户看到的瞬时呈现；src/client.js 未改、无 rc.21。
 
 2026-10-08 复审补充：先完成 [R8_DIAGNOSTIC_REVIEW.md](R8_DIAGNOSTIC_REVIEW.md) 的 D1–D4，再继续本计划。当前探针扫描上方、RAF 重复采样和 profile 内报告被清理的问题使数据不足以判断可见漏字；清理 helper 必须加目录所有权与解析路径边界。官方常规结构仍是共享 scrollBody + sticky composer，不把猜想的独立视口当既定事实。

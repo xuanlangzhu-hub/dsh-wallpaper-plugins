@@ -2,7 +2,9 @@
 
 更新：2026-10-08。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
 
-## 当前任务：R8 第二轮诊断有进展，待真实绘制帧与自定义输出保护
+## 当前任务：R8 第三轮复审未通过，先修探针时间基准与输出边界
+
+最新：[R8_THIRD_REVIEW.md](R8_THIRD_REVIEW.md)。Date.now / performance.now 混用导致全部帧被配到最后 tick，不能据此认定旧帧或推翻用户闪字反馈。常规报告路径保护改善，但 junction 绕过和 WM_RUN_DIR 同毫秒重名已有合成复现。下一轮按 T1–T4 收紧，沿用一个可信帧入口；生产 client 未变、未修闪字、无 rc.21。日常本轮未动，不安装或重复实机。以下第二轮记录保留作历史。
 
 最新：[R8_SECOND_REVIEW.md](R8_SECOND_REVIEW.md)。单一 RAF/默认报告保留/目录归属保护复跑通过；静态像素对照 0→1740→0 有效，但自然滚动的 28 个潜在越界回调样本仍不等于真实呈现帧。下一步只补渲染帧证据与自定义输出不能落到待删 profile 的保护。生产 client 仍 rc.20、未修闪字、未出 rc.21，不安装或重复实机；QA 改动继续留工作树，不把诊断进展写成修复通过。
 
