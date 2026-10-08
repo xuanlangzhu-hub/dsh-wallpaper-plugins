@@ -2,7 +2,7 @@
 
 为官方 DeepSeek Harness 开发的 Whale Appearance / 鲸系外观插件，提供鲸渊、鲸雾主题、自定义配色、图片和视频背景，以及 Wallpaper Engine 实验预览。
 
-主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码候选版为 **0.6.0-rc.21**：滚动闪字改用固定的原生消息视口，输入区保持原 DOM 并独立定位，连续绘制帧与旧版失败对照已通过，见 [rc.21 后台验证](docs/RC21_SCROLL_REPAIR.md)。尚未安装或短实机验收，日常仍 rc.1。rc.20 的聊天标题/标签、左上角和侧栏暗带已由用户[短实机确认](docs/RC20_DESKTOP_REVIEW.md)。rc.13 的单 Lucy 场景 35 分钟日常播放及正常生命周期实机验收已通过；启动闪窗与 GPU 增量优化仍待验证。当前状态与接续边界见 [项目状态](docs/PROJECT_STATUS.md)。
+主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码候选版为 **0.6.0-rc.21**：固定原生消息视口修复滚动闪字，输入区保持原 DOM 并独立定位；后台旧版失败对照与[正式 Desktop 本机短验](docs/RC21_DESKTOP_ACCEPTANCE.md)通过，用户确认滚动、输入、自动跟随和恢复正常。临时候选已撤回，日常恢复 rc.1。rc.13 单 Lucy 场景 35 分钟播放及正常生命周期曾验收；启动闪窗与 GPU 增量优化仍待验证。当前状态与接续边界见 [项目状态](docs/PROJECT_STATUS.md)。
 
 已实施 [B：日常持续播放与启动闪窗优化](docs/NEXT_B_DAILY_PLAYBACK.md)，由 DS 实现、Codex 审查；实现、短复审与核心实机验收已完成，详见 [rc.13 验收记录](docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)。启动仍会闪出独立窗口，GPU 单引擎采样较高且包含原桌面工作，需要后续对照；不宣称通用稳定版或低开销。
 
