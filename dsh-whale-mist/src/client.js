@@ -2660,6 +2660,9 @@ window.__ModuleLoader__.load({
       }
       ${backdropSelector}[data-wm-opaque-chat] .BynINW_centerCol {
         background: rgb(var(--wm-base-rgb)) !important;
+        /* The host rounds this corner by 16px. An opaque chat must also cover its tip;
+           otherwise the transparent frame exposes a wedge of wallpaper beside the sidebar. */
+        border-top-left-radius: 0 !important;
       }
       /* The session list ends with its own 24px fade to the sidebar fill, which softens the last
          rows against the account area in the normal theme. In the wallpaper state that fill is

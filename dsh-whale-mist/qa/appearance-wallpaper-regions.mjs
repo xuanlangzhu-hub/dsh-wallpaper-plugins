@@ -157,6 +157,8 @@ try {
         chatMiddle: at((body.left + body.right) / 2, body.top + body.height * 0.55),
         // The column corner, above the header: also part of the right-hand column.
         columnCorner: at(center.left + 20, center.top + 6),
+        columnTip: at(center.left + 2, center.top + 2),
+        columnRadius: getComputedStyle(document.querySelector('.BynINW_centerCol')).borderTopLeftRadius,
         strip: at(frame.left + frame.width / 2, 12),
         card: at(card.left + 8, card.top + 40),
         seatBeside: at(seat.left + 8, seat.top + 8),
@@ -283,6 +285,12 @@ try {
   check(near(bothOn.sidebarPixel, SIDEBAR_COLOUR), `both on: the sidebar is the theme colour, got ${JSON.stringify(bothOn.sidebarPixel)}`);
   check(near(bothOn.chatPixel, CHAT_COLOUR), `both on: the chat body is the theme colour, got ${JSON.stringify(bothOn.chatPixel)}`);
   check(near(bothOn.headerPixel, CHAT_COLOUR), `both on: the conversation header is covered, got ${JSON.stringify(bothOn.headerPixel)}`);
+  for (const report of reports) {
+    check(report.chat ? near(report.columnTip, CHAT_COLOUR) : isWallpaper(report.columnTip),
+      `${report.label}: the upper-left tip follows the chat background choice, got ${JSON.stringify(report.columnTip)}`);
+    check(report.columnRadius === (report.chat ? '0px' : '16px'),
+      `${report.label}: the host corner is only squared for opaque chat, got ${report.columnRadius}`);
+  }
   // With the chat switch off, the header must keep the wallpaper like the rest of the column.
   check(isWallpaper(offOff.headerPixel), `default: the wallpaper reaches the conversation header, got ${JSON.stringify(offOff.headerPixel)}`);
   // The regions report themselves consistently with the requested combination: the controller holds
