@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
+import { createProfile, removeProfile } from "./temp-profile.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,12 +20,13 @@ const launchUrl = new URL(appUrl);
 launchUrl.searchParams.set("wm-status-qa", "1");
 launchUrl.searchParams.set("wm-theme-qa", expectedTheme.setting);
 const debugPort = 9400 + Math.floor(Math.random() * 500);
-const profile = await mkdtemp(join(tmpdir(), "dsh-whale-mist-official-"));
+const profile = await createProfile("dsh-whale-mist-official-");
 const output = join(dirname(fileURLToPath(import.meta.url)), "official-whale-mist.png");
 const trajectoryOutput = join(dirname(fileURLToPath(import.meta.url)), "official-whale-mist-trajectory.png");
 const settingsOutput = join(dirname(fileURLToPath(import.meta.url)), "official-whale-mist-settings.png");
 const statusOutput = join(dirname(fileURLToPath(import.meta.url)), "official-whale-mist-status.png");
-const reasoningOutput = join(tmpdir(), "dsh-whale-mist-reasoning.png");
+// This diagnostic image is temporary; the other snapshots below are the legacy official-page outputs.
+const reasoningOutput = join(profile, "reasoning.png");
 const browser = spawn(edge, [
   "--headless=new",
   "--disable-gpu",
@@ -218,7 +220,7 @@ try {
     throw new Error(`${expectedThemeId} did not recover after a late theme reset: ${JSON.stringify(recoveredTheme)}`);
   }
   if (process.env.DSH_THEME_RETENTION_ONLY === "1") {
-    const shellOutput = join(tmpdir(), `dsh-whale-${expectedTheme.setting}-shell.png`);
+    const shellOutput = join(profile, `shell-${expectedTheme.setting}.png`);
     let shellScreenshot = null;
     if (process.env.DSH_CAPTURE_THEME_SHELL === "1") {
       const shellCapture = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
@@ -955,5 +957,6 @@ try {
   } catch {}
   socket.close();
   browser.kill();
+  await removeProfile(profile);
 }
 }

@@ -9,11 +9,11 @@
 // It is an isolated harness, not the DSH desktop: the host page supplies only the three
 // fixture blocks the CSS expects, and the panel width is set explicitly.
 import { createServer } from 'node:http';
-import { readFile, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import assert from 'node:assert/strict';
+import { createProfile, removeProfile, createRunDirectory, evidencePath, verifyPersisted } from './temp-profile.mjs';
 
 const here = new URL('.', import.meta.url).pathname.replace(/^\//, '');
 const qa = here.endsWith('/') ? here.slice(0, -1) : here;
@@ -40,7 +40,8 @@ const server = createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 
-const profile = await mkdtemp(join(tmpdir(), 'whale-layout-qa-'));
+const profile = await createProfile('whale-layout-qa-');
+const runDir = await createRunDirectory('whale-layout-qa');
 const browser = spawn(process.env.WHALE_TEST_BROWSER || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
   '--no-default-browser-check', '--disable-extensions', '--disable-sync', '--disable-background-networking',
@@ -508,8 +509,11 @@ try {
   assert.ok(narrowViewport.autoCheckbox.inside, 'narrow viewport: the checkbox stays inside the panel');
 
   const report = { isolatedHarness: true, viewport: 1280, measured, longHint, narrowPanel: fresh, narrowViewport, results: measured.length * 15 };
-  const out = process.env.WM_LAYOUT_OUTPUT || join(tmpdir(), `whale-layout-${Date.now()}.json`);
+  // Reports go to the repository's own .tmp directory rather than the operating system's temporary
+  // folder, which is shared with everything else on the machine and was being left with stray files.
+  const out = await evidencePath('WM_LAYOUT_OUTPUT', runDir, 'layout.json');
   await writeFile(out, JSON.stringify(report, null, 2), { flag: 'w' });
+  await verifyPersisted(out);
   console.log(JSON.stringify(report, null, 2));
   console.log(`\nlayout checks passed: ${measured.length} panel widths, narrow viewport ${narrowViewport.viewport}px, report ${out}`);
 } finally {
@@ -517,4 +521,5 @@ try {
   browser.kill();
   server.closeAllConnections();
   await new Promise(resolve => server.close(resolve));
+  await removeProfile(profile);
 }

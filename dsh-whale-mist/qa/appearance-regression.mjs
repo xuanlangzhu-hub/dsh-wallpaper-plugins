@@ -1,10 +1,11 @@
 import { createServer } from 'node:http';
-import { readFile, mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { createProfile, removeProfile } from './temp-profile.mjs';
 
 const qa = dirname(fileURLToPath(import.meta.url));
 const client = await readFile(join(qa, '../src/client.js'));
@@ -21,7 +22,7 @@ const server = createServer((req, res) => {
   res.end(`<!doctype html><html><head><title>Isolated Whale QA</title></head><body><main id="root"><div id="fixture-base" style="background:var(--dsw-alias-bg-base)">Canvas</div><div id="fixture-card" style="background:var(--dsw-alias-bg-layer-1)">Card</div><div id="fixture-composer" style="background:var(--dsw-specific-input-major)">Composer</div></main><script src="/harness.js?v=${runId}"></script><script src="/client.js?v=${runId}"></script></body></html>`);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const profile = await mkdtemp(join(tmpdir(), 'whale-appearance-qa-'));
+const profile = await createProfile('whale-appearance-qa-');
 const browser = spawn(process.env.WHALE_TEST_BROWSER || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
   '--no-default-browser-check', '--disable-extensions', '--disable-sync', '--disable-background-networking',
@@ -87,4 +88,5 @@ try {
 } finally {
   socket?.close(); for (const request of pending.values()) clearTimeout(request.timer);
   browser.kill(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+  await removeProfile(profile);
 }

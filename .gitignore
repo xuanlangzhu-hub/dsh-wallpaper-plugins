@@ -10,6 +10,9 @@
 
 # Local test/backup scratch space
 /.tmp/
+# Check reports: they default to a .tmp directory beside the checks that write them, so a run leaves
+# its evidence in the repository instead of the machine's shared temporary folder.
+/dsh-whale-mist/.tmp/
 /NEXT_TASK.md
 /dsh-whale-mist/*.tgz
 /dsh-whale-gitbash/*.tgz

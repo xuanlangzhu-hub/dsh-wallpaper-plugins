@@ -11,12 +11,13 @@
 // row just above it, while the same x-range outside the fade does not darken. The probe prints the
 // rows and the verdict; it does not decide for the theme.
 import { createServer } from 'node:http';
-import { readFile, mkdtemp, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
+import { createProfile, removeProfile, createRunDirectory, evidencePath, verifyPersisted } from './temp-profile.mjs';
 
 const qa = process.env.WM_QA_ROOT || dirname(fileURLToPath(import.meta.url));
 const source = await readFile(process.env.WM_CLIENT_SOURCE || join(qa, '../src/client.js'), 'utf8');
@@ -110,7 +111,8 @@ const server = createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 
-const profile = await mkdtemp(join(tmpdir(), 'wm-sidebar-band-'));
+const profile = await createProfile('wm-sidebar-band-');
+const runDir = await createRunDirectory('qa-run');
 const browser = spawn(process.env.WHALE_TEST_BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
   '--no-default-browser-check', '--disable-extensions', '--disable-sync', '--disable-background-networking',
@@ -264,8 +266,9 @@ try {
   check(plain.fadeBackground !== 'none',
     `the host fade is untouched without a background, got ${plain.fadeBackground}`);
 
-  const out = process.env.WM_BAND_OUTPUT || join(profile, 'band.json');
+  const out = await evidencePath('WM_BAND_OUTPUT', runDir, 'band.json');
   await writeFile(out, JSON.stringify({ isolated: true, wallpaperPixel: WALLPAPER_PIXEL, sidebarPixel: SIDEBAR_PIXEL, reports: reports.map(entry => ({ label: entry.label, band: entry.band, fade: entry.fadeBackground })) }, null, 2), { flag: 'w' });
+  await verifyPersisted(out);
   // Negative control: restore the host's fade while the wallpaper is active and the sidebar is still
   // translucent. That is exactly the state the report described, so the band check must catch it.
   const mutant = process.env.WM_BAND_MUTANT;
@@ -306,4 +309,5 @@ try {
   browser.kill();
   server.closeAllConnections();
   await new Promise(resolve => server.close(resolve));
+  await removeProfile(profile);
 }

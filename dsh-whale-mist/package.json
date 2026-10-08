@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-mist",
-  "version": "0.6.0-rc.20",
+  "version": "0.6.0-rc.21",
   "description": "Whale Mist and Whale Abyss themes for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "./src/index.js",
@@ -55,6 +55,10 @@
     "test:appearance-wallpaper-overlay": "node qa/appearance-wallpaper-overlay.mjs",
     "test:appearance-wallpaper-regions": "node qa/appearance-wallpaper-regions.mjs",
     "test:appearance-sidebar-band": "node qa/sidebar-bottom-band.mjs",
+    "test:appearance-calibrated-frames": "node qa/scroll-calibrated-frames.mjs",
+    "test:appearance-scroll-strict": "node qa/scroll-calibrated-frames.mjs --strict",
+    "test:check-pairing": "node qa/check-pairing.mjs",
+    "test:temp-profile-boundaries": "node qa/temp-profile-boundaries.mjs",
     "test:appearance-wallpaper-pixels": "node qa/appearance-wallpaper-pixels.mjs",
     "test:wallpaper-host": "node --test qa/wallpaper/*.test.mjs",
     "test:sdk-contract": "cmd /c qa\\\\wallpaper\\\\sdk-contract.cmd"

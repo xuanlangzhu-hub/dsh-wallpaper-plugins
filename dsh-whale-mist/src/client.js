@@ -850,13 +850,68 @@ window.__ModuleLoader__.load({
         else video.pause();
       };
 
-      // A sticky composer shares the scrollport with a potentially very tall view. A mask
-      // anchored to the view's bottom follows the content, not the visible input position.
-      // Clip only that sibling view, using viewport coordinates for both boxes. No wrapper,
-      // composer, footer, or portal is clipped, and no background is painted to hide messages.
+      // A sticky composer shares the scrollport with a potentially very tall view. A clip measured
+      // from that moving view cannot keep up with compositor scrolling. On the recognized host use
+      // a stationary native message viewport and dock the existing seat outside its clipping block;
+      // keep the measured sibling clip only as a fallback. No opaque cover or React node move.
       const HISTORY_CLIP = "--wm-history-clip-bottom";
       const HISTORY_ATTRIBUTE = "data-wm-history-clip";
       const clippedViews = new Map();
+      const historyPorts = new Map();
+      const PORT_ATTRIBUTE = "data-wm-message-port";
+      const SEAT_ATTRIBUTE = "data-wm-fixed-composer";
+      const PORT_PROPERTIES = ["--wm-port-reserve"];
+      const SEAT_PROPERTIES = ["--wm-port-width", "--wm-port-left"];
+      const rememberPortNode = (node, attribute, properties) => ({
+        node, attribute, previous: node.getAttribute(attribute),
+        properties: properties.map(name => ({ name, value: node.style.getPropertyValue(name), priority: node.style.getPropertyPriority(name) })),
+      });
+      const restorePortNode = ({ node, attribute, previous, properties }) => {
+        if (previous === null) node.removeAttribute(attribute);
+        else node.setAttribute(attribute, previous);
+        for (const { name, value, priority } of properties) {
+          if (value) node.style.setProperty(name, value, priority);
+          else node.style.removeProperty(name);
+        }
+      };
+      const setPortProperty = (node, name, value) => {
+        if (node.style.getPropertyValue(name) !== value) node.style.setProperty(name, value);
+      };
+      const atHistoryEnd = scroll => scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop <= 1;
+      const restoreHistoryPort = (scroll, state) => {
+        const atEnd = scroll.isConnected && atHistoryEnd(scroll);
+        restorePortNode(state.scroll);
+        restorePortNode(state.seat);
+        historyPorts.delete(scroll);
+        if (atEnd) scroll.scrollTop = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+      };
+      // The host already supplies a positioned body and a message/seat sibling structure. Keep those
+      // nodes: the seat's containing block is the body outside the scrollport, so the native scroll
+      // clip only contains messages. Its bottom edge stays on the card's top even during compositor
+      // scrolling. No opaque cover, wheel handler, or per-scroll moving clip is needed for this edge.
+      const prepareHistoryPort = (scroll, content, seat, card) => {
+        if (getComputedStyle(content).position !== "relative") return false;
+        let state = historyPorts.get(scroll);
+        if (state && state.seat.node !== seat) { restoreHistoryPort(scroll, state); state = null; }
+        if (!state) {
+          state = { scroll: rememberPortNode(scroll, PORT_ATTRIBUTE, PORT_PROPERTIES), seat: rememberPortNode(seat, SEAT_ATTRIBUTE, SEAT_PROPERTIES) };
+          historyPorts.set(scroll, state);
+        }
+        const atEnd = atHistoryEnd(scroll);
+        const bodyRect = content.getBoundingClientRect();
+        const scrollRect = scroll.getBoundingClientRect();
+        const width = `${scroll.clientWidth}px`;
+        const left = `${scrollRect.left + scroll.clientLeft - bodyRect.left - content.clientLeft}px`;
+        scroll.setAttribute(PORT_ATTRIBUTE, "");
+        seat.setAttribute(SEAT_ATTRIBUTE, "");
+        setPortProperty(seat, "--wm-port-width", width);
+        setPortProperty(seat, "--wm-port-left", left);
+        // Read after docking: growing drafts and toolbar/attachment changes affect the card's top.
+        const reserve = `${Math.max(0, bodyRect.bottom - content.clientTop - card.getBoundingClientRect().top)}px`;
+        setPortProperty(scroll, "--wm-port-reserve", reserve);
+        if (atEnd) scroll.scrollTop = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+        return true;
+      };
       let historyResize = null;
       let historyMutation = null;
       let historyFrame = null;
@@ -873,6 +928,7 @@ window.__ModuleLoader__.load({
         historyFrame = null;
         if (!historyTracking) return;
         const found = new Set();
+        const ports = new Set();
         const observed = new Set();
         for (const scroll of document.querySelectorAll("[data-conversation-scroll]")) {
           const content = scroll.closest("[data-conversation-content]");
@@ -880,8 +936,9 @@ window.__ModuleLoader__.load({
           const seat = scroll.querySelector(":scope > [data-composer-seat]");
           const card = seat?.querySelector(".RlGAzG_card");
           if (!card || !card.getClientRects().length) continue;
+          if (prepareHistoryPort(scroll, content, seat, card)) ports.add(scroll);
           const cardTop = card.getBoundingClientRect().top;
-          observed.add(scroll); observed.add(seat); observed.add(card);
+          observed.add(content); observed.add(scroll); observed.add(seat); observed.add(card);
           for (const view of scroll.querySelectorAll(":scope > .Dc7zOa_viewArea, :scope > [data-slot='conversation.session'] > .Dc7zOa_viewArea")) {
             if (!view.getClientRects().length) continue;
             found.add(view); observed.add(view);
@@ -890,23 +947,52 @@ window.__ModuleLoader__.load({
               priority: view.style.getPropertyPriority(HISTORY_CLIP),
               attribute: view.getAttribute(HISTORY_ATTRIBUTE),
             });
-            const rect = view.getBoundingClientRect();
-            // Rounding outward hides subpixel text at the boundary rather than leaving a sliver.
-            const bottom = Math.ceil(Math.max(0, Math.min(rect.height, rect.bottom - cardTop)));
-            const value = `${bottom}px`;
-            if (view.style.getPropertyValue(HISTORY_CLIP) !== value) view.style.setProperty(HISTORY_CLIP, value);
+            applyHistoryClip(view, cardTop);
             if (!view.hasAttribute(HISTORY_ATTRIBUTE)) view.setAttribute(HISTORY_ATTRIBUTE, "");
           }
         }
         for (const [view, previous] of clippedViews) if (!found.has(view)) restoreHistoryView(view, previous);
+        for (const [scroll, state] of historyPorts) if (!ports.has(scroll)) restoreHistoryPort(scroll, state);
         if (historyResize) {
           for (const target of historyObserved) if (!observed.has(target)) historyResize.unobserve(target);
           for (const target of observed) if (!historyObserved.has(target)) historyResize.observe(target);
         }
         historyObserved = observed;
       };
+      // The inset is measured from the view's own border box: `bottom` removes the last `bottom` pixels
+      // of that box, so the visible part ends where the card begins. Rounding outward hides subpixel
+      // text at the boundary rather than leaving a sliver.
+      //
+      // This remains a fallback for hosts without the recognized positioned body. On the supported
+      // host the native message scrollport is the visible boundary, independent of this moving inset.
+      function applyHistoryClip(view, cardTop) {
+        const rect = view.getBoundingClientRect();
+        const bottom = Math.ceil(Math.max(0, Math.min(rect.height, rect.bottom - cardTop)));
+        const value = `${bottom}px`;
+        if (view.style.getPropertyValue(HISTORY_CLIP) !== value) view.style.setProperty(HISTORY_CLIP, value);
+      }
+      // Updating the inset only on the next animation frame left it describing the previous scroll
+      // position. Recomputing it here, where the scroll event has already been delivered, reduces that
+      // lag at the callback. Whether a frame that reaches the screen can still show text near the card
+      // is decided by the painted-frame check, not by this comment: the geometry improvement observed
+      // here is not a guarantee about what the compositor presents.
+      const updateHistoryClip = () => {
+        if (!historyTracking || clippedViews.size === 0) return;
+        for (const view of clippedViews.keys()) {
+          if (!view.getClientRects().length) continue;
+          const scroll = view.closest("[data-conversation-scroll]");
+          if (historyPorts.has(scroll)) continue;
+          const card = scroll?.querySelector("[data-composer-seat] .RlGAzG_card");
+          if (!card || !card.getClientRects().length) continue;
+          applyHistoryClip(view, card.getBoundingClientRect().top);
+        }
+      };
       const queueHistoryMeasure = () => {
         if (historyTracking && historyFrame === null) historyFrame = requestAnimationFrame(measureHistory);
+      };
+      const onHistoryScroll = () => {
+        updateHistoryClip();
+        queueHistoryMeasure();
       };
       const startHistoryTracking = () => {
         if (historyTracking) return; // Wallpaper frames must not rebuild observers every frame.
@@ -918,7 +1004,7 @@ window.__ModuleLoader__.load({
             childList: true, subtree: true, attributes: true, attributeFilter: ["data-content-phase"],
           });
         }
-        document.addEventListener("scroll", queueHistoryMeasure, true);
+        document.addEventListener("scroll", onHistoryScroll, true);
         window.addEventListener("resize", queueHistoryMeasure);
         measureHistory();
       };
@@ -928,9 +1014,10 @@ window.__ModuleLoader__.load({
         historyMutation?.disconnect(); historyMutation = null;
         if (historyFrame !== null) cancelAnimationFrame(historyFrame);
         historyFrame = null;
-        document.removeEventListener("scroll", queueHistoryMeasure, true);
+        document.removeEventListener("scroll", onHistoryScroll, true);
         window.removeEventListener("resize", queueHistoryMeasure);
         for (const [view, previous] of clippedViews) restoreHistoryView(view, previous);
+        for (const [scroll, state] of historyPorts) restoreHistoryPort(scroll, state);
         historyObserved.clear();
       }
 
@@ -2679,6 +2766,20 @@ window.__ModuleLoader__.load({
          box, updated on scroll/resize/session changes; the card and its surroundings stay intact. */
       html:has(${backdropSelector}) [data-wm-history-clip] {
         clip-path: inset(0px 0px var(--wm-history-clip-bottom, 0px) 0px) !important;
+      }
+      html:has(${backdropSelector}) [data-wm-message-port] {
+        position: static !important;
+        margin-bottom: var(--wm-port-reserve) !important;
+      }
+      html:has(${backdropSelector}) [data-wm-message-port] [data-wm-history-clip] {
+        clip-path: none !important;
+      }
+      html:has(${backdropSelector}) [data-wm-fixed-composer] {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: var(--wm-port-left) !important;
+        right: auto !important;
+        width: var(--wm-port-width) !important;
       }
       @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
         ${backdropSelector} { --wm-ui-alpha: 1 !important; --dsw-alias-bg-base: rgb(var(--wm-base-rgb)) !important;

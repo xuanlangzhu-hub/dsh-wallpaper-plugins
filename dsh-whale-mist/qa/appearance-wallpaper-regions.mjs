@@ -6,12 +6,13 @@
 // records the frame, the title bar strip and the composer so a change that also repaints those is
 // caught. The two defaults are off, so the first case is the previous release's behaviour.
 import { createServer } from 'node:http';
-import { readFile, mkdtemp, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
+import { createProfile, removeProfile, createRunDirectory, evidencePath, verifyPersisted } from './temp-profile.mjs';
 
 const qa = process.env.WM_QA_ROOT || dirname(fileURLToPath(import.meta.url));
 const files = {
@@ -68,7 +69,8 @@ const server = createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 
-const profile = await mkdtemp(join(tmpdir(), 'wm-region-'));
+const profile = await createProfile('wm-region-');
+const runDir = await createRunDirectory('qa-run');
 const url = `http://127.0.0.1:${server.address().port}/`;
 const browser = spawn(process.env.WHALE_TEST_BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
@@ -257,7 +259,7 @@ try {
     mutantChatOnly = await snapshot();
   }
 
-  const out = process.env.WM_REGION_OUTPUT || join(profile, 'regions.json');
+  const out = await evidencePath('WM_REGION_OUTPUT', runDir, 'regions.json');
   await writeFile(out, JSON.stringify({ isolated: true, wallpaper: WALLPAPER, sidebarColour: SIDEBAR_COLOUR, chatColour: CHAT_COLOUR, reports }, null, 2), { flag: 'w' });
 
   const [offOff, sidebarOn, chatOn, bothOn] = reports;
@@ -552,7 +554,9 @@ try {
     return {rows,uiCallbacks:2,strictValues:8,persistence:true,teardown:true};
   })()`);
   if (supplement) {
-    await writeFile(process.env.WM_SUPPLEMENT_OUTPUT || join(profile,'supplement.json'),JSON.stringify(supplement,null,2));
+    const supplementOut = await evidencePath('WM_SUPPLEMENT_OUTPUT', runDir, 'supplement.json');
+    await writeFile(supplementOut, JSON.stringify(supplement, null, 2));
+    await verifyPersisted(supplementOut);
     console.log('supplement passed: 8 active dark states, light, image/video, both callbacks, strict booleans and teardown');
   }
   if (mutantSidebarOnly) {
@@ -585,4 +589,5 @@ try {
   browser.kill();
   server.closeAllConnections();
   await new Promise(resolve => server.close(resolve));
+  await removeProfile(profile);
 }
