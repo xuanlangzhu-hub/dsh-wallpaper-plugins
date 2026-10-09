@@ -1,5 +1,8 @@
 # 给 DS：只做离线阶段对比工具
 
+最新复审优先：[PERF_COMPARE_REVIEW.md](PERF_COMPARE_REVIEW.md)。首轮自检通过，但独立输入发现 F1–F4；
+下一轮按该记录局部返工门槛与输出，原授权范围不变，不进入真实阶段采样。
+
 2026-10-09。先读 [PERF_PHASE_PROTOCOL.md](PERF_PHASE_PROTOCOL.md)、
 [清单模板](perf-phase-manifest.example.json)、[采样器说明](../dsh-whale-mist/qa/perf/README.md)。
 上一轮采样器修复的 25 项已通过。这次任务只增加一个小型离线对比工具，交 Codex 审查；未开始实机。

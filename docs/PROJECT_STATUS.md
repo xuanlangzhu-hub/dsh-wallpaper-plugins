@@ -4,6 +4,10 @@
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
 
+离线对比工具最新复审：[PERF_COMPARE_REVIEW.md](PERF_COMPARE_REVIEW.md)。DS 16/16、采样器 25/25 复跑通过，
+但独立输入复现条件/容量/尺寸未阻断差值、覆盖按多 PID 合计、GPU 门槛借 RAM、阶段/集合/时间边界未正确处理；
+尚未通过。只返工 compare/check/README/交付记录，先补具体差值与门槛断言，不进入实机或改生产。
+
 下一步准备已写好：[阶段协议](PERF_PHASE_PROTOCOL.md)、[给 DS 的离线小任务](DS_NEXT_PERF_COMPARE.md) 和
 [清单模板](perf-phase-manifest.example.json)。DS 仅补 compare/check 脚本，Codex 审查；正式 A0→B→C→D→A1
 须另约用户。特别区分 WE 共用 PID、采集 cap 与源 FPS、C memory 与 D pipe 的链路差异；目前未实测。
