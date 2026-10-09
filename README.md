@@ -2,9 +2,9 @@
 
 为官方 DeepSeek Harness 开发的 Whale Appearance / 鲸系外观插件，提供鲸渊、鲸雾主题、自定义配色、图片和视频背景，以及 Wallpaper Engine 实验预览。
 
-主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码候选版为 **0.6.0-rc.21**：固定原生消息视口修复滚动闪字，输入区保持原 DOM 并独立定位；后台旧版失败对照与[正式 Desktop 本机短验](docs/RC21_DESKTOP_ACCEPTANCE.md)通过，用户确认滚动、输入、自动跟随和恢复正常。临时候选已撤回，日常恢复 rc.1。rc.13 单 Lucy 场景 35 分钟播放及正常生命周期曾验收；启动闪窗与 GPU 增量优化仍待验证。当前状态与接续边界见 [项目状态](docs/PROJECT_STATUS.md)。
+主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码候选版为 **0.6.0-rc.23**：正坐标屏幕外无边框启动，核验后不重复放大；[正式 Desktop 短验](docs/RC23_STARTUP_ACCEPTANCE.md)确认人工启动/重新开始无主动闪窗或抢焦点、白条消失、动态与操作正常。任务栏入口仍存在。rc.21 的消息闪字修复保留，rc.13 单 Lucy 35 分钟及生命周期曾验收。本轮候选已撤回，日常恢复 rc.1；GPU 完整成本与进一步优化按 [下一轮计划](docs/NEXT_SOURCE_PERFORMANCE.md)。
 
-已实施 [B：日常持续播放与启动闪窗优化](docs/NEXT_B_DAILY_PLAYBACK.md)，由 DS 实现、Codex 审查；实现、短复审与核心实机验收已完成，详见 [rc.13 验收记录](docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)。启动仍会闪出独立窗口，GPU 单引擎采样较高且包含原桌面工作，需要后续对照；不宣称通用稳定版或低开销。
+已实施 [B：日常持续播放](docs/NEXT_B_DAILY_PLAYBACK.md) 并验收核心生命周期，见 [rc.13](docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)；最新启动观察以 rc.23 为准。源场景 3D 引擎初筛仍偏高，未测最终完整 DSH/功耗和游戏影响，不宣称通用稳定版或低开销。
 
 ## 功能与当前边界
 

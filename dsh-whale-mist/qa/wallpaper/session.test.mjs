@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPreviewSession, registerWallpaperRoutes, pruneRuns, prepareRunDirectory, resolveHostResources, probeAvailability } from '../../src/wallpaper/session.js';
 import { resolveSceneRequest, describeScenes, SCENES, PREVIEW_SECONDS } from '../../src/wallpaper/scenes.js';
+import { createProfile, removeProfile } from '../temp-profile.mjs';
+
+const ROUTE_TEST_ROOT = await createProfile('wm-route-fixture-');
+after(() => removeProfile(ROUTE_TEST_ROOT));
 
 const HELPER = 'F:\\fake\\WallpaperProbe.exe';
 const SCENE_FILE = SCENES.lucy.project;
@@ -37,6 +41,7 @@ function sessionHarness({ helperOk = true, windowOk = true, closeResult = { outc
       return [{ hwnd: 555, pid: 33272, title: openedLocation(), visible: true, left: 76, top: 76 }];
     }
     if (args[0] === '--window-apply') return { visible: true, left: -32000, top: -32000 };
+    if (args[0] === '--window-onscreen') return {visibleArea: 0, window: {hwnd: 555, pid: 33272, title: openedLocation(), visible: true, iconic: false, cloaked: false, left: 4096, top: 0, width: 1280, height: 720}};
     if (args[0] === '--window-ensure-closed') return { ...closeResult, location: args[1] };
     throw new Error(`unexpected helper call ${args.join(' ')}`);
   };
@@ -250,7 +255,7 @@ test('run directories are rotated so logs cannot grow without bound', async () =
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-function routeHarness({ sessions = [] } = {}) {
+function routeHarness({ sessions = [], offscreenStart } = {}) {
   const routes = new Map();
   const registered = [];
   const ctx = {
@@ -262,7 +267,7 @@ function routeHarness({ sessions = [] } = {}) {
     sessions.push(session);
     return session;
   };
-  const api = registerWallpaperRoutes(ctx, { helper: HELPER, logRoot: 'F:\\logs', sessionFactory: factory, exists });
+  const api = registerWallpaperRoutes(ctx, { helper: HELPER, logRoot: ROUTE_TEST_ROOT, sessionFactory: factory, exists, offscreenStart });
   return { ctx, routes, api, sessions, registered };
 }
 
@@ -273,6 +278,30 @@ async function call(route, method, path, body) {
   await route.handler(req, response);
   return response;
 }
+
+test('routes use screen-external startup by default and preserve an explicit fallback', async () => {
+  for (const value of [undefined, false]) {
+    const { routes, sessions } = routeHarness({offscreenStart: value});
+    const route = routes.get('/whale-wallpaper');
+    const response = await call(route, 'POST', '/whale-wallpaper/start', {scene: 'lucy'});
+    assert.equal(response.status, 200);
+    assert.equal(sessions[0].state().config.offscreenStart, value !== false);
+    await call(route, 'POST', '/whale-wallpaper/stop');
+    assert.equal(sessions[0].isClosed(), true);
+  }
+});
+
+test('a verified initially offscreen source is not resized again after capture starts', async () => {
+  const {session, calls, children} = sessionHarness();
+  await session.create({helper: HELPER, output: 'F:\\out', scene: {scene: 'lucy'}, offscreenStart: true});
+  status(children[0].child, {captureSource: 'window'});
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(calls.filter(args => args[0] === '--window-onscreen').length, 1);
+  assert.equal(calls.filter(args => args[0] === '--window-apply').length, 0);
+  assert.equal(session.report().native.tucked.strategy, 'initial-position');
+  await session.stop();
+  assert.equal(session.isClosed(), true);
+});
 
 test('routes accept only constrained actions and reject a second concurrent start', async () => {
   const { routes, sessions } = routeHarness();
@@ -318,7 +347,7 @@ test('an unavailable helper is reported instead of starting', async () => {
     effect(callback) { return callback(); },
     webServer: { register(route) { routes.set(route.path, route); return () => {}; } },
   };
-  registerWallpaperRoutes(ctx, { helper: 'C:\\missing.exe', logRoot: 'F:\\logs', sessionFactory: () => sessionHarness().session, exists });
+  registerWallpaperRoutes(ctx, { helper: 'C:\\missing.exe', logRoot: ROUTE_TEST_ROOT, sessionFactory: () => sessionHarness().session, exists });
   const route = routes.get('/whale-wallpaper');
   const statusResponse = JSON.parse((await call(route, 'GET', '/whale-wallpaper/status')).payload);
   assert.equal(statusResponse.available, false);
@@ -337,7 +366,7 @@ test('unloading the plugin stops the active run', async () => {
   };
   const closeCalls = [];
   const sessions = [];
-  registerWallpaperRoutes(ctx, { helper: HELPER, logRoot: 'F:\\logs',
+  registerWallpaperRoutes(ctx, { helper: HELPER, logRoot: ROUTE_TEST_ROOT,
     sessionFactory: ({ exists: factoryExists }) => {
       const harness = sessionHarness();
       // Record the close so the assertion can check the window really was closed.

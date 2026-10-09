@@ -291,9 +291,23 @@ export function createPreviewSession(options = {}) {
             captureStarted = true;
             const args = ['--window-apply', String(config.window), 'offscreen', '--location', location];
             if (windowPid) args.push('--pid', String(windowPid));
-            helper(args)
-              .then(state => { nativeStatus = { ...nativeStatus, tucked: { visible: state.visible, left: state.left, top: state.top } }; })
-              .catch(error => { nativeStatus = { ...nativeStatus, tuckError: error.message }; failure ??= `Window tuck failed: ${error.message}`; stop(); });
+            (async () => {
+              if (config.offscreenStart) {
+                const area = await helper(['--window-onscreen', String(config.window)]);
+                if (stopRequested) return null;
+                const source = area?.window;
+                if (area?.visibleArea === 0 && source?.hwnd === config.window && source.title === location &&
+                    source.pid === windowPid && source.visible && !source.iconic && !source.cloaked) {
+                  // Already outside the desktop. Repositioning/resizing again inflated the capture
+                  // through DPI virtualization; preserve the actual source size after verification.
+                  return { ...source, strategy: 'initial-position' };
+                }
+              }
+              if (stopRequested) return null;
+              return { ...await helper(args), strategy: 'capture-then-tuck' };
+            })()
+              .then(state => { if (state && !stopRequested) nativeStatus = { ...nativeStatus, tucked: { visible: state.visible, left: state.left, top: state.top, width: state.width, height: state.height, strategy: state.strategy } }; })
+              .catch(error => { if (stopRequested) return; nativeStatus = { ...nativeStatus, tuckError: error.message }; failure ??= `Window tuck failed: ${error.message}`; stop(); });
           }
         } catch { /* keep the last readable status */ }
       }
@@ -374,10 +388,10 @@ export function createPreviewSession(options = {}) {
  *  - when a close cannot be proven, the failed run is retained and reported, so the UI
  *    can say "cleanup failed" instead of showing a false success.
  *
- * `offscreenStart` selects the unverified "open off screen from the first frame" path.
- * It is off by default and only the explicit experiment entry turns it on.
+ * The packaged native helper starts the source at a verified positive screen-external position.
+ * WM_WALLPAPER_OFFSCREEN_START=0 or an explicit false retains the old create/capture/tuck order.
  */
-export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START === '1', onWarn = message => console.warn(message) } = {}) {
+export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message) } = {}) {
   const buildSession = () => sessionFactory({ exists });
 
   let ownership = null;          // { kind: 'start' | 'stop', generation, promise }

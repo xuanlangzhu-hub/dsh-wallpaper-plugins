@@ -14,7 +14,6 @@ using Windows.Storage.Streams;
 // parent's stop command and pipe lifetime.
 // Window lifecycle helpers verify the target identity before any side effect.
 // CLI results use camelCase so scripts read the same field names everywhere.
-const int OffscreenCoordinate = -32000;
 // Daily playback runs indefinitely, so the per-frame log must be bounded: the file keeps
 // the most recent window of records plus a header that states the bound and the totals.
 const int FrameLogCapacity = 1200;
@@ -24,6 +23,7 @@ try
 Native.EnsureDefaultDesktop();
 if (args.Length == 1 && args[0] == "--self-test-pipe") { await FramePipe.Write(Console.OpenStandardOutput(), [255, 216, 255, 217], 7, 1700000000123, 1280, 720, CancellationToken.None); return; }
 if (args.Length == 1 && args[0] == "--window-find") { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.FindProbeWindows(), cliJson)); return; }
+if (args.Length == 1 && args[0] == "--window-screen-physical") { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.PhysicalVirtualScreen(), cliJson)); return; }
 if (args.Length >= 3 && args[0] == "--we-open") {
     string loc = args[1]; string file = args[2];
     int w = args.Length >= 4 && int.TryParse(args[3], out var pw) ? pw : 1280;
@@ -31,7 +31,7 @@ if (args.Length >= 3 && args[0] == "--we-open") {
     // Optional, explicit experiment entry: create the window at an off-screen position
     // instead of moving it there after the first frame. Off unless the caller asks.
     (int X, int Y)? initialPosition = Array.IndexOf(args, "--initial-offscreen") >= 0
-        ? (OffscreenCoordinate, OffscreenCoordinate)
+        ? SourceWindowHelper.InitialOffscreenPosition()
         : null;
     int launchPid = SourceWindowHelper.OpenWallpaper(loc, file, w, h, null, initialPosition);
     Console.WriteLine(JsonSerializer.Serialize(new
@@ -40,7 +40,8 @@ if (args.Length >= 3 && args[0] == "--we-open") {
         location = loc,
         file = SourceWindowHelper.RequireProjectFile(file),
         wePid = launchPid,
-        initialPosition,
+        initialPosition = initialPosition is { } position ? new { x = position.X, y = position.Y } : null,
+        borderlessRequested = initialPosition.HasValue,
         note = "launcher process; the rendering window belongs to the existing wallpaper64 process",
     }));
     return;
@@ -382,6 +383,10 @@ static void SelfTestLifecycle()
     Check("identity: invalid hwnd", true, () => SourceWindowHelper.VerifyTargetIdentity(999));
     Check("identity: missing window for location", true, () => SourceWindowHelper.RequireUniqueProbeWindow("WhaleWallpaperProbe-self-test-absent", 1));
     Check("action: unknown window action", true, () => SourceWindowHelper.ApplyAction(0, "explode"));
+    Check("initial position: outside small desktop", false, () => { if (SourceWindowHelper.InitialOffscreenPosition(new(0,0,1920,1080,1920,1080)).X != 4096) throw new Exception("wrong position"); });
+    Check("initial position: outside wide desktop", false, () => { if (SourceWindowHelper.InitialOffscreenPosition(new(0,0,7680,1080,7680,1080)).X != 7936) throw new Exception("wrong position"); });
+    Check("initial position: invalid bounds", true, () => SourceWindowHelper.InitialOffscreenPosition(new(0,0,0,0,0,0)));
+    Check("initial position: exceeds bound", true, () => SourceWindowHelper.InitialOffscreenPosition(new(0,0,32000,1080,32000,1080)));
 
     var mismatches = cases.Where(c => c.Refused != c.ExpectedRefusal).ToList();
     Console.WriteLine(JsonSerializer.Serialize(new { cases, mismatches = mismatches.Count }, new JsonSerializerOptions { WriteIndented = true }));

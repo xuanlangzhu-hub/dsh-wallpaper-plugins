@@ -54,6 +54,9 @@ public static class SourceWindowHelper
     [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int nIndex);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint SetThreadDpiAwarenessContext(nint context);
+
     public sealed record ScreenBounds(int X, int Y, int Width, int Height, int Right, int Bottom);
 
     /// <summary>Virtual desktop bounds of this session.</summary>
@@ -62,6 +65,29 @@ public static class SourceWindowHelper
         int x = GetSystemMetrics(SM_XVIRTUALSCREEN), y = GetSystemMetrics(SM_YVIRTUALSCREEN);
         int width = GetSystemMetrics(SM_CXVIRTUALSCREEN), height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
         return new ScreenBounds(x, y, width, height, x + width, y + height);
+    }
+
+    /// <summary>Read physical desktop bounds without changing the process or user's DPI settings.</summary>
+    public static ScreenBounds PhysicalVirtualScreen()
+    {
+        var previous = SetThreadDpiAwarenessContext((nint)(-4)); // per-monitor-aware V2
+        if (previous == 0) throw new InvalidOperationException("Cannot read physical desktop bounds.");
+        try { return VirtualScreen(); }
+        finally { SetThreadDpiAwarenessContext(previous); }
+    }
+
+    // This WE build treated a negative initial x/y as the default on-screen origin. A positive
+    // coordinate beyond all monitors was verified instead. Do not confuse DPI-virtualized inspector
+    // coordinates with WE's command-line pixels; retain the existing bounded position contract.
+    public static (int X, int Y) InitialOffscreenPosition()
+        => InitialOffscreenPosition(PhysicalVirtualScreen());
+
+    public static (int X, int Y) InitialOffscreenPosition(ScreenBounds screen)
+    {
+        if (screen.Width <= 0 || screen.Height <= 0) throw new InvalidOperationException("Invalid desktop bounds.");
+        long x = Math.Max(4096L, (long)screen.Right + 256);
+        if (x > 32000) throw new InvalidOperationException("Desktop is too wide for the bounded initial position.");
+        return ((int)x, 0);
     }
 
     /// <summary>How much of the window rect lies on the virtual desktop.</summary>
@@ -270,10 +296,9 @@ public static class SourceWindowHelper
     /// <summary>
     /// Opens this round's wallpaper window.
     ///
-    /// `initialPosition` is the unverified "start off screen" experiment: WE's own
-    /// `-control openWallpaper` accepts x/y, so the window can be created at the
-    /// off-screen coordinates instead of being moved there after the first frame.
-    /// It stays opt-in; the accepted order is create visible, capture, then move.
+    /// `initialPosition` places the visible source outside the desktop before capture.
+    /// Use the positive bounded coordinate selector; negative values were observed to start
+    /// at the default on-screen origin on this WE build. Capture and owned cleanup stay unchanged.
     /// </summary>
     public static int OpenWallpaper(string location, string file, int width = 1280, int height = 720, string? weExe = null, (int X, int Y)? initialPosition = null)
     {
@@ -289,7 +314,9 @@ public static class SourceWindowHelper
             // normal visible attributes; it is only placed outside the virtual screen.
             if (position.X is < -32000 or > 32000 || position.Y is < -32000 or > 32000)
                 throw new ArgumentException("Wallpaper window position is out of range.");
-            args += $" -x {position.X} -y {position.Y}";
+            // Capture only the scene: a smaller preserved window otherwise scales its white title
+            // bar past the DSH title strip. This is WE's window option, not a post-capture style hack.
+            args += $" -x {position.X} -y {position.Y} -borderless";
         }
         return LaunchOnDefaultDesktop(exe, args);
     }
