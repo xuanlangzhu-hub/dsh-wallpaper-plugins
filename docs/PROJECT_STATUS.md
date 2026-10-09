@@ -4,6 +4,10 @@
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
 
+离线工具第二轮最新：[PERF_COMPARE_SECOND_REVIEW.md](PERF_COMPARE_SECOND_REVIEW.md)。DS 27/27 复跑通过，
+旧九故障加控制组 10/10 已修正；独立边界仍见全 null 误报 ready、GPU 族门槛牵连其它有效项/CPU、
+时间字段遗漏、C/D 两边尺寸未知及非连续集合合并。只补 R1–R4，不重做旧修复或进入实机。
+
 离线对比工具最新复审：[PERF_COMPARE_REVIEW.md](PERF_COMPARE_REVIEW.md)。DS 16/16、采样器 25/25 复跑通过，
 但独立输入复现条件/容量/尺寸未阻断差值、覆盖按多 PID 合计、GPU 门槛借 RAM、阶段/集合/时间边界未正确处理；
 尚未通过。只返工 compare/check/README/交付记录，先补具体差值与门槛断言，不进入实机或改生产。

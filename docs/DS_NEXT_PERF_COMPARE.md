@@ -1,5 +1,8 @@
 # 给 DS：只做离线阶段对比工具
 
+第二轮复审优先：[PERF_COMPARE_SECOND_REVIEW.md](PERF_COMPARE_SECOND_REVIEW.md)。旧九项反例与控制组已通过，
+下一轮仅局部补 R1–R4 的未知值、逐行门槛、时间字段与连续段，不重写已修好的 F1–F4。
+
 最新复审优先：[PERF_COMPARE_REVIEW.md](PERF_COMPARE_REVIEW.md)。首轮自检通过，但独立输入发现 F1–F4；
 下一轮按该记录局部返工门槛与输出，原授权范围不变，不进入真实阶段采样。
 
