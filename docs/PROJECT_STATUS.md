@@ -4,6 +4,10 @@
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
 
+下一步准备已写好：[阶段协议](PERF_PHASE_PROTOCOL.md)、[给 DS 的离线小任务](DS_NEXT_PERF_COMPARE.md) 和
+[清单模板](perf-phase-manifest.example.json)。DS 仅补 compare/check 脚本，Codex 审查；正式 A0→B→C→D→A1
+须另约用户。特别区分 WE 共用 PID、采集 cap 与源 FPS、C memory 与 D pipe 的链路差异；目前未实测。
+
 性能工具最新：[PERF_SAMPLER_REPAIR.md](PERF_SAMPLER_REPAIR.md)。Codex 接手修复 PowerShell 解析、CPU delta/null、PID/身份复核、GPU 状态/缺失/部分返回、分段和覆盖；确定性回归与静态接口调查见记录。旧 DS 输出保留为历史证据；当前未找到 Lucy 独立 FPS 限制声明。尚未正式阶段采样、开窗或安装，rc.23 与日常 rc.1 不变。下一步先确定阶段清单和协作时段，不能把 QA 合成通过当作实时性能验收。
 
 最新：[rc.23 验收](RC23_STARTUP_ACCEPTANCE.md)。正坐标屏幕外、核验后避免重复放大、官方 borderless 源；用户确认启动/重新开始无主动闪窗或抢焦点、无白条，动态清楚、缩放/滚动/输入与停止正常。rc.22 白条失败保留。任务栏入口仍有，不称完全隐藏。资源清理、5 配置/9 存储哈希恢复，原 WE/EXE 保留，重开正常。source-only 初筛不当最终 DSH 性能；下一步按 [性能计划](NEXT_SOURCE_PERFORMANCE.md)，或用户选择另做入口隐藏，不重复 R8。以下保留历史。

@@ -2,6 +2,10 @@
 
 2026-10-09，基线 rc.23，日常 rc.1。先读 RC23_STARTUP_ACCEPTANCE.md 与 RC22_STARTUP_REVIEW.md；已避免 DPI 重复放大，不把像素减少称同画质优化。
 
+下一步已拆为 [阶段/进程协议](PERF_PHASE_PROTOCOL.md) 与 [DS 离线对比小任务](DS_NEXT_PERF_COMPARE.md)。
+先完成并审查离线工具，再约用户实机；本轮不自行安装/开窗。清单模板见
+[perf-phase-manifest.example.json](perf-phase-manifest.example.json)，null 身份不得沿用旧 PID 或当实测。
+
 同一 Lucy、最终无边框实际尺寸和 FPS、相同前台/桌面状态，做 A 原桌面 → B 仅独立源 → C 源+采集 → D 完整 DSH → A。每段暖机/采样 30–60 秒，记录当前唯一名字/PID/启动身份、变化帧/实际尺寸；不关原 WE 或全局 pause/stop/mute。
 
 CPU 分清逻辑处理器容量，RAM/显存分开；GPU 按进程/适配器/引擎保留，不把求和称整卡比例。GPU 实例变化时无效 Status 记录/排除，不当零；只用阶段资源存活且有效的样本。Native/JPEG/Node/renderer 分开，时钟/功耗取得才记录，缺失不补造。高引擎比例不直接等于游戏影响或整体负载。

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "state": "template",
+  "runId": null,
+  "candidateVersion": "0.6.0-rc.23",
+  "candidatePackageSha256": null,
+  "sourceCommit": null,
+  "fixedConditions": {
+    "sceneId": "lucy",
+    "projectSha256": null,
+    "wallpaperPropertiesSha256": null,
+    "sourceRenderFps": null,
+    "captureFpsCap": 30,
+    "requestedWindowSize": { "width": 1280, "height": 720 },
+    "powerState": null,
+    "weGlobalSettingsEvidence": null,
+    "dshViewport": null,
+    "dpi": null,
+    "foregroundEvidence": null,
+    "desktopPlaybackEvidence": null
+  },
+  "minimumCoverage": { "cpuIntervals": 5, "cpuValidSeconds": 30, "metricObservations": 5 },
+  "phases": [
+    {
+      "id": "A0", "state": "planned", "samplerReport": "A0/sample.json",
+      "measurement": { "startedAt": null, "endedAt": null },
+      "conditions": null, "processes": [], "unresolvedRoles": ["we", "dsh-app", "dsh-host", "dsh-client", "dsh-gpu"],
+      "sourceWindow": null, "captureMode": null, "captureFrameSize": null,
+      "motion": null, "evidence": []
+    },
+    {
+      "id": "B", "state": "planned", "samplerReport": "B/sample.json",
+      "measurement": { "startedAt": null, "endedAt": null },
+      "conditions": null, "processes": [], "unresolvedRoles": ["we", "dsh-app", "dsh-host", "dsh-client", "dsh-gpu"],
+      "sourceWindow": { "location": null, "hwnd": null, "renderPid": null, "inspectSize": null },
+      "captureMode": null, "captureFrameSize": null, "motion": null, "evidence": []
+    },
+    {
+      "id": "C", "state": "planned", "samplerReport": "C/sample.json",
+      "measurement": { "startedAt": null, "endedAt": null },
+      "conditions": null, "processes": [], "unresolvedRoles": ["we", "capture", "dsh-app", "dsh-host", "dsh-client", "dsh-gpu"],
+      "sourceWindow": { "location": null, "hwnd": null, "renderPid": null, "inspectSize": null },
+      "captureMode": "memory", "captureFrameSize": null, "motion": null, "evidence": []
+    },
+    {
+      "id": "D", "state": "planned", "samplerReport": "D/sample.json",
+      "measurement": { "startedAt": null, "endedAt": null },
+      "conditions": null, "processes": [], "unresolvedRoles": ["we", "capture", "dsh-app", "dsh-host", "dsh-client", "dsh-gpu"],
+      "sourceWindow": { "location": null, "hwnd": null, "renderPid": null, "inspectSize": null },
+      "captureMode": "pipe", "captureFrameSize": null, "motion": null, "evidence": []
+    },
+    {
+      "id": "A1", "state": "planned", "samplerReport": "A1/sample.json",
+      "measurement": { "startedAt": null, "endedAt": null },
+      "conditions": null, "processes": [], "unresolvedRoles": ["we", "dsh-app", "dsh-host", "dsh-client", "dsh-gpu"],
+      "sourceWindow": null, "captureMode": null, "captureFrameSize": null,
+      "motion": null, "evidence": []
+    }
+  ]
+}
