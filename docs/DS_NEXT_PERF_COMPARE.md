@@ -1,5 +1,9 @@
 # 给 DS：只做离线阶段对比工具
 
+任务当前已完成本轮短复审：[PERF_COMPARE_SHORT_REVIEW.md](PERF_COMPARE_SHORT_REVIEW.md)。36/36 与独立
+11/11 通过，R1–R4 不再返工。今天收尾；下一步由 Codex/用户准备实机阶段清单，DS 不自行继续实现/测试。
+以下保留原任务与历史返工要求，不作为继续执行指令。
+
 第二轮复审优先：[PERF_COMPARE_SECOND_REVIEW.md](PERF_COMPARE_SECOND_REVIEW.md)。旧九项反例与控制组已通过，
 下一轮仅局部补 R1–R4 的未知值、逐行门槛、时间字段与连续段，不重写已修好的 F1–F4。
 

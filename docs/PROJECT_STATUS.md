@@ -4,6 +4,10 @@
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
 
+离线工具第三轮短复审：[PERF_COMPARE_SHORT_REVIEW.md](PERF_COMPARE_SHORT_REVIEW.md)。36/36 自检、
+11/11 保留的独立输入及 CLI 正常输出通过，R1–R4 已补齐，今天收尾。明天准备阶段清单及用户协作窗口时段，
+不再重复工具返工；尚无真实五阶段数据，不自行安装/开窗。以下为历史复审结论。
+
 离线工具第二轮最新：[PERF_COMPARE_SECOND_REVIEW.md](PERF_COMPARE_SECOND_REVIEW.md)。DS 27/27 复跑通过，
 旧九故障加控制组 10/10 已修正；独立边界仍见全 null 误报 ready、GPU 族门槛牵连其它有效项/CPU、
 时间字段遗漏、C/D 两边尺寸未知及非连续集合合并。只补 R1–R4，不重做旧修复或进入实机。
