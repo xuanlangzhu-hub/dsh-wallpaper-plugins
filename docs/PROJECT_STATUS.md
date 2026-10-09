@@ -1,10 +1,10 @@
 # 项目状态与接续入口
 
-更新：2026-10-08。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
+更新：2026-10-09。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
 
-性能准备复审最新：[PERF_SAMPLER_REVIEW.md](PERF_SAMPLER_REVIEW.md)。DS 守住未改生产/未启动窗口范围，但采样器未通过：CPU delta/null、相近 PID/复用、GPU 无效项与有效零、精确路径和汇总边界需修；独立源渲染率/质量调查尚缺。合成用例已复现，工具/DS 证据保留未合入。下一轮只修后台回归与静态接口调查，不安装/开窗或开始正式阶段采样。rc.23 验收与日常恢复结论不变。
+性能工具最新：[PERF_SAMPLER_REPAIR.md](PERF_SAMPLER_REPAIR.md)。Codex 接手修复 PowerShell 解析、CPU delta/null、PID/身份复核、GPU 状态/缺失/部分返回、分段和覆盖；确定性回归与静态接口调查见记录。旧 DS 输出保留为历史证据；当前未找到 Lucy 独立 FPS 限制声明。尚未正式阶段采样、开窗或安装，rc.23 与日常 rc.1 不变。下一步先确定阶段清单和协作时段，不能把 QA 合成通过当作实时性能验收。
 
 最新：[rc.23 验收](RC23_STARTUP_ACCEPTANCE.md)。正坐标屏幕外、核验后避免重复放大、官方 borderless 源；用户确认启动/重新开始无主动闪窗或抢焦点、无白条，动态清楚、缩放/滚动/输入与停止正常。rc.22 白条失败保留。任务栏入口仍有，不称完全隐藏。资源清理、5 配置/9 存储哈希恢复，原 WE/EXE 保留，重开正常。source-only 初筛不当最终 DSH 性能；下一步按 [性能计划](NEXT_SOURCE_PERFORMANCE.md)，或用户选择另做入口隐藏，不重复 R8。以下保留历史。
 
