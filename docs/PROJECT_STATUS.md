@@ -4,6 +4,10 @@
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
 
+最新：[静态调查复审](CAPTURE_DEVICE_STATIC_REVIEWED.md)。默认 spawn/env、同一默认设备创建和设备诊断事实可采纳；
+纠正 C 实际 Start-Process、日志顺序、注册表/接线口径与实验推断。下一步只准备同 Node 控制进程、同一窗口、
+有限 memory/pipe 四短轮 V1，尚未执行；不让普通 Node 结果代表正式 Host，不自动扩 V2/改 GPU 设置或 Profile。
+
 最新：[同路径 C/D 验证](CAPTURE_GPU_ALIGNMENT_20261010.md)。两段各 5 样本、错误 0、同 1302×776、
 同安装 helper 路径/EXE/DLL，但直接设备诊断仍 C=Intel、D=RTX 4060。路径并不足以对齐，父环境/模式仍未拆开，
 不继续按路径重复实测。5 配置/9 存储已恢复 rc.1，用户重开正常。下一步仅

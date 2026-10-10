@@ -1,5 +1,8 @@
 # 给 DS：只读核查启动链与默认捕获设备
 
+调查已交付，最新以 [Codex 修订记录](CAPTURE_DEVICE_STATIC_REVIEWED.md) 为准。DS 暂无需继续编码或重写报告；
+下一步控制器由 Codex 准备，另约用户窗口验证。以下为原调查任务。
+
 2026-10-10，先读 [同路径验证结果](CAPTURE_GPU_ALIGNMENT_20261010.md)。本机同 helper 路径/EXE/DLL，
 C 从 PowerShell 启动 memory 选择 Intel，D 从正式 Host 启动 pipe 选择 NVIDIA。父环境与模式还未拆开。
 
