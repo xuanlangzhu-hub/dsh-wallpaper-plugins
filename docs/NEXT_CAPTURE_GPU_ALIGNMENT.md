@@ -1,5 +1,8 @@
 # 下一步：只核验 C/D capture GPU 是否能对齐
 
+本轮已完成，优先读 [结果](CAPTURE_GPU_ALIGNMENT_20261010.md)：同路径仍选不同设备，日常已恢复。
+下一步仅 [静态启动链调查](DS_CAPTURE_DEVICE_INVESTIGATION.md)，不自动重复以下实验。
+
 2026-10-10，接续 [首次五阶段成本初筛](SOURCE_COST_DESKTOP_20261010.md)。日常已恢复 rc.1。
 当前数据不能把 C→D 差异当纯传输/显示增量：相同 EXE/DLL 在不同路径/父进程下的 3D 活动 LUID 不同。
 
