@@ -1,5 +1,9 @@
 # 下一轮：固定质量的源渲染及完整 DSH 成本
 
+2026-10-10 实际进展优先：[首次五阶段结果](SOURCE_COST_DESKTOP_20261010.md)。五阶段已执行并恢复日常，
+下一步仅 [capture GPU 对齐](NEXT_CAPTURE_GPU_ALIGNMENT.md)，不自动重复以下整套流程。C/D 的不同 LUID
+限制了净链路归因；原桌面已是高 3D 基线。以下保留首轮方案。
+
 2026-10-09，基线 rc.23，日常 rc.1。先读 RC23_STARTUP_ACCEPTANCE.md 与 RC22_STARTUP_REVIEW.md；已避免 DPI 重复放大，不把像素减少称同画质优化。
 
 下一步已拆为 [阶段/进程协议](PERF_PHASE_PROTOCOL.md) 与 [DS 离线对比小任务](DS_NEXT_PERF_COMPARE.md)。

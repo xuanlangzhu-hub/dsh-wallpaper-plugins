@@ -1,8 +1,14 @@
 # 项目状态与接续入口
 
-更新：2026-10-09。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
+更新：2026-10-10。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
+
+最新：[五阶段成本初筛](SOURCE_COST_DESKTOP_20261010.md)。真实 A0/B/C/D/A1 共 28 样本、错误 0，C/D 同
+1302×776，D 绘制约 21.49 fps、解码错误 0。基线 WE 同一 3D 引擎已约 84%，不能把播放时近 90% 当全部新增；
+新源工作集约 +0.5 GiB。C/D capture 的活动 LUID 不同，净传输/显示开销仍未隔离；下一步仅
+[同安装 helper 路径/GPU 对齐](NEXT_CAPTURE_GPU_ALIGNMENT.md)，等用户选择时段，不重跑全套或擅改全局 FPS。
+本轮 5 配置/9 存储恢复 rc.1、原 WE/官方 EXE 保留、用户重开正常。比较工具键序误报已修，40 项通过。
 
 离线工具第三轮短复审：[PERF_COMPARE_SHORT_REVIEW.md](PERF_COMPARE_SHORT_REVIEW.md)。36/36 自检、
 11/11 保留的独立输入及 CLI 正常输出通过，R1–R4 已补齐，今天收尾。明天准备阶段清单及用户协作窗口时段，

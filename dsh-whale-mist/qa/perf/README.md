@@ -62,6 +62,10 @@ that exists in only one phase is listed as new or disappeared rather than given 
 
 ## Synthetic regression
 
+Condition objects compare by values, independent of JSON member ordering (including nested objects).
+Array order and value types remain significant. This avoids false condition drift when PowerShell
+and Node serialize the same viewport with different key ordering; real differences still block pairs.
+
 From `dsh-whale-mist`:
 
 ```powershell

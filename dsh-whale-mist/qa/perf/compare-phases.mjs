@@ -43,6 +43,17 @@ const isPlainObject = value => value !== null && typeof value === 'object' && !A
 const isFiniteNumber = value => typeof value === 'number' && Number.isFinite(value);
 const isNonNegativeNumber = value => isFiniteNumber(value) && value >= 0;
 
+// JSON objects have no meaningful member order. Preserve array order and value types while giving
+// condition objects a stable representation, including nested values from different serializers.
+function conditionKey(value) {
+  const normalize = item => {
+    if (Array.isArray(item)) return item.map(normalize);
+    if (isPlainObject(item)) return Object.fromEntries(Object.keys(item).sort().map(key => [key, normalize(item[key])]));
+    return item;
+  };
+  return JSON.stringify(normalize(value));
+}
+
 /** Reads a JSON file and hashes the bytes that were read, so the report can name its own inputs. */
 async function readJson(path, label) {
   let raw;
@@ -687,9 +698,9 @@ function pairGates(from, to, manifest) {
     const valueFrom = from.conditions ? (from.conditions[field] ?? null) : null;
     const valueTo = to.conditions ? (to.conditions[field] ?? null) : null;
     if (valueFrom === null || valueTo === null) { gates.push(`${field} is not evidenced in both phases`); continue; }
-    if (JSON.stringify(valueFrom) !== JSON.stringify(valueTo)) { gates.push(`${field} differs between the phases`); continue; }
+    if (conditionKey(valueFrom) !== conditionKey(valueTo)) { gates.push(`${field} differs between the phases`); continue; }
     const fixed = manifest.fixedConditions ? (manifest.fixedConditions[field] ?? null) : null;
-    if (fixed !== null && JSON.stringify(fixed) !== JSON.stringify(valueFrom)) {
+    if (fixed !== null && conditionKey(fixed) !== conditionKey(valueFrom)) {
       gates.push(`${field} does not match the manifest's fixed condition`);
     }
   }
@@ -1124,7 +1135,7 @@ export async function comparePhases({ manifestPath, outputDir }) {
   const conditionComparison = CONDITION_FIELDS.map(field => {
     const values = phases.map(phase => ({ phase: phase.id, value: phase.conditions ? (phase.conditions[field] ?? null) : null }));
     const present = values.filter(entry => entry.value !== null);
-    const distinct = new Set(present.map(entry => JSON.stringify(entry.value)));
+    const distinct = new Set(present.map(entry => conditionKey(entry.value)));
     const unevidenced = values.filter(entry => entry.value === null).map(entry => entry.phase);
     return {
       field,

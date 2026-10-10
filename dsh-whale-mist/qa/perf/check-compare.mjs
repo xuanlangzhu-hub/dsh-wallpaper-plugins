@@ -1234,6 +1234,48 @@ await check('R4: a contiguous A-B-A run is three segments, not two groups', asyn
 
 // ---------------------------------------------------------------------------------------------
 
+await check('Condition objects with reordered keys remain comparable', async () => {
+  const { result } = await fivePhaseCase('condition-key-order', { onManifest(manifest) {
+    for (const phase of manifest.phases.filter(p => ['D', 'A1'].includes(p.id))) {
+      phase.conditions.dshViewport = { height: 900, width: 1600 };
+    }
+  } });
+  assert.equal(result.status.dataReady, true);
+  assert.equal(result.conditionComparison.find(c => c.field === 'dshViewport').allEqual, true);
+  assert.notEqual(pairOf(result, 'C->D').findings[0].cpu.delta, null);
+});
+
+await check('Nested condition object key order is immaterial', async () => {
+  const { result } = await fivePhaseCase('nested-condition-key-order', { onManifest(manifest) {
+    const base = { quality: { bloom: true, scale: 1 }, rules: [{ type: 'focus', value: 'play' }] };
+    manifest.fixedConditions.weGlobalSettingsEvidence = base;
+    for (const phase of manifest.phases) phase.conditions.weGlobalSettingsEvidence = structuredClone(base);
+    manifest.phases[3].conditions.weGlobalSettingsEvidence = {
+      rules: [{ value: 'play', type: 'focus' }], quality: { scale: 1, bloom: true },
+    };
+  } });
+  assert.equal(result.status.dataReady, true);
+  assert.equal(pairOf(result, 'C->D').gates.passed, true);
+});
+
+await check('Actual viewport value changes still block the comparison', async () => {
+  const { result } = await fivePhaseCase('changed-viewport-value', { onManifest(manifest) {
+    manifest.phases[3].conditions.dshViewport = { height: 900, width: 1601 };
+  } });
+  assert.equal(result.status.dataReady, false);
+  assert.equal(pairOf(result, 'C->D').findings[0].cpu.delta, null);
+});
+
+await check('Condition array order remains significant', async () => {
+  const { result } = await fivePhaseCase('condition-array-order', { onManifest(manifest) {
+    manifest.fixedConditions.weGlobalSettingsEvidence = ['pause fullscreen', 'play window'];
+    for (const phase of manifest.phases) phase.conditions.weGlobalSettingsEvidence = ['pause fullscreen', 'play window'];
+    manifest.phases[3].conditions.weGlobalSettingsEvidence.reverse();
+  } });
+  assert.equal(result.status.dataReady, false);
+  assert.equal(pairOf(result, 'C->D').findings[0].cpu.delta, null);
+});
+
 const failed = results.filter(entry => !entry.ok);
 console.log('');
 console.log(`compare checks: ${results.length - failed.length}/${results.length} passed`);
