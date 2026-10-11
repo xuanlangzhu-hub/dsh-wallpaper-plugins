@@ -149,9 +149,25 @@ try {
     assert(englishOption.includes('Wallpaper Engine'), 'the English option names the experimental source: ' + englishOption);
     assert(englishOption !== 'Wallpaper' && englishOption !== 'Background wallpaper', 'the English option is not the section heading');
     assert(optionText('none') === '无' && optionText('image') === '图片' && optionText('video') === '视频', 'the other source options keep their wording');
-    assert(controls.filter(node => node.props['data-wm-action']).length === 3, 'start, restart and stop controls are present');
-    const scene = controls.find(node => node.props['data-wm-setting'] === 'weScene');
-    assert(scene && scene.props.value === 'lucy', 'the verified scene is the selected one');
+    // The playback group is exactly these three controls; the picker's refresh is a separate
+    // control of its own and must not be counted as one of them.
+    const playbackActions = controls.filter(node => String(node.props['data-wm-action'] ?? '').startsWith('wallpaper-') &&
+      node.props['data-wm-action'] !== 'wallpaper-refresh');
+    assert(playbackActions.length === 3, 'start, restart and stop controls are present');
+    assert(controls.filter(node => node.props['data-wm-action'] === 'wallpaper-refresh').length === 1, 'the list refresh is its own control');
+    // The scene field is a bounded list now: the selected item is announced and the current
+    // picture is a separate statement, so the label never pretends the switch already happened.
+    assert(controls.some(node => node.props['data-wm-selected-scene'] === 'lucy'), 'the selected scene is shown');
+    assert(controls.some(node => Object.hasOwn(node.props, 'data-wm-playing-scene')), 'the playing scene is shown separately');
+    assert(controls.some(node => node.props['data-wm-scene-item'] === 'lucy'), 'the verified sample is listed');
+    // Opening the settings area must ASK for the list, not just peek at the cache: the first mount
+    // goes out with ensure=1 so the Host can perform its first bounded scan.
+    assert(fixture.preview.libraryEnsures >= 1, 'the first open asks the Host to load the list, got ' + JSON.stringify(fixture.preview.libraryCalls));
+    assert(fixture.preview.libraryCalls.some(call => call.ensure === true), 'the first load is an ensure read');
+    const ensureCount = fixture.preview.libraryEnsures;
+    fixture.controls();
+    assert(fixture.preview.libraryEnsures === ensureCount + 1, 'each mount asks again, and the Host answers a cached read');
+    assert(fixture.preview.libraryCalls.every(call => call.refresh === false), 'merely opening the area never forces a rescan');
 
     // 3. R2: the Host answers 503 until the first frame exists; the client must keep waiting
     //    instead of treating the normal startup gap as the end of the run. This block asserts

@@ -8,6 +8,12 @@ const React = {
   createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity) }),
   useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}],
   useSyncExternalStore: (_subscribe, get) => get(), useRef: value => ({ current: value }),
+  // The stub is intentionally not a renderer: the settings component is called once per assertion
+  // batch, so an effect runs once for that call and its cleanup runs immediately. That is enough for
+  // "read the cached list on mount" and "drop a late answer after unmount", which is what the
+  // picker needs; it is not a claim that React scheduling is reproduced here.
+  useEffect: (run, _deps) => { const off = run(); if (typeof off === 'function') off(); },
+  useCallback: (fn, _deps) => fn,
 };
 window.__ModuleLoader__ = { load({ factory }) {
   window.whaleModule = factory(name => name === 'react' ? React : { FishLogo() {} });

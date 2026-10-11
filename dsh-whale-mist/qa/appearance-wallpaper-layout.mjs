@@ -104,6 +104,7 @@ try {
       for (const child of node.children || []) el.append(element(child));
       return el;
     };
+    const assert_ = (value, message) => { if (!value) throw new Error(message); };
     const panel = document.createElement('div');
     panel.id = 'layout-panel';
     panel.style.cssText = 'box-sizing:border-box;padding:0;margin:24px;font-family:"Microsoft YaHei",sans-serif';
@@ -129,8 +130,13 @@ try {
       const start = weRow.querySelector('[data-wm-action="wallpaper-start"]');
       const restart = weRow.querySelector('[data-wm-action="wallpaper-restart"]');
       const stop = weRow.querySelector('[data-wm-action="wallpaper-stop"]');
-      const scene = weRow.querySelector('[data-wm-setting="weScene"]');
+      // The scene field is a bounded list now rather than a select: the container is what has to
+      // stay inside the panel and keep a usable width for its items.
+      const scene = weRow.querySelector('.wm-wallpaper-field-selection');
       const mode = weRow.querySelector('[data-wm-setting="weMode"]');
+      const sceneList = weRow.querySelector('.wm-wallpaper-list');
+      const sceneRefresh = weRow.querySelector('[data-wm-action="wallpaper-refresh"]');
+      assert_(sceneList && sceneRefresh, 'the list and its refresh control are mounted');
       const autoRow = panel.querySelector('.wm-wallpaper-auto-start');
       const autoCopy = autoRow.querySelector('.wm-settings-copy');
       const autoBox = autoRow.querySelector('input[type="checkbox"]');
@@ -150,6 +156,7 @@ try {
       const buttonWidths = buttonRects.map(r => Math.round(r.width));
       results.push({
         viewport: innerWidth,
+        sceneListVisible: Boolean(sceneList && sceneList.getBoundingClientRect().height > 0 && sceneRefresh.getBoundingClientRect().height > 0),
         panelWidth: width,
         weRow: {
           width: Math.round(rect(weRow).width),
@@ -188,7 +195,9 @@ try {
           // Whether the actions share one row, and whether they stack as one full-width column.
           actionRows: new Set(buttonRects.map(r => Math.round(r.top))).size,
           actionColumns: new Set(buttonRects.map(r => Math.round(r.left))).size,
-          actionsRows: new Set([start, restart, stop, scene, mode].map(el => Math.round(rect(el).top))).size,
+          // The three buttons are counted on their own (actionRows below); the two fields may
+          // legitimately take a row each now that the scene field is a bounded list.
+          fieldRows: new Set([scene, mode].map(el => Math.round(rect(el).top))).size,
           controlsInsidePanel: [start, restart, stop, scene, mode].every(el => inside(el, panel, 1)),
           fieldWidths: { start: Math.round(startRect.width), scene: Math.round(rect(scene).width), mode: Math.round(rect(mode).width) },
           // V3: fields and actions are separate groups; the three actions share one row, one
@@ -419,7 +428,7 @@ try {
     assert.ok(entry.weRow.controlsInsidePanel, `${where}: every control stays inside the panel`);
     assert.ok(entry.weRow.clickedStart, `${where}: the start button is the topmost element at its own centre (hit ${entry.weRow.hitTag} at ${JSON.stringify(entry.weRow.startRect)})`);
     assert.ok(entry.weRow.fieldWidths.start >= 40, `${where}: the start button keeps a clickable width`);
-    assert.ok(entry.weRow.fieldWidths.scene >= 40 && entry.weRow.fieldWidths.mode >= 40, `${where}: the selects keep a usable width`);
+    assert.ok(entry.weRow.fieldWidths.scene >= 200 && entry.weRow.fieldWidths.mode >= 40, `${where}: the list keeps a usable width`);
     // V3: the fields and the three actions form two groups, and the actions are one visible,
     // equally sized, full-height row instead of leaving stop alone and transparent.
     assert.ok(entry.weRow.fieldsAreOwnGroup, `${where}: the scene/mode fields are their own group`);

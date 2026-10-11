@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { FrameHub, streamFrames } from './frame-hub.js';
 import { ProbeJournal } from './probe-log.js';
 import { runHelper, waitForWindow, validateLocation, newLocation } from './managed-window.js';
-import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_SIZE, resolveSceneRequest, describeScenes } from './scenes.js';
+import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_SIZE, resolveSceneRequest, describeScenes, sceneSelection, isSceneId } from './scenes.js';
 
 /**
  * Wallpaper Engine preview for the Whale Appearance theme.
@@ -25,7 +25,7 @@ import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_
 
 export const MAX_RUN_DIRECTORIES = 8;
 
-export { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, describeScenes, resolveSceneRequest };
+export { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, describeScenes, resolveSceneRequest, sceneSelection, isSceneId };
 
 /** Resolves the helper and log root from this module's own package location. */
 export function resolveHostResources(moduleUrl = import.meta.url, env = process.env) {
@@ -36,15 +36,31 @@ export function resolveHostResources(moduleUrl = import.meta.url, env = process.
 }
 
 /**
- * Host-side availability. The theme is browser-only outside the official Windows
- * desktop; the preview additionally needs the packaged helper and the local sample.
+ * Host-side availability. The theme is browser-only outside the official Windows desktop; capture
+ * additionally needs the packaged helper.
+ *
+ * This is deliberately ONLY about the machine and the helper. Whether a particular wallpaper can
+ * start is decided per selection (the sample by its own file, a catalogue entry by its restricted
+ * record), so cancelling a subscription to one scene no longer disables every other one.
  */
-export function probeAvailability({ platform = process.platform, env = process.env, helper, scenes = SCENES, exists = existsSync } = {}) {
+export function probeHost({ platform = process.platform, env = process.env, helper, exists = existsSync } = {}) {
   if (platform !== 'win32') return { available: false, reason: 'platform', missing: [] };
   if (!env.LOCALAPPDATA) return { available: false, reason: 'host', missing: [] };
   if (!helper || !exists(helper)) return { available: false, reason: 'helper', missing: [] };
+  return { available: true, reason: '', missing: [] };
+}
+
+/**
+ * Machine readiness plus a per-scene report for the UI. `missing` lists the whitelisted samples whose
+ * files are gone; that is information about those samples, not a verdict on the whole service.
+ * `catalogUsable` lets the Host say that the bounded library also holds a startable scene, so a
+ * machine that unsubscribed the sample still answers "available" for its own list.
+ */
+export function probeAvailability({ platform = process.platform, env = process.env, helper, scenes = SCENES, exists = existsSync, catalogUsable = false } = {}) {
+  const host = probeHost({ platform, env, helper, exists });
+  if (!host.available) return { ...host, missing: [] };
   const missing = Object.values(scenes).filter(scene => !exists(scene.project)).map(scene => scene.id);
-  if (missing.length === Object.keys(scenes).length) return { available: false, reason: 'scene', missing };
+  if (missing.length === Object.keys(scenes).length && !catalogUsable) return { available: false, reason: 'scene', missing };
   return { available: true, reason: '', missing };
 }
 
@@ -81,6 +97,7 @@ export function createPreviewSession(options = {}) {
     sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
     now = Date.now,
     exists = existsSync,
+    sceneResolver = null,
   } = options;
   const hub = new FrameHub();
   const journal = new ProbeJournal();
@@ -185,11 +202,29 @@ export function createPreviewSession(options = {}) {
   async function create({ helper: helperPath, output, scene, offscreenStart = false }) {
     if (cleaning) throw new Error('this playback run has already ended');
     if (config) throw new Error('this session already started a run');
-    const request = resolveSceneRequest(scene ?? {}, { exists });
+    // The selection was already re-verified by the caller against the Host's own snapshot; only the
+    // id and the re-proved project file reach this point, and neither comes from the request body.
+    // The legacy `{ scene, mode }` form is still accepted for a caller that resolved the sample
+    // itself (the contract tests and the pre-library path), and it never carries a catalogue id.
+    const selection = scene && typeof scene === 'object' ? scene : {};
+    const legacyScene = typeof selection.sceneId === 'string' ? null : sceneSelection(selection);
+    const request = resolveSceneRequest(
+      { scene: selection.sceneId ?? legacyScene.sceneId, mode: selection.mode, seconds: selection.seconds },
+      { exists, resolveProject: () => {
+        const project = typeof selection.project === 'string' && selection.project ? selection.project : SCENES.lucy.project;
+        const sceneId = selection.sceneId ?? legacyScene.sceneId;
+        // Only the sample may fall back to the whitelisted project; anything else must carry the
+        // project file the Host just re-verified.
+        if (sceneId !== 'lucy' && !(typeof selection.project === 'string' && selection.project)) throw new Error(`unknown scene: ${String(sceneId)}`);
+        return project;
+      } },
+    );
     config = {
       helper: helperPath,
       output,
-      location: validateLocation(scene?.location ?? newLocation(now())),
+      // The window name is always this round's own. A caller-supplied name is ignored, so a stale
+      // or crafted value can never name somebody else's window.
+      location: validateLocation(newLocation(now())),
       project: request.project,
       mode: request.mode,
       seconds: request.seconds,
@@ -391,22 +426,92 @@ export function createPreviewSession(options = {}) {
  * The packaged native helper starts the source at a verified positive screen-external position.
  * WM_WALLPAPER_OFFSCREEN_START=0 or an explicit false retains the old create/capture/tuck order.
  */
-export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message) } = {}) {
+export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message), library = null, verifyScene = null } = {}) {
   const buildSession = () => sessionFactory({ exists });
+  // The Host's last failure to re-verify a selection, surfaced to the UI instead of being swallowed.
+  let lastSelectionError = null;
 
   let ownership = null;          // { kind: 'start' | 'stop', generation, promise }
   let generation = 0;
+  // Bumped by every EXTERNAL stop and by unloading. A pending start/restart compares it to the value
+  // it captured, so a cancellation that happened during a long verification cannot be forgotten and
+  // the late request cannot pick up the newest ownership and start anyway.
+  let cancelGeneration = 0;
   let session = null;            // live or not-yet-proven-closed run
   let lastCleanup = null;        // last close outcome, kept for the UI and for retrying
   let lastError = '';
 
   const claim = kind => {
-    const token = { kind, generation, promise: null };
+    // The cancellation marker is captured with the token: an external stop or an unload during this
+    // operation makes the token stale even though the operation itself keeps owning the lock.
+    const token = { kind, generation, cancelGeneration, promise: null };
     ownership = token;
     return token;
   };
   const release = token => { if (ownership === token) ownership = null; };
-  const isCurrent = token => generation === token.generation;
+  const isCurrent = token => generation === token.generation && cancelGeneration === token.cancelGeneration;
+
+  /** What the UI may know about the list: counts, health and the verified sample, never a path. */
+  const libraryPayload = () => {
+    if (!library) {
+      return { configured: false, loaded: false, state: 'unconfigured', items: 0, rootsConfigured: 0, rootsAvailable: 0, truncated: false, scannedAt: null, scanMs: null, error: null };
+    }
+    const health = library.health();
+    return {
+      configured: library.roots.length > 0,
+      loaded: library.hasSnapshot(),
+      state: library.hasSnapshot() ? 'ready' : health.state,
+      items: health.items,
+      rootsConfigured: health.rootsConfigured,
+      rootsAvailable: health.rootsAvailable,
+      truncated: health.truncated,
+      scannedAt: health.scannedAt,
+      scanMs: health.scanMs,
+      rootWarnings: health.rootWarnings ?? [],
+      error: health.error,
+    };
+  };
+
+  /**
+   * Re-verify one selection against the Host's own snapshot and files. This runs before any run
+   * resource exists and after the ownership token was taken, so a stop or unload can still
+   * invalidate it; it returns the id, the re-proved project file and the mode, never a path taken
+   * from the request.
+   */
+  /**
+   * The ONLY fields a request may contribute to a start. Everything else in the body (a path, a
+   * project, a pre-verified shape, a window name) is dropped here, so no request field can ever be
+   * mistaken for Host-internal state. The id is normalised by sceneSelection, which refuses a value
+   * that is not a usable id instead of falling back to the sample.
+   */
+  const projectSelectionRequest = body => {
+    const source = body && typeof body === 'object' ? body : {};
+    const projected = {};
+    if (Object.hasOwn(source, 'scene')) projected.scene = source.scene;
+    if (Object.hasOwn(source, 'mode')) projected.mode = source.mode;
+    if (Object.hasOwn(source, 'seconds')) projected.seconds = source.seconds;
+    return projected;
+  };
+
+  const verifySelection = async body => {
+    const selection = sceneSelection(body);
+    // The bounded duration belongs to the caller's request; the Host re-verifies the id, not the clock.
+    const seconds = Number.isInteger(body?.seconds) ? { seconds: body.seconds } : {};
+    // The verified sample is resolved by its own whitelisted project, not by a lookup that could
+    // silently answer for an unknown id. Its own file must exist: a missing sample is refused here
+    // with its own message rather than being confused with "the whole service is unavailable".
+    if (selection.sceneId === 'lucy') {
+      if (!exists(SCENES.lucy.project)) throw new Error(`scene file is missing: lucy`);
+      return { ...selection, ...seconds, project: SCENES.lucy.project };
+    }
+    const verify = verifyScene ?? (library ? id => library.resolveSelection(id) : null);
+    // A well-formed catalogue id is a real selection that this Host cannot resolve, which is a
+    // different answer from a name that is not an id at all. Neither falls back to the sample.
+    if (!verify) throw new Error(`the wallpaper library is not configured, so ${selection.sceneId} cannot be verified`);
+    const verified = await verify(selection.sceneId);
+    if (!verified || verified.sceneId !== selection.sceneId) throw new Error(`the wallpaper library could not verify ${selection.sceneId}`);
+    return { sceneId: selection.sceneId, project: verified.project, mode: selection.mode, ...seconds };
+  };
 
   const statusPayload = (extra = {}) => {
     // A run that reached its time limit or ended on its own has already closed its window;
@@ -416,9 +521,13 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     // even when the run ended by itself and never went through the route's stop path. A
     // caller that already knows the close result passes it explicitly and wins.
     if (session && extra.lastCleanup === undefined) lastCleanup = session.state?.().cleanup ?? lastCleanup;
-    const availability = probeAvailability({ helper, scenes, exists });
+    // A catalogue entry the Host confirmed startable keeps the service available even when the
+    // sample is gone; each whitelisted sample still keeps its own missing-file report.
+    const catalogUsable = Boolean(library && library.publicItems().some(item => item.available === true));
+    const availability = probeAvailability({ helper, scenes, exists, catalogUsable });
     const live = Boolean(session);
     const running = live && session.isClosed?.() !== true;
+    const liveConfig = live ? session.state?.().config ?? null : null;
     return {
       available: availability.available,
       unavailableReason: availability.reason,
@@ -430,12 +539,18 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       active: running,
       // The mode of the run that is actually live, so the UI never shows a countdown for a
       // daily run or a stale mode after a restart.
-      mode: session?.state?.().config?.mode ?? null,
+      mode: liveConfig?.mode ?? null,
+      // The scene the live run is really capturing, taken from this run's own config. The UI must
+      // never present the next selection as if the picture had already switched.
+      activeSceneId: running ? liveConfig?.sceneId ?? null : null,
+      // Bounded catalogue state for the picker. The list itself is a separate, explicit read.
+      library: libraryPayload(),
       // A retained session whose close failed is reported as failed, never as stopped. The
       // caller's own close result (when there is one) decides this instead of stale evidence.
       failed: extra.cleanup ? extra.cleanup.closed !== true : Boolean(lastCleanup && lastCleanup.closed !== true),
       lastCleanup,
       error: extra.error ?? lastError,
+      selectionError: lastSelectionError ? lastSelectionError.message : null,
       session: live ? session.report() : null,
       ...extra,
     };
@@ -496,10 +611,31 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       // after the time limit instead of being refused by a session that no longer runs.
       releaseFinishedSession();
       if (session) throw new Error('a preview is already running or still being cleaned up');
-      const availability = probeAvailability({ helper, scenes, exists });
-      if (!availability.available) throw new Error(`wallpaper engine preview is unavailable: ${availability.reason}`);
-      const request = resolveSceneRequest(body, { scenes, exists });
-      const output = await prepareRunDirectory(logRoot, request.sceneId);
+      // Only the machine and the helper are checked here. The selection is verified below, so a
+      // missing sample file cannot refuse a different wallpaper whose own files are complete.
+      const host = probeHost({ helper, exists });
+      if (!host.available) throw new Error(`wallpaper engine preview is unavailable: ${host.reason}`);
+      // Re-verify the selection against the Host's own snapshot and the files before any run
+      // resource exists. A refusal here is reported, never replaced by the default sample.
+      //
+      // A restart has already verified the next item (before it closed the old run) and stores that
+      // result on its own token, which is Host-internal state. It is NEVER read from the request body:
+      // a request field called `resolveFrom` (or any other "already verified" shape) must not be able
+      // to hand this function a project path, because that would bypass the whole id -> approved-root
+      // resolution the browser is not allowed to perform.
+      let selection = token.verifiedSelection ?? null;
+      if (!selection) {
+        try {
+          selection = await verifySelection(projectSelectionRequest(body));
+          lastSelectionError = null;
+        } catch (error) {
+          lastSelectionError = error;
+          throw error;
+        }
+      }
+      // A stop or unload that arrived during re-verification wins over this start.
+      if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
+      const output = await prepareRunDirectory(logRoot, selection.sceneId);
       await pruneRuns(logRoot);
       // A stop or unload that arrived during preparation wins over this start.
       if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
@@ -507,7 +643,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       session = next;
       token.started = true;
       try {
-        await next.create({ helper, output, scene: body, offscreenStart });
+        await next.create({ helper, output, scene: selection, offscreenStart });
       } catch (error) {
         await next.stop().catch(() => {});
         const result = next.state().cleanup ?? { outcome: 'absent', closed: true };
@@ -540,6 +676,18 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
   };
 
   /**
+   * Close the current run in place, without touching ownership or the cancellation marker.
+   *
+   * A restart calls this while it still owns its token: going through stopNow() would bump the
+   * generation and claim a stop token, and a late restart could then re-claim the newest ownership and
+   * start after the user had already stopped.
+   */
+  const closeRun = async () => {
+    releaseFinishedSession();
+    return closeSession();
+  };
+
+  /**
    * Stop the current run without waiting for an in-flight start.
    *
    * A stop must answer now: waiting for a pending start would look like a hang, and the
@@ -549,6 +697,8 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
    */
   const stopNow = async () => {
     generation += 1;
+    // An external stop is a cancellation for anything that is still verifying a selection.
+    cancelGeneration += 1;
     const pending = ownership;
     const inFlight = pending?.kind === 'start' && pending.started ? pending.promise.catch(() => {}) : null;
     if (!session) {
@@ -580,6 +730,40 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
 
       if (req.method === 'GET' && path === '/whale-wallpaper/status') { send(200, statusPayload()); return; }
 
+      // The bounded library list. `ensure=1` means "I need a list, not just a cache peek": the Host
+      // performs the first bounded scan here, so opening the settings area once really loads the
+      // wallpapers instead of showing an empty cache until the user guesses to press refresh.
+      // Reading with the snapshot already present stays a pure cached read, and concurrent calls
+      // share one scan.
+      if (req.method === 'GET' && path === '/whale-wallpaper/library') {
+        if (!library) { send(200, { ...libraryPayload(), items: [] }); return; }
+        const ensure = new URL(req.url, 'http://localhost').searchParams.get('ensure') === '1';
+        if (ensure && !library.hasSnapshot()) {
+          try {
+            const outcome = await library.refresh();
+            send(200, { ...libraryPayload(), items: library.publicItems(), ensureScan: outcome?.joined !== true });
+          } catch (error) {
+            send(502, { ...libraryPayload(), items: library.publicItems(), ensureScan: false, error: String(error.message ?? error) });
+          }
+          return;
+        }
+        send(200, { ...libraryPayload(), items: library.publicItems(), ensureScan: false });
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/whale-wallpaper/library/refresh') {
+        if (!library) { send(409, { ...libraryPayload(), error: 'the wallpaper library is not configured' }); return; }
+        try {
+          // The answer says whether this caller performed the scan or joined one already running.
+          const outcome = await library.refresh();
+          send(200, { ...libraryPayload(), items: library.publicItems(), joined: outcome?.joined === true });
+        } catch (error) {
+          // A failed refresh keeps the previous list visible; it is reported, not hidden.
+          send(502, { ...libraryPayload(), items: library.publicItems(), error: String(error.message ?? error) });
+        }
+        return;
+      }
+
       if (req.method === 'GET' && path === '/whale-wallpaper/stream') {
         if (!session || session.isClosed?.() === true || !session.hub.latest || session.hub.closed) {
           res.writeHead(503); res.end('Preview unavailable'); return;
@@ -595,10 +779,49 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
         // that window invalidates the token, so the late body can no longer create
         // anything.
         if (ownership) { send(409, statusPayload({ error: 'a wallpaper preview operation is already in progress' })); return; }
+        // A restart takes ownership BEFORE it reads the body and keeps it across the whole
+        // "read body -> verify the next selection -> close the old run -> create the new run"
+        // sequence. It never goes through stopNow(): that would bump the generation and let this late
+        // request claim the newest ownership, which is exactly how a stop during verification used to
+        // be forgotten. The cancellation marker is captured in the token, so a stop or an unload
+        // during the verification makes every later step of this request refuse.
         if (path.endsWith('/restart')) {
-          const stopped = await stopNow();
-          if (!stopped.ok || stopped.payload?.failed === true) { send(409, stopped.payload); return; }
-          if (ownership) { send(409, statusPayload({ error: 'a wallpaper preview operation is already in progress' })); return; }
+          const token = claim('start');
+          token.promise = (async () => {
+            let body;
+            try { body = await readJsonBody(req, 2048); }
+            catch (error) { lastError = error.message; throw error; }
+            if (!body) throw new Error('the request body was not read');
+            if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
+            const host = probeHost({ helper, exists });
+            if (!host.available) throw new Error(`wallpaper engine preview is unavailable: ${host.reason}`);
+            // Verify the NEXT selection before anything is closed: an unusable new item must leave the
+            // current picture playing.
+            const selection = await verifySelection(projectSelectionRequest(body)).catch(error => {
+              lastSelectionError = error;
+              throw error;
+            });
+            lastSelectionError = null;
+            if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
+            // Close the old run in place, still under this token. An unproven close keeps its run and
+            // refuses the new one.
+            const closed = await closeRun();
+            if (closed?.closed !== true && session) {
+              const reason = `Window cleanup incomplete (${closed?.outcome ?? 'unknown'}): ${closed?.error ?? 'no result'}`;
+              lastError = reason;
+              throw new Error(reason);
+            }
+            if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
+            // The verified result stays on this token: Host-internal state, never a request field.
+            // This is the single verification of the new item; the start path below reuses it.
+            token.verifiedSelection = selection;
+            return startWithToken(token, body).promise;
+          })();
+          token.promise.catch(() => {});
+          const outcome = await settle(token);
+          // A cancelled restart is a conflict, not a malformed request.
+          send(outcome.ok ? 200 : 409, outcome.payload);
+          return;
         }
         const token = claim('start');
         // Body reading happens while the token is owned, so this request is visible to a
@@ -645,6 +868,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
   // Cordis awaits a disposer's returned promise, so unloading waits for the real close.
   ctx.effect(() => () => {
     generation += 1;                     // invalidate a start that is still preparing
+    cancelGeneration += 1;               // and any restart that is still verifying its selection
     const pending = ownership;
     // A start whose request body has not been read yet owns nothing, so unloading must not
     // wait for that client; it waits only for a run that has really begun to be built.

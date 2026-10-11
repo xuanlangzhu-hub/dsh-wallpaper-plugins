@@ -12,6 +12,9 @@ export const SCENES = Object.freeze({
     id: 'lucy',
     label: 'Lucy（已验证样例）',
     project: 'E:\\SteamLibrary\\steamapps\\workshop\\content\\431960\\3521337568\\project.json',
+    // The only scene with a supervised real-window acceptance behind it. Everything else the
+    // catalogue lists stays "experimental until the user tries it in a real run".
+    playbackVerified: true,
   }),
 });
 
@@ -39,19 +42,61 @@ export const UNAVAILABLE_REASON = Object.freeze({
 });
 
 /**
+ * The shape of a catalogue id, kept in the pure rules module so the Host and the settings UI agree
+ * without either of them importing the filesystem-backed catalogue.
+ *
+ * It is deliberately only a shape and never a lookup: an id that matches is still unknown until the
+ * Host has resolved it against its own snapshot and re-verified the files.
+ */
+export const CATALOG_ID_PATTERN = /^we-[0-9a-f]{24}$/;
+
+/** True for the verified sample id and for a well-formed catalogue id. */
+export function isSceneId(value) {
+  return value === 'lucy' || CATALOG_ID_PATTERN.test(String(value ?? ''));
+}
+
+/**
+ * The next-selection payload: only these two fields are ever read from the caller.
+ *
+ * An absent scene means the sample (the migration default). A scene that IS present but is not a
+ * usable id is refused here: silently starting the sample instead would hide the bad selection and
+ * play something the user did not choose.
+ */
+export function sceneSelection(payload) {
+  const body = payload && typeof payload === 'object' ? payload : {};
+  if (body.scene === undefined || body.scene === null) return { sceneId: 'lucy', mode: body.mode };
+  if (typeof body.scene !== 'string' || !isSceneId(body.scene)) throw new Error(`unknown scene: ${String(body.scene)}`);
+  return { sceneId: body.scene, mode: body.mode };
+}
+
+/**
  * Constrained frontend payload -> a validated request, or a refusal.
  *
  * Only the scene id, the mode and (in preview mode) the seconds are accepted; nothing
  * else from the caller reaches the capture command. `seconds` is null in daily mode,
  * which is what the capture child turns into its no-timer loop.
  * `exists` is injected so this stays testable and free of filesystem access.
+ *
+ * `resolveProject` is the Host's only route to a real project file. The shipped default
+ * resolves the verified sample; the Host injects a catalogue-backed resolver instead, so a
+ * catalogue id never resolves here on its own and a browser string can never become a path.
  */
-export function resolveSceneRequest(payload, { scenes = SCENES, exists = () => true } = {}) {
+export function resolveSceneRequest(payload, { scenes = SCENES, exists = () => true, resolveProject = null } = {}) {
   const body = payload && typeof payload === 'object' ? payload : {};
   const sceneId = typeof body.scene === 'string' ? body.scene : 'lucy';
-  const scene = scenes[sceneId];
-  if (!scene) throw new Error(`unknown scene: ${sceneId}`);
-  if (!exists(scene.project)) throw new Error(`scene file is missing: ${sceneId}`);
+  let project;
+  if (resolveProject) {
+    // The Host resolver owns both the lookup and the boundary check; it throws for anything it
+    // cannot re-verify, and this function never falls back to Lucy to hide that refusal.
+    if (!isSceneId(sceneId)) throw new Error(`unknown scene: ${sceneId}`);
+    project = resolveProject(sceneId);
+  } else {
+    const scene = scenes[sceneId];
+    if (!scene) throw new Error(`unknown scene: ${sceneId}`);
+    if (!exists(scene.project)) throw new Error(`scene file is missing: ${sceneId}`);
+    project = scene.project;
+  }
+  if (typeof project !== 'string' || project === '') throw new Error(`unknown scene: ${sceneId}`);
   const mode = body.mode === undefined ? DEFAULT_PLAYBACK_MODE : body.mode;
   if (typeof mode !== 'string' || !PLAYBACK_MODES.includes(mode)) throw new Error(`unknown mode: ${String(mode)}`);
   let seconds = null;
@@ -62,10 +107,10 @@ export function resolveSceneRequest(payload, { scenes = SCENES, exists = () => t
     // A daily request has no timer; accepting a duration would silently recreate one.
     throw new Error('daily mode does not take a duration');
   }
-  return { sceneId, mode, project: scene.project, seconds, width: WINDOW_SIZE.width, height: WINDOW_SIZE.height, fps: FPS };
+  return { sceneId, mode, project, seconds, width: WINDOW_SIZE.width, height: WINDOW_SIZE.height, fps: FPS };
 }
 
 /** Scene list for the UI, with the local sample dependency made explicit. */
 export function describeScenes({ scenes = SCENES, exists = () => true } = {}) {
-  return Object.values(scenes).map(scene => ({ id: scene.id, label: scene.label, available: exists(scene.project), project: scene.project }));
+  return Object.values(scenes).map(scene => ({ id: scene.id, label: scene.label, available: exists(scene.project), project: scene.project, playbackVerified: scene.playbackVerified === true }));
 }

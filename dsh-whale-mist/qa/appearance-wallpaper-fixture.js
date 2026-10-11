@@ -51,6 +51,15 @@ fixture.resetWallpaperPreview = () => {
   preview.failRestart = false;
   preview.mode = 'preview';
   preview.notReadyUntil = 0;
+  // The library answers: a first open asks with ensure=1 and really gets items, later opens and
+  // refreshes are cache hits unless a check scripts otherwise.
+  preview.libraryItems = [];
+  preview.libraryScript = 'ok';
+  preview.libraryQueries = 0;
+  preview.libraryEnsures = 0;
+  preview.libraryCalls = [];
+  preview.libraryScanned = false;
+  preview.libraryTruncated = false;
   // Readiness answers for the host. `statusFixed` answers that way for the whole check (a host
   // that never becomes readable); `statusMode` answers that way only before `statusReadyAt`,
   // which is how a recovery is observed. A fresh host starts ready.
@@ -118,6 +127,25 @@ fixture.wallpaperHost = (options = {}) => {
         return json(200, { ...hostStatus(), available: false, unavailableReason: 'host', active: false });
       }
       return json(200, hostStatus());
+    }
+    if (path.startsWith('/whale-wallpaper/library')) {
+      preview.libraryQueries = (preview.libraryQueries ?? 0) + 1;
+      const refresh = path.includes('/refresh') || (init.method || 'GET') === 'POST';
+      const ensure = path.includes('ensure=1');
+      if (ensure) preview.libraryEnsures = (preview.libraryEnsures ?? 0) + 1;
+      preview.libraryCalls = [...(preview.libraryCalls ?? []), { refresh, ensure }];
+      // `libraryScript` lets a check script the answer: 'ok' (default), 'fail' or 'empty'.
+      const mode = preview.libraryScript || 'ok';
+      if (mode === 'fail') return json(502, { items: [], state: 'failed', loaded: false, error: 'fixture library failure' });
+      const items = mode === 'empty' ? [] : (preview.libraryItems ?? []);
+      return json(200, {
+        items, state: 'ready', loaded: true, truncated: preview.libraryTruncated === true,
+        scannedAt: new Date().toISOString(), scanMs: 4, error: null,
+        rootsConfigured: 1, rootsAvailable: mode === 'empty' ? 0 : 1,
+        rootWarnings: mode === 'empty' ? [{ reason: 'root_unavailable' }] : [],
+        ensureScan: ensure && preview.libraryScanned !== true,
+        joined: refresh && preview.libraryScanned === true,
+      });
     }
     if (path.startsWith('/whale-wallpaper/metrics')) { preview.metrics.push(JSON.parse(init.body)); return new Response(null, { status: 204 }); }
     if (path.startsWith('/whale-wallpaper/stop')) {

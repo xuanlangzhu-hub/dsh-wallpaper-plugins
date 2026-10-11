@@ -2,9 +2,13 @@
 
 为官方 DeepSeek Harness 开发的 Whale Appearance / 鲸系外观插件，提供鲸渊、鲸雾主题、自定义配色、图片和视频背景，以及 Wallpaper Engine 实验预览。
 
-主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。当前源码候选版为 **0.6.0-rc.23**：正坐标屏幕外无边框启动，核验后不重复放大；[正式 Desktop 短验](docs/RC23_STARTUP_ACCEPTANCE.md)确认人工启动/重新开始无主动闪窗或抢焦点、白条消失、动态与操作正常。任务栏入口仍存在。rc.21 的消息闪字修复保留，rc.13 单 Lucy 35 分钟及生命周期曾验收。本轮候选已撤回，日常恢复 rc.1；GPU 完整成本与进一步优化按 [下一轮计划](docs/NEXT_SOURCE_PERFORMANCE.md)。
+主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。本机日常安装包 **0.6.0-rc.24** 是 rc.23 的日常试用整理版，播放代码与原生资产相同，未合入选卡 QA 包装。用户选择保留 rc.24，自动播放关闭；[试用交接](docs/RC24_DAILY_TRIAL.md)记录包、验收、引用和回退边界。
 
-已实施 [B：日常持续播放](docs/NEXT_B_DAILY_PLAYBACK.md) 并验收核心生命周期，见 [rc.13](docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)；最新启动观察以 rc.23 为准。源场景 3D 引擎初筛仍偏高，未测最终完整 DSH/功耗和游戏影响，不宣称通用稳定版或低开销。
+工作区另已完成壁纸库与最小选择入口的[后台审查](docs/WALLPAPER_SELECTION_FINAL_REVIEW_20261011.md)：受限列表/刷新、按ID手动开始/切换、不可用原因与选择持久化。尚未打包或做多壁纸实机验收；当前package版本仍24，不能直接同版本重打覆盖活动包，下一候选必须另取新版本。
+
+[rc.23 短验](docs/RC23_STARTUP_ACCEPTANCE.md)确认无主动闪窗/抢焦点、顶部白条消失、动态与操作正常；rc.21 消息闪字修复保留，rc.13 单 Lucy 35 分钟与生命周期曾验收。任务栏入口仍存在。[GPU 四段对照](docs/DISPLAY_ADAPTER_COST_RESULT_20261010.md)已结束：33 样本、两卡同约21.5fps、解码错误0；继续保留用户当前独显状态，不宣称功耗/游戏收益，也不修改系统设置。
+
+已实施日常持续播放并验收核心生命周期，见 [rc.13](docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)；最新启动观察以 rc.23 为准。真实 DSH 显示的 GPU 对照已完成，源渲染仍是成本重点；数小时/数天、功耗、游戏及多壁纸未验收，不宣称通用稳定版或低开销。
 
 ## 功能与当前边界
 
@@ -13,7 +17,7 @@
 - 官方 Windows Desktop 的透明白鲸运行时窗口图标。
 - Wallpaper Engine 原始渲染 → Windows Graphics Capture → 内存画面流 → DSH 背景层。
 
-Wallpaper Engine 部分仍限于单 **Lucy** 场景。默认限时预览为 180 秒、最多 300 秒；候选版新增无定时结束的日常模式与默认关闭的下次启动自动播放，后两者的本机单场景核心行为已验收。需要已安装的 Wallpaper Engine、对应场景与 .NET 10 运行时。场景路径由 Host 的 `src/wallpaper/scenes.js` 白名单配置，仓库不包含壁纸本体。
+已安装rc.24的 Wallpaper Engine 部分仍限于单 **Lucy** 场景。默认限时预览180秒、最多300秒；日常模式与默认关闭的下次启动自动播放，其本机单场景核心行为已验收。需要已安装的 Wallpaper Engine、对应场景与 .NET 10 运行时。工作区A2由Host显式配置库根、按ID重新核验scene；只有Lucy有实机验收，其它scene只允许手动实验。仓库不包含壁纸本体。
 
 源窗口收在屏幕外，任务栏 / Alt-Tab 仍可能显示入口。音频、鼠标交互、其它壁纸兼容性、数小时/数天运行尚未验收，.NET 10 依赖保留。
 

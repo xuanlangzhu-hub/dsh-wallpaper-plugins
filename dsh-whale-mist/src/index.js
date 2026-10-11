@@ -3,6 +3,16 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerWallpaperRoutes, resolveHostResources, describeScenes, probeAvailability } from './wallpaper/session.js';
+import { createWallpaperLibrary } from './wallpaper/library.js';
+
+/**
+ * The only library roots this Host will read. They are explicit absolutes configured here, never a
+ * request value and never a disk search. A machine without the Steam library simply gets an empty,
+ * clearly-reported list instead of a scan of unrelated directories.
+ */
+export const WALLPAPER_LIBRARY_ROOTS = Object.freeze([
+  'E:\\SteamLibrary\\steamapps\\workshop\\content\\431960',
+]);
 
 /**
  * Host service dependencies. Cordis refuses to read an undeclared service
@@ -85,7 +95,11 @@ function registerWallpaper(ctx) {
       console.warn('[Whale wallpaper] playback unavailable:', availability.reason,
         `scenes: ${describeScenes().filter(scene => scene.available).map(scene => scene.id).join(', ') || 'none'}`);
     }
-    registerWallpaperRoutes(ctx, resources);
+    // The library is built here so the approved roots come from Host configuration and the routes
+    // only ever see ids. An unusable root is reported by the list itself, not by throwing: the
+    // appearance UI and the verified sample must keep working.
+    const library = createWallpaperLibrary({ roots: WALLPAPER_LIBRARY_ROOTS });
+    registerWallpaperRoutes(ctx, { ...resources, library });
   } catch (error) {
     console.warn('[Whale wallpaper] setup failed:', error.message);
   }

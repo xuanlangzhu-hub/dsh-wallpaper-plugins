@@ -1,8 +1,49 @@
 # 项目状态与接续入口
 
-更新：2026-10-10。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
+更新：2026-10-11。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
+
+A2当前：[源码与后台审查通过](WALLPAPER_SELECTION_FINAL_REVIEW_20261011.md)，F1–F4/R1/R2/R3已闭合。
+catalog16/Host85/check/SDK和独立反例通过；列表/刷新/选择播放已接入工作区，尚未打包或实机，日常rc.24保留。
+此前三份复审单只记录历史返工，不再是待执行任务；DS暂无新编码任务。
+
+## 当前状态：rc.24 短验通过，用户保留作日常试用
+
+后续产品需求见 [路线图](PRODUCT_ROADMAP_20261011.md)：壁纸库/选择、入口隐藏、原壁纸公开参数、主题预设和独立选择器。
+第一小步 [只读库登记](CATALOG_DELIVERY_20261011.md)已完成，16/16离线检查；本机26记录中14个scene满足登记条件，
+不表示播放已验证。Profile/日常rc.24包未动；A2已完成后台审查，下一步另备新候选并协作第二张scene短验，不覆盖当前日常rc.24。
+
+下一轮交 DS 编码的具体范围已写入 [A2 最小选择任务](DS_NEXT_WALLPAPER_SELECTION.md)。
+本轮源码与离线审查已完成，选中不启动、重新开始才切换；缩略图、隐藏入口和完整选择器后置，实机另约用户。
+
+rc.24 仅更新版本/说明，26文件除README/package版本外与rc.23相同；不合入 QA 选卡包装。
+核包/check/Host48通过，正式短验用户确认显示/输入/滚动/缩放/模型控件、再次开始/重启/停止正常；三轮最终清理。
+第三轮一度仍运行是用户忘记最终停止，已由用户更正并核最终闭合，不记为插件清理bug。
+用户选择保留rc.24作日常试用，自动播放关闭；当前Profile引用release/plugins内rc.24 tgz，必须保留。
+旧rc.1/备份/原WE/官方EXE保留。本轮没有恢复rc.1；[本轮交接](RC24_DAILY_TRIAL.md)优先。
+GPU 调查已结束，保持当前独显状态，不再重复五阶段/35分钟或修改全局 GPU/FPS。
+
+以下为按时间保留的历史记录；旧“下一步/待执行”不表示当前任务。
 
 ## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
+
+最新：[实际背景四段选卡对照](DISPLAY_ADAPTER_COST_RESULT_20261010.md)完成：33样本、错误0、条件/尺寸一致、前台正常，
+双卡同约21.5fps，无解码错误；独显捕获CPU较低但自身漂移明显，不作功耗/游戏或普遍优劣结论。
+保留当前独显路线；QA已撤回、5配置/9外观恢复rc.1、原WE/官方EXE/accepted资产保留，用户重开正常。
+GPU调查收束，下一步产品收尾/明确功能，不自动追加实测、改全局FPS/GPU或落实验wrapper。
+
+最新：[显式选卡短验](EXPLICIT_ADAPTER_RESULT_20261010.md)完成：同真实 Host/源/独立 QA helper，
+Intel 与 RTX4060 各 8 秒实际 LUID 匹配、正常动态出帧/尺寸一致、首尾 JPEG 正常；不作成本优劣结论。
+QA 已移除，5配置/9外观、日常 rc.1/原WE/官方EXE恢复，用户重开正常，accepted 原生源码/资产未变。
+下一步先准备含真实背景显示的窄成本对照，不改全局 GPU/生产默认，不自动安装或实测。
+
+最新：[真实 Host 同 pipe 对照](CAPTURE_CONTEXT_RESULT_20261010.md)完成：同源/同 helper/capture cwd 与参数，
+Node 两轮 Intel、正式 Host 两轮 RTX4060，帧尺寸一致、duration/exit0/错误0。只证明受测上下文能复现，
+不归因某个环境变量。用户无弹窗/抢焦点，QA 已移除，5配置/9外观恢复、原WE/EXE保留，重开日常正常。
+下一步优先评估进程内显式适配器选择的受限 QA 方案，不改全局 GPU，不自动实测或覆盖 rc.23 helper。
+
+最新：[V1 实测](CAPTURE_MODE_V1_20261010.md)四轮均 Intel，本次 Node 条件中 mode 单独切换未复现；用户报告弹窗/抢焦点。
+下午 [真实 Host 最小对照准备](CAPTURE_CONTEXT_PLAN_20261010.md)已完成 QA 工具、9/9+13/13 隔离检查和本机包；
+尚未安装或执行。日常 rc.1 未动，实际操作另约用户，不改 GPU 设置。
 
 最新：[静态调查复审](CAPTURE_DEVICE_STATIC_REVIEWED.md)。默认 spawn/env、同一默认设备创建和设备诊断事实可采纳；
 纠正 C 实际 Start-Process、日志顺序、注册表/接线口径与实验推断。下一步只准备同 Node 控制进程、同一窗口、

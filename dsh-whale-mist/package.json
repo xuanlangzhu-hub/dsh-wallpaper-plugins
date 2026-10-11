@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-mist",
-  "version": "0.6.0-rc.23",
+  "version": "0.6.0-rc.24",
   "description": "Whale Mist and Whale Abyss themes for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "./src/index.js",
@@ -46,7 +46,7 @@
     "README.md"
   ],
   "scripts": {
-    "check": "node --check src/index.js && node --check src/client.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js && node qa/css-template-guard.mjs",
+    "check": "node --check src/index.js && node --check src/client.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js && node --check src/wallpaper/catalog.js && node --check src/wallpaper/library.js && node qa/css-template-guard.mjs",
     "build:client-protocol": "node scripts/build-wm-protocol.mjs",
     "build:desktop-icon": "powershell.exe -NoProfile -File scripts/build-desktop-icon.ps1",
     "test:appearance": "node qa/appearance-regression.mjs",

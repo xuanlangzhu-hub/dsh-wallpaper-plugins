@@ -319,6 +319,12 @@ test('routes accept only constrained actions and reject a second concurrent star
   const firstStop = await call(route, 'POST', '/whale-wallpaper/stop');
   assert.equal(firstStop.status, 200, firstStop.payload);
 
+  // A forged-but-well-formed catalogue id is refused by the Host, and a name that is not an id at
+  // all never reaches a lookup: both are reported, neither falls back to the verified sample.
+  const forged = await call(route, 'POST', '/whale-wallpaper/start', { scene: 'we-000000000000000000000000' });
+  assert.equal(forged.status, 409);
+  assert.match(JSON.parse(forged.payload).error, /library|verify/i);
+
   const rejected = await call(route, 'POST', '/whale-wallpaper/start', { scene: 'nope' });
   assert.equal(rejected.status, 409);
   assert.match(JSON.parse(rejected.payload).error, /unknown scene/);

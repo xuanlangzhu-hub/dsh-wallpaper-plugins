@@ -83,8 +83,21 @@ window.__ModuleLoader__.load({
       /** `daily` is the daily-driver mode; `preview` is the supervised time-boxed one. */
       weMode: Object.freeze(["daily", "preview"])
     });
-    /** Scene ids come from the Host whitelist; a stale stored value falls back to Lucy. */
-    const WALLPAPER_SCENES = Object.freeze(["lucy"]);
+    /**
+     * Scene ids come from the Host whitelist; a stale stored value falls back to Lucy.
+     *
+     * This list is only the set of ids with a supervised acceptance behind them, so it decides what
+     * may be called "verified". Every other id the Host can resolve is an experimental selection and
+     * never part of it.
+     */
+    const VERIFIED_SCENE_IDS = Object.freeze(["lucy"]);
+    /**
+     * The shape of a catalogue id, mirrored from the Host rules so a stored selection survives a
+     * reload before the list has loaded. This is only a syntax check: whether the item still exists
+     * and is playable is decided by the Host, which is the only side allowed to look at files.
+     */
+    const CATALOG_ID_PATTERN = /^we-[0-9a-f]{24}$/;
+    const isSceneId = (value) => value === "lucy" || (typeof value === "string" && CATALOG_ID_PATTERN.test(value));
     /**
      * The migration default, matching the Host (`DEFAULT_PLAYBACK_MODE = 'preview'`): an older
      * stored setting that predates the mode field stays a time-boxed preview until the user
@@ -126,7 +139,10 @@ window.__ModuleLoader__.load({
           allowed.includes(source[key]) ? source[key] : DEFAULT_SETTINGS[key]
         ])),
         ...Object.fromEntries(Object.keys(RANGE_SETTINGS).map((key) => [key, clampRange(key, source[key])])),
-        weScene: WALLPAPER_SCENES.includes(source.weScene) ? source.weScene : DEFAULT_SETTINGS.weScene,
+        // A well-formed catalogue id is kept even before the list has loaded: normalizing it away
+        // would silently replace the user's wallpaper with the sample. The Host still refuses an id
+        // it cannot re-verify, so this keeps the choice without granting it.
+        weScene: isSceneId(source.weScene) ? source.weScene : DEFAULT_SETTINGS.weScene,
         // Opt-in flags: only an explicit boolean true turns one on.
         ...Object.fromEntries(BOOLEAN_SETTINGS.map((key) => [key, source[key] === true]))
       };
@@ -635,6 +651,48 @@ window.__ModuleLoader__.load({
         return { ok: response.ok, payload };
       }
 
+      /**
+       * Read the bounded wallpaper list. Only the id, the title (plain text), the type, the
+       * availability and a short reason reach this side; the Host never sends a path.
+       * `refresh: true` asks the Host to rescan; everything else is a cached read and never
+       * starts, stops or rescans anything.
+       */
+      async function readLibrary({ refresh = false, ensure = false, signal = null } = {}) {
+        const path = refresh ? "/whale-wallpaper/library/refresh" : ensure ? "/whale-wallpaper/library?ensure=1" : "/whale-wallpaper/library";
+        const response = await fetchImpl(path,
+          { method: refresh ? "POST" : "GET", cache: "no-store", ...(signal ? { signal } : {}) });
+        const payload = await response.json().catch(() => null);
+        const items = Array.isArray(payload?.items) ? payload.items.map(cleanLibraryItem).filter(Boolean) : [];
+        return {
+          ok: response.ok,
+          items,
+          state: typeof payload?.state === "string" ? payload.state : "failed",
+          loaded: payload?.loaded === true,
+          ensureScan: payload?.ensureScan === true,
+          truncated: payload?.truncated === true,
+          scannedAt: typeof payload?.scannedAt === "string" ? payload.scannedAt : null,
+          error: typeof payload?.error === "string" ? payload.error : (response.ok ? "" : `library-${response.status}`),
+          rootsConfigured: Number.isInteger(payload?.rootsConfigured) ? payload.rootsConfigured : 0,
+          rootsAvailable: Number.isInteger(payload?.rootsAvailable) ? payload.rootsAvailable : 0,
+          rootWarnings: Array.isArray(payload?.rootWarnings) ? payload.rootWarnings.map(entry => String(entry?.reason ?? "")).filter(Boolean) : [],
+        };
+      }
+
+      /** Keep only the fields the UI is allowed to show, and never treat a title as markup. */
+      function cleanLibraryItem(raw) {
+        if (!raw || typeof raw !== "object") return null;
+        if (!isSceneId(raw.id)) return null;
+        return {
+          id: raw.id,
+          title: typeof raw.title === "string" ? raw.title.slice(0, 200) : raw.id,
+          type: ["scene", "video", "web", "unknown"].includes(raw.type) ? raw.type : "unknown",
+          available: raw.available === true,
+          // Anything the Host did not mark as verified stays experimental, whatever the field says.
+          playbackVerified: raw.playbackVerified === true && raw.id === "lucy",
+          reason: typeof raw.reason === "string" ? raw.reason : null,
+        };
+      }
+
       const invalidate = () => { generation += 1; return generation; };
 
       const stop = (reason = "user", { bump = true } = {}) => {
@@ -792,6 +850,7 @@ window.__ModuleLoader__.load({
         },
         stop,
         snapshot,
+        readLibrary,
         /** Last close result reported by the Host, or null when nothing was closed yet. */
         lastCleanup: () => lastCleanup,
         dispose() {
@@ -1544,6 +1603,39 @@ window.__ModuleLoader__.load({
       // A control-level failure (the action itself refusing to run) is shown in the status
       // row, so the buttons can be used again without hiding what went wrong.
       const [previewActionError, setPreviewActionError] = React.useState("");
+      // The bounded wallpaper list. It is read on demand (the settings panel opening) and on an
+      // explicit refresh; a status poll, a frame or a re-render never scans the library.
+      const [library, setLibrary] = React.useState(() => ({ items: [], state: "idle", loaded: false, loading: false, truncated: false, error: "", scannedAt: null, rootWarnings: [] }));
+      const libraryRequest = React.useRef(0);
+      const libraryAbort = React.useRef(null);
+      const mounted = React.useRef(true);
+      React.useEffect(() => () => {
+        mounted.current = false;
+        libraryAbort.current?.abort?.();
+      }, []);
+      const loadLibrary = React.useCallback(async (refresh = false) => {
+        const request = ++libraryRequest.current;
+        libraryAbort.current?.abort?.();
+        const controllerForRead = typeof AbortController === "function" ? new AbortController() : null;
+        libraryAbort.current = controllerForRead;
+        setLibrary(current => ({ ...current, loading: true }));
+        try {
+          // Opening the area asks for a list, not just a cache peek: `ensure` lets the Host perform
+          // the first bounded scan. With a snapshot already present the Host answers from the cache,
+          // so reopening the area does not walk the library again.
+          const payload = await controller.wallpaper.readLibrary({ refresh, ensure: !refresh, signal: controllerForRead?.signal });
+          // A late answer from a superseded read (or an unmounted panel) must not replace the
+          // current list.
+          if (!mounted.current || request !== libraryRequest.current) return;
+          setLibrary({ ...payload, loading: false });
+        } catch (error) {
+          if (!mounted.current || request !== libraryRequest.current) return;
+          setLibrary(current => ({ ...current, loading: false, state: "failed", error: String(error?.message || "library-failed") }));
+        }
+      }, [controller]);
+      // On-demand load: opening the settings area loads the list once (scanning on the first open
+      // and reading the cache afterwards); it never starts or stops playback.
+      React.useEffect(() => { loadLibrary(false); }, [loadLibrary]);
       const inputs = React.useRef({});
       const chinese = (navigator.language || "").toLowerCase().startsWith("zh");
       const copy = chinese ? {
@@ -1580,9 +1672,31 @@ window.__ModuleLoader__.load({
         image: "图片",
         video: "视频",
         wallpaperEngine: "Wallpaper Engine（实验）",
-        wallpaperEngineHint: "只支持已验证的 Lucy 场景；日常模式持续播放，直到你停止或退出",
-        scene: "场景",
-        sceneHint: "首版只接入本机已验证的样例工程",
+        wallpaperEngineHint: "从本机已登记的壁纸里选择；只有 Lucy 经过实机验收，其它场景属于实验播放",
+        scene: "壁纸列表",
+        sceneHint: "只列出本机工坊里已登记的项目，点击选中；不可用项会说明原因",
+        sceneRefresh: "刷新壁纸列表",
+        sceneRefreshing: "正在扫描…",
+        sceneEmpty: "没有登记到壁纸。确认工坊目录存在后刷新",
+        sceneLoading: "正在读取列表…",
+        sceneLoadFailed: "列表读取失败",
+        sceneUnconfigured: "本机未配置壁纸库目录",
+        sceneTruncated: "列表已达到扫描上限，只显示部分结果",
+        sceneRootMissing: "配置的壁纸目录不可用",
+        sceneVerified: "已验证样例",
+        sceneExperimental: "未验证，实验播放",
+        sceneUnavailable: "不可用",
+        sceneReasonUnsupported: "本版本只播放 scene",
+        sceneReasonUnknownType: "类型未知",
+        sceneReasonMissing: "文件登记不完整",
+        sceneReasonUnsafe: "路径不安全",
+        sceneReasonOther: "不可播放",
+        selectedItem: "本次选择",
+        playingItem: "当前播放",
+        notPlaying: "未播放",
+        selectedUnavailable: "所选壁纸已不可用",
+        selectedPending: "正在等待列表确认所选壁纸，确认前不能开始",
+        autoStartSkipped: "未验证的壁纸不会自动播放，请手动点「开始播放」",
         playMode: "播放模式",
         modeDaily: "日常（持续播放）",
         modePreview: "预览（限时）",
@@ -1677,9 +1791,31 @@ window.__ModuleLoader__.load({
         image: "Image",
         video: "Video",
         wallpaperEngine: "Wallpaper Engine (experimental)",
-        wallpaperEngineHint: "Verified Lucy scene only; daily mode keeps playing until you stop it or exit",
-        scene: "Scene",
-        sceneHint: "This first version wires up the one verified local sample",
+        wallpaperEngineHint: "Pick from the wallpapers registered on this machine; only Lucy has a supervised acceptance, everything else is experimental",
+        scene: "Wallpapers",
+        sceneHint: "Lists the projects registered in the local workshop folder; click to select, unavailable items say why",
+        sceneRefresh: "Refresh list",
+        sceneRefreshing: "Scanning…",
+        sceneEmpty: "No wallpaper registered. Check the workshop folder and refresh",
+        sceneLoading: "Reading the list…",
+        sceneLoadFailed: "The list could not be read",
+        sceneUnconfigured: "No wallpaper library folder is configured",
+        sceneTruncated: "The list hit the scan limit and shows only part of the result",
+        sceneRootMissing: "A configured wallpaper folder is unavailable",
+        sceneVerified: "Verified sample",
+        sceneExperimental: "Unverified, experimental",
+        sceneUnavailable: "Unavailable",
+        sceneReasonUnsupported: "This version only plays scenes",
+        sceneReasonUnknownType: "Unknown type",
+        sceneReasonMissing: "Incomplete file registration",
+        sceneReasonUnsafe: "Unsafe path",
+        sceneReasonOther: "Not playable",
+        selectedItem: "Next selection",
+        playingItem: "Now playing",
+        notPlaying: "Nothing",
+        selectedUnavailable: "The selected wallpaper is no longer available",
+        selectedPending: "Waiting for the list to confirm this wallpaper; it cannot start yet",
+        autoStartSkipped: "Unverified wallpapers never start automatically; use Start playing",
         playMode: "Playback",
         modeDaily: "Daily (continuous)",
         modePreview: "Preview (time-boxed)",
@@ -1881,6 +2017,13 @@ window.__ModuleLoader__.load({
        */
       const runPreview = (action) => async () => {
         if (previewBusy) return;
+        // The buttons are already disabled for an unusable selection; this is the second line of
+        // defence, so a programmatic call cannot submit a switch the Host would refuse (which for a
+        // restart would have closed the working picture first).
+        if (!selectionUsable() && !(action === "stop")) {
+          setPreviewActionError(copy.selectedUnavailable);
+          return;
+        }
         try {
           setPreviewBusy(true);
           setPreviewActionError("");
@@ -1889,6 +2032,98 @@ window.__ModuleLoader__.load({
           setPreviewActionError(String(error?.message || "playback-failed"));
         } finally { setPreviewBusy(false); }
       };
+      // A short, plain-text reason for an item that cannot be started. The Host reports a machine
+      // reason code; this side only turns it into wording and never renders it as markup.
+      const sceneReasonText = (item) => {
+        if (item.available) return "";
+        const map = { playback_type_not_supported: copy.sceneReasonUnsupported, unknown_type: copy.sceneReasonUnknownType, unsafe_path: copy.sceneReasonUnsafe, unsafe_preview: copy.sceneReasonUnsafe };
+        if (item.type && item.type !== "scene") return map.playback_type_not_supported;
+        return map[item.reason] ?? copy.sceneReasonOther;
+      };
+      const sceneItemTitle = (item) => {
+        const parts = [item.title];
+        if (item.playbackVerified) parts.push(`（${copy.sceneVerified}）`);
+        else if (item.type === "scene" && item.available) parts.push(`（${copy.sceneExperimental}）`);
+        if (!item.available) parts.push(`（${copy.sceneUnavailable}：${sceneReasonText(item)}）`);
+        return parts.join(" ");
+      };
+      // The list is the Host's snapshot plus whatever the status payload already knows about the
+      // verified sample, so a library that failed to load still shows the sample it can start.
+      const knownItems = () => {
+        const items = [...library.items];
+        if (!items.some(item => item.id === "lucy")) {
+          const verified = Array.isArray(wallpaperStatus.host?.scenes) ? wallpaperStatus.host.scenes.find(scene => scene.id === "lucy") : null;
+          items.unshift({ id: "lucy", title: "Lucy", type: "scene", available: verified ? verified.available !== false : true, playbackVerified: true, reason: null });
+        }
+        return items;
+      };
+      const selectedItem = () => knownItems().find(item => item.id === settings.weScene) ?? null;
+      /** True when the selection is the sample, which carries its own verified file. */
+      const selectionIsSample = () => settings.weScene === "lucy";
+      /**
+       * The state of the current selection, as the buttons and the warning both need it.
+       *
+       *  - `verified`  the sample, or a catalogue entry the Host has confirmed available;
+       *  - `pending`   a catalogue id the list has not confirmed yet (still loading, a failed read,
+       *                an empty snapshot): NOT usable, because nothing has proved it exists, and not
+       *                reported as deleted either;
+       *  - `unusable`  the list was read and this entry is missing or listed unavailable;
+       *  - `unknown`   no usable id at all (a corrupted stored value).
+       *
+       * An empty library is the normal result of "every subscription was removed" or "the library
+       * drive is away", so a stored catalogue id in that state is waiting for confirmation, never a
+       * wallpaper that may be started on the strength of a remembered id.
+       */
+      const selectionState = () => {
+        if (!isSceneId(settings.weScene)) return "unknown";
+        const item = selectedItem();
+        if (selectionIsSample()) {
+          // The sample is decided by its own file, as the Host reports it, independently of the
+          // bounded library: a sample whose file is gone must block its own start.
+          return item && item.available === false ? "unusable" : "verified";
+        }
+        if (item) return item.available === false ? "unusable" : "verified";
+        // The entry is not in the list this client has: only a successful read can call it missing.
+        if (library.loaded && library.state === "ready") return "unusable";
+        return "pending";
+      };
+      const selectionUsable = () => selectionState() === "verified";
+      const selectionKnownUnusable = () => selectionState() === "unusable";
+      const selectionPending = () => selectionState() === "pending";
+      // Which scene the live run is really capturing. The host answer wins; the selection is never
+      // presented as if the picture had already switched.
+      const playingSceneId = () => (previewActive ? wallpaperStatus.host?.activeSceneId ?? null : null);
+      const playingItem = () => {
+        const id = playingSceneId();
+        return id ? knownItems().find(item => item.id === id) ?? { id, title: id, playbackVerified: false } : null;
+      };
+      const libraryStatusText = () => {
+        if (library.loading) return copy.sceneLoading;
+        if (library.state === "unconfigured") return copy.sceneUnconfigured;
+        if (library.state === "failed") return `${copy.sceneLoadFailed}：${library.error || ""}`;
+        if (Array.isArray(library.rootWarnings) && library.rootWarnings.length) return copy.sceneRootMissing;
+        if (library.loaded && library.items.length === 0) return copy.sceneEmpty;
+        return "";
+      };
+      const libraryList = () => h("div", { className: "wm-wallpaper-list", key: "list", role: "radiogroup", "aria-label": copy.scene },
+        knownItems().map(item => h("button", {
+          type: "button", key: item.id, role: "radio",
+          className: "wm-wallpaper-item" + (item.id === settings.weScene ? " is-selected" : ""),
+          "aria-checked": item.id === settings.weScene, "aria-disabled": !item.available,
+          "data-wm-scene-item": item.id, "data-wm-scene-available": String(item.available),
+          title: sceneItemTitle(item),
+          // An unavailable item stays visible and explainable but cannot become the selection.
+          onClick: () => { if (item.available) update("weScene", item.id); }
+        }, [
+          h("span", { className: "wm-wallpaper-item-title", key: "title" }, item.title),
+          h("span", { className: "wm-wallpaper-item-meta", key: "meta" }, [
+            h("span", { className: "wm-wallpaper-item-type", key: "type" }, item.type === "scene" ? "scene" : item.type),
+            item.playbackVerified
+              ? h("span", { className: "wm-wallpaper-item-badge is-verified", key: "badge" }, copy.sceneVerified)
+              : h("span", { className: "wm-wallpaper-item-badge", key: "badge" }, item.available ? copy.sceneExperimental : copy.sceneUnavailable),
+            item.available ? null : h("span", { className: "wm-wallpaper-item-reason", key: "reason" }, sceneReasonText(item))
+          ])
+        ])));
       const wallpaperRow = () => h("div", { className: "wm-settings-row wm-wallpaper-row", key: "wallpaper-engine" }, [
         // The description needs a full-width line of its own: in a narrow panel the old
         // two-column row squeezed this column to zero width and the text wrapped one
@@ -1901,13 +2136,41 @@ window.__ModuleLoader__.load({
         // buttons act on it. Keeping them apart is also what keeps the three buttons together
         // on one row and equally sized instead of leaving stop alone on a line of its own.
         h("div", { className: "wm-wallpaper-fields", key: "fields" }, [
-          h("label", { className: "wm-inline-field wm-wallpaper-field", key: "scene" }, [
+          // The list is the field that describes the NEXT run: browsing, refreshing and selecting
+          // never start, stop or switch anything.
+          h("div", { className: "wm-inline-field wm-wallpaper-field wm-wallpaper-field-selection", key: "scene" }, [
             h("span", { className: "wm-inline-label", key: "label" }, copy.scene),
-            h("select", {
-              "aria-label": copy.scene, value: settings.weScene, key: "select",
-              "data-wm-setting": "weScene", disabled: previewActive,
-              onChange: (event) => update("weScene", event.currentTarget.value)
-            }, WALLPAPER_SCENES.map(id => h("option", { value: id, key: id }, id === "lucy" ? "Lucy" : id)))
+            h("div", { className: "wm-wallpaper-selection", key: "selection" }, [
+              h("div", { className: "wm-wallpaper-selection-head", key: "head" }, [
+                h("span", { className: "wm-wallpaper-selected", key: "selected", "data-wm-selected-scene": settings.weScene },
+                  `${copy.selectedItem}：${selectedItem()?.title ?? settings.weScene}`),
+                // Current picture and next selection are two separate statements.
+                h("span", { className: "wm-wallpaper-playing", key: "playing", "data-wm-playing-scene": playingSceneId() ?? "" },
+                  `${copy.playingItem}：${playingItem()?.title ?? copy.notPlaying}`),
+                h("button", {
+                  type: "button", className: "wm-wallpaper-refresh", key: "refresh",
+                  "data-wm-action": "wallpaper-refresh", disabled: library.loading,
+                  onClick: () => loadLibrary(true)
+                }, library.loading ? copy.sceneRefreshing : copy.sceneRefresh)
+              ]),
+              libraryList(),
+              libraryStatusText() ? h("p", { className: "wm-wallpaper-list-status", key: "status", role: "status" }, libraryStatusText()) : null,
+              library.truncated ? h("p", { className: "wm-wallpaper-list-status", key: "truncated" }, copy.sceneTruncated) : null,
+              // The selection survives a missing item, but the user is told instead of being
+              // silently moved to another wallpaper.
+              selectionKnownUnusable()
+                ? h("p", { className: "wm-wallpaper-list-status is-warning", key: "unavailable" }, copy.selectedUnavailable)
+                : null,
+              // A stored catalogue id that no successful read has confirmed yet: that is "waiting",
+              // not "deleted", and the start buttons stay disabled until it is confirmed.
+              selectionPending()
+                ? h("p", { className: "wm-wallpaper-list-status", key: "pending" }, copy.selectedPending)
+                : null,
+              // An unverified selection is experimental: it never starts by itself.
+              selectedItem() && selectedItem().id !== "lucy" && selectedItem().available && settings.weAutoStart
+                ? h("p", { className: "wm-wallpaper-list-status", key: "manual-only" }, copy.autoStartSkipped)
+                : null
+            ])
           ]),
           // The mode is stored for the next start; changing it never restarts the live run.
           h("label", { className: "wm-inline-field wm-wallpaper-field", key: "mode" }, [
@@ -1923,14 +2186,16 @@ window.__ModuleLoader__.load({
           ])
         ]),
         h("div", { className: "wm-wallpaper-actions", key: "actions" }, [
+          // Start and restart need a selection the Host has confirmed usable: submitting an
+          // unavailable one is refused anyway, and a restart would close a working picture first.
           h("button", { type: "button", className: "wm-settings-option wm-wallpaper-button", key: "start",
-            "data-wm-action": "wallpaper-start", disabled: previewBusy || previewActive || cleanupFailed,
+            "data-wm-action": "wallpaper-start", disabled: previewBusy || previewActive || cleanupFailed || !selectionUsable(),
             onClick: runPreview("start") }, copy.startPreview),
           h("button", { type: "button", className: "wm-settings-option wm-wallpaper-button", key: "restart",
-            "data-wm-action": "wallpaper-restart", disabled: previewBusy || cleanupFailed,
+            "data-wm-action": "wallpaper-restart", disabled: previewBusy || cleanupFailed || !selectionUsable(),
             onClick: runPreview("restart") }, copy.restartPreview),
-          // A close that could not be proven keeps the stop control available so the user
-          // can retry it; a start stays blocked until the old window is confirmed gone.
+          // Stop and retry-cleanup stay independent of the list: loading, a failed refresh or an
+          // unusable selection must never take the stop control away.
           h("button", { type: "button", className: "wm-settings-option wm-wallpaper-button", key: "stop",
             "data-wm-action": "wallpaper-stop", disabled: previewBusy || (!previewActive && !cleanupFailed),
             onClick: runPreview("stop") }, cleanupFailed ? copy.retryCleanup : copy.stopPreview)
@@ -2841,6 +3106,114 @@ window.__ModuleLoader__.load({
         min-width: 0;
         max-width: 100%;
       }
+      /* The bounded wallpaper list. It gets its own width so it stays readable in a narrow panel,
+         scrolls instead of stretching the settings area, and keeps the refresh control and the
+         three actions visible while it scrolls. */
+      .wm-wallpaper-field-selection {
+        flex: 1 1 320px;
+      }
+      .wm-wallpaper-selection {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .wm-wallpaper-selection-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 10px;
+        min-width: 0;
+      }
+      .wm-wallpaper-selected,
+      .wm-wallpaper-playing {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--dsw-alias-label-secondary);
+      }
+      .wm-wallpaper-playing {
+        color: var(--dsw-alias-label-primary);
+      }
+      .wm-wallpaper-refresh {
+        margin-left: auto;
+        flex: 0 0 auto;
+        min-height: 26px;
+        padding: 0 10px;
+        font-size: 12px;
+        line-height: 18px;
+        border-radius: 6px;
+        background: rgb(var(--wm-layer2-rgb)) !important;
+        border: 1px solid var(--dsw-alias-border-l2) !important;
+        color: var(--dsw-alias-label-primary);
+      }
+      .wm-wallpaper-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        max-height: 168px;
+        overflow-y: auto;
+        padding: 4px;
+        border-radius: 8px;
+        background: rgb(var(--wm-layer1-rgb) / 0.6);
+        border: 1px solid var(--dsw-alias-border-l2);
+      }
+      .wm-wallpaper-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        width: 100%;
+        padding: 6px 8px;
+        text-align: left;
+        border-radius: 6px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--dsw-alias-label-primary);
+      }
+      .wm-wallpaper-item:hover:not([aria-disabled="true"]) {
+        background: rgb(var(--wm-layer2-rgb)) !important;
+      }
+      .wm-wallpaper-item.is-selected {
+        border-color: var(--dsw-alias-brand-primary) !important;
+        background: rgb(var(--wm-layer2-rgb)) !important;
+      }
+      /* An unavailable item stays readable and explainable; it is visibly inert, not hidden. */
+      .wm-wallpaper-item[aria-disabled="true"] {
+        opacity: 0.62;
+        cursor: not-allowed;
+      }
+      .wm-wallpaper-item-title {
+        font-size: 13px;
+        line-height: 18px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .wm-wallpaper-item-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        font-size: 11px;
+        line-height: 16px;
+        color: var(--dsw-alias-label-secondary);
+      }
+      .wm-wallpaper-item-badge.is-verified {
+        color: var(--dsw-alias-state-success-primary, #64cda2);
+      }
+      .wm-wallpaper-list-status {
+        margin: 0;
+        font-size: 12px;
+        line-height: 17px;
+        color: var(--dsw-alias-label-secondary);
+      }
+      .wm-wallpaper-list-status.is-warning {
+        color: var(--dsw-alias-state-warn-primary, #e3a85d);
+      }
       /* V3: the three actions are one equally sized group with a visible surface, so stop is
          never left as a small transparent label on a line of its own. Only the WE buttons get
          this treatment; the shared settings option style is untouched for other settings. */
@@ -3067,7 +3440,10 @@ window.__ModuleLoader__.load({
       ctx.effect(() => {
         // The choice is frozen here, at the start of this DSH session: toggling the checkbox
         // later only saves the NEXT launch and must never start playback in this one.
-        const autoStartWanted = settings.weAutoStart === true && settings.weMode === "daily";
+        const autoStartWanted = settings.weAutoStart === true && settings.weMode === "daily"
+          // An unverified library wallpaper is manual-only: it must never start by itself on the
+          // strength of one successful run. Only the accepted sample keeps its automatic path.
+          && VERIFIED_SCENE_IDS.includes(settings.weScene);
         let cancelled = false;
         let starting = false;
         let started = false;

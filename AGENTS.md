@@ -5,15 +5,18 @@
 ## 工作方式
 
 - 先核对 git status，保留用户和其它实现者的现有改动；同一实现任务不要与其它 AI 同时编辑或安装。
-- 当前源码候选 rc.23，人工启动/重新开始与白条短验通过，日常恢复 rc.1；先读 docs/RC23_STARTUP_ACCEPTANCE.md。性能 QA 接手修复见 docs/PERF_SAMPLER_REPAIR.md，使用新 fixture 契约，不把旧 DS 自检当成修正版结果。真实性能以 docs/NEXT_SOURCE_PERFORMANCE.md 接续，等用户确定阶段清单和时段；不按旧 B 起点重复 35 分钟或自动扩 A/C/E。
+- 本机日常试用包 rc.24，先读 docs/RC24_DAILY_TRIAL.md。该活动包实现/原生资产与rc.23相同，仅版本/README变化，用户明确保留、自动播放关闭；Profile引用release/plugins内rc.24 tgz，不能清理/覆盖。工作区源码已有新增A2，尚未打包/实机，package版本暂未改；后续须另取新版本，不能把当前源码重打成24覆盖。旧rc.1/备份/原WE/EXE保留，未来回退先确认范围。GPU调查已结束，不重复原性能/35分钟流程。
 - 本地源码检出是开发工作区；官方安装目录和 `.dsh` 是运行环境。
-- 静态调查已复审，读 docs/CAPTURE_DEVICE_STATIC_REVIEWED.md。下一步仅准备同 Node/同窗口、有限 memory/pipe 的 V1 小验证，实际操作另约用户；不得把普通 Node 当正式 Host、自动扩 V2/改 GPU 设置或生产。C/D 已恢复日常，40项离线工具通过，不再返工R1–R4/重复全套35分钟。WE源owner PID不能用launcher PID，采集上限不能当源FPS。
+- 产品路线见 docs/PRODUCT_ROADMAP_20261011.md；catalog及A2列表/刷新/ID解析与最小选择播放已通过后台审查，读 docs/WALLPAPER_SELECTION_FINAL_REVIEW_20261011.md。scene的available仅登记条件满足，只有Lucy已实机验证，其它项手动实验。下一步备新候选并约第二张scene短验，DS无需继续返工，不自动安装/开窗。
+- 2026-10-10历史性能结论见 docs/DISPLAY_ADAPTER_COST_RESULT_20261010.md：四段33样本、错误0、两卡同约21.5fps；独显捕获CPU较低但自身漂移，不能声称功耗/游戏收益。保持当前独显路线，GPU调查收束；当日QA已撤回并恢复rc.1，此安装状态已被上条rc.24日常试用替代。不自动追加开窗/安装/改全局GPU/FPS或落实验wrapper，LUID按当前会话重新枚举；不重复旧性能/35分钟流程，采集上限不当源FPS。
 - 真实应用操作由用户点击、外部助手核验。需要窗口操作或退出宿主前先确认用户方便；用户按 Esc 或要求停止就立即停止。
 - 不修改官方 EXE、app.asar 或系统安全设置，不终止原 Wallpaper Engine 进程。
 - Profile 修改前备份，只恢复本轮修改；保留旧会话、源资产、备份和正在引用的 tgz。
 - 新检查使用独立输出目录。不用通配符清理别人的证据目录，不覆盖历史报告、同版本安装包或原始证据。
 
 ## 检查与交付
+
+- A2编码与后台复审已完成，原范围见 docs/DS_NEXT_WALLPAPER_SELECTION.md；本轮用户已授权审查通过后提交推送。真实安装、开窗和日常切换仍需后续用户协作，当前先收尾。
 
 - 未改实现时优先核对源码与包内容；不要为文件整理重跑真实窗口实验。
 - `npm run check` 和 `npm run test:wallpaper-host` 可在插件目录运行，不创建真实 WE 窗口。
