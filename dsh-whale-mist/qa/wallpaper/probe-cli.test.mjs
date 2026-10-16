@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 // argv file and prints the result, so these checks assert on the exact argv the Host builds
 // without creating a window or doing any capture work.
 // qa/wallpaper/ -> qa/wallpaper-probe/ (the sibling experiment directory)
-const probeExe = fileURLToPath(new URL('../../qa/wallpaper-probe/bin/Release/net10.0-windows10.0.19041.0/WallpaperProbe.exe', import.meta.url));
+import { resolve as pathResolve } from 'node:path';
+const probeExe = process.env.WM_WALLPAPER_PROBE_EXE ? pathResolve(process.env.WM_WALLPAPER_PROBE_EXE) : fileURLToPath(new URL('../../qa/wallpaper-probe/bin/Release/net10.0-windows10.0.19041.0/WallpaperProbe.exe', import.meta.url));
 
 const argDirectory = await mkdtemp(join(tmpdir(), 'wm-argv-'));
 let counter = 0;
@@ -172,6 +173,55 @@ test('the bounded frame log keeps a long session small', async () => {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+
+test('the exact Host daily argv with --taskbar-hide parses as a daily capture with taskbar hide', async () => {
+  const parsed = await parse(['0', 'C:\\temp\\wm-daily-hide', '--forever', '30', 'pipe', '--owned-location', 'WhaleWallpaperProbe-self-test-absent', '--taskbar-hide']);
+  assert.equal(parsed.ok, true, JSON.stringify(parsed));
+  assert.equal(parsed.forever, true, 'daily playback is a no-timer run');
+  assert.equal(parsed.durationSeconds, null);
+  assert.equal(parsed.fps, 30);
+  assert.equal(parsed.captureMode, 'pipe');
+  assert.equal(parsed.outputDirectory, 'C:\\temp\\wm-daily-hide');
+  assert.equal(parsed.ownedLocation, 'WhaleWallpaperProbe-self-test-absent');
+  assert.equal(parsed.taskbarHide, true);
+});
+
+test('the exact Host preview argv with --taskbar-hide parses as a bounded capture with taskbar hide', async () => {
+  const parsed = await parse(['0', 'C:\\temp\\wm-preview-hide', '180', '30', 'pipe', '--owned-location', 'WhaleWallpaperProbe-self-test-absent', '--taskbar-hide']);
+  assert.equal(parsed.ok, true, JSON.stringify(parsed));
+  assert.equal(parsed.forever, false);
+  assert.equal(parsed.durationSeconds, 180);
+  assert.equal(parsed.fps, 30);
+  assert.equal(parsed.captureMode, 'pipe');
+  assert.equal(parsed.ownedLocation, 'WhaleWallpaperProbe-self-test-absent');
+  assert.equal(parsed.taskbarHide, true);
+});
+
+test('--taskbar-hide requires pipe mode and --owned-location', async () => {
+  const diskHide = await parse(['0', 'C:\\temp\\wm-disk-hide', '120', '30', 'disk', '--owned-location', 'WhaleWallpaperProbe-self-test-absent', '--taskbar-hide']);
+  assert.equal(diskHide.ok, false);
+  assert.match(diskHide.message, /--taskbar-hide requires pipe capture mode/);
+
+  const unownedHide = await parse(['0', 'C:\\temp\\wm-unowned-hide', '120', '30', 'pipe', '--taskbar-hide']);
+  assert.equal(unownedHide.ok, false);
+  assert.match(unownedHide.message, /--taskbar-hide requires --owned-location/);
+});
+
+test('repeated --taskbar-hide is refused', async () => {
+  const dup = await parse(['0', 'C:\\temp\\wm-dup-hide', '120', '30', 'pipe', '--owned-location', 'WhaleWallpaperProbe-self-test-absent', '--taskbar-hide', '--taskbar-hide']);
+  assert.equal(dup.ok, false);
+  assert.match(dup.message, /--taskbar-hide cannot be repeated/);
+});
+
+test('--cadence-trace flag is parsed without altering positional roles', async () => {
+  const parsed = await parse(['0', 'C:\\temp\\wm-trace', '--forever', '30', 'pipe', '--owned-location', 'WhaleWallpaperProbe-self-test-absent', '--cadence-trace']);
+  assert.equal(parsed.ok, true, JSON.stringify(parsed));
+  assert.equal(parsed.cadenceTrace, true);
+  assert.equal(parsed.captureMode, 'pipe');
+  assert.equal(parsed.fps, 30);
+  assert.equal(parsed.outputDirectory, 'C:\\temp\\wm-trace');
 });
 
 test.after(async () => { await rm(argDirectory, { recursive: true, force: true }); });

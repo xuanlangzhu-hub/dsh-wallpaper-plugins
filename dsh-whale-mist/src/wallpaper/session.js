@@ -1,9 +1,10 @@
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { FrameHub, streamFrames } from './frame-hub.js';
+import { CadenceTraceCollector } from './cadence-trace.js';
 import { ProbeJournal } from './probe-log.js';
 import { runHelper, waitForWindow, validateLocation, newLocation } from './managed-window.js';
 import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_SIZE, resolveSceneRequest, describeScenes, sceneSelection, isSceneId } from './scenes.js';
@@ -98,12 +99,26 @@ export function createPreviewSession(options = {}) {
     now = Date.now,
     exists = existsSync,
     sceneResolver = null,
+    env = process.env,
+    childExitTimeoutMs = 12000,
+    childKillTimeoutMs = 2000,
+    cadenceTrace = false,
+    writeFile: customWriteFile = null,
+    unlink: customUnlink = null,
+    rename: customRename = null,
   } = options;
-  const hub = new FrameHub();
+  const cadenceTraceEnabled = cadenceTrace === true || env.WM_WALLPAPER_CADENCE_TRACE === '1';
+  const issuedConnections = new Set();
+  const hostTrace = new CadenceTraceCollector({ enabled: cadenceTraceEnabled, clockDomain: 'host-mono' });
+  const clientTrace = new CadenceTraceCollector({ enabled: cadenceTraceEnabled, clockDomain: 'client-mono' });
+  clientTrace.issuedConnections = issuedConnections;
+  const hub = new FrameHub({ cadenceTrace: hostTrace, clientTrace });
   const journal = new ProbeJournal();
 
   let config = null;
   let child = null;
+  let childClosed = false;
+  let terminalTaskbarHide = null;
   let stopping = false;
   let stopRequested = false;
   let failure = null;
@@ -139,7 +154,124 @@ export function createPreviewSession(options = {}) {
 
   const writeReport = async name => {
     if (!config?.output) return;
-    try { await writeFile(join(config.output, name), JSON.stringify(report(), null, 2)); } catch { /* evidence is best effort */ }
+    try {
+      let timer = null;
+      const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), 200); });
+      await Promise.race([(customWriteFile || writeFile)(join(config.output, name), JSON.stringify(report(), null, 2)), timeout]);
+      if (timer) clearTimeout(timer);
+    } catch { /* evidence is best effort */ }
+  };
+
+  let activeWriteTask = null;
+  let activeWriteToken = null;
+
+  const writeCadenceTrace = async () => {
+    if (!config?.output || !cadenceTraceEnabled) return;
+    if (activeWriteTask) {
+      let reentrantTimer = null;
+      const timeout = new Promise((_, reject) => {
+        reentrantTimer = setTimeout(() => reject(new Error('timeout')), 200);
+      });
+      return Promise.race([activeWriteTask, timeout])
+        .catch(() => {
+          if (activeWriteToken) activeWriteToken.cancelled = true;
+          hostTrace.degraded = true;
+          hostTrace.degradeReason = 'export-timeout';
+          clientTrace.degraded = true;
+          clientTrace.degradeReason = 'export-timeout';
+        })
+        .finally(() => {
+          if (reentrantTimer) clearTimeout(reentrantTimer);
+        });
+    }
+
+    const token = { cancelled: false };
+    activeWriteToken = token;
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        token.cancelled = true;
+        reject(new Error('timeout'));
+      }, 200);
+    });
+
+    const writeTask = (async () => {
+      let hostTmp = null;
+      let clientTmp = null;
+      let hostFinal = null;
+      let clientFinal = null;
+      try {
+        const hostSnapshot = hostTrace.snapshot();
+        const clientSnapshot = clientTrace.snapshot();
+
+        const hostJson = JSON.stringify(hostSnapshot, null, 2);
+        const clientJson = JSON.stringify(clientSnapshot, null, 2);
+
+        hostTmp = join(config.output, `cadence-trace-host.${Date.now()}-${Math.random().toString(36).slice(2, 6)}.tmp`);
+        clientTmp = join(config.output, `cadence-trace-client.${Date.now()}-${Math.random().toString(36).slice(2, 6)}.tmp`);
+
+        await (customWriteFile || writeFile)(hostTmp, hostJson);
+        if (token.cancelled) throw new Error('cancelled');
+
+        await (customWriteFile || writeFile)(clientTmp, clientJson);
+        if (token.cancelled) throw new Error('cancelled');
+
+        const hostDest = join(config.output, 'cadence-trace-host.json');
+        const clientDest = join(config.output, 'cadence-trace-client.json');
+
+        if (token.cancelled) throw new Error('cancelled');
+
+        await (customRename || rename)(hostTmp, hostDest);
+        hostTmp = null;
+        hostFinal = hostDest;
+
+        if (token.cancelled) {
+          try { await (customUnlink || unlink)(hostFinal); } catch {}
+          hostFinal = null;
+          throw new Error('cancelled');
+        }
+
+        await (customRename || rename)(clientTmp, clientDest);
+        clientTmp = null;
+        clientFinal = clientDest;
+
+        if (token.cancelled) {
+          try { await (customUnlink || unlink)(hostFinal); } catch {}
+          try { await (customUnlink || unlink)(clientFinal); } catch {}
+          hostFinal = null;
+          clientFinal = null;
+          throw new Error('cancelled');
+        }
+      } catch (err) {
+        if (hostTmp) { try { await (customUnlink || unlink)(hostTmp); } catch {} }
+        if (clientTmp) { try { await (customUnlink || unlink)(clientTmp); } catch {} }
+        if (hostFinal) { try { await (customUnlink || unlink)(hostFinal); } catch {} }
+        if (clientFinal) { try { await (customUnlink || unlink)(clientFinal); } catch {} }
+        const reason = token.cancelled ? 'export-timeout' : String(err?.message ?? err);
+        hostTrace.degraded = true;
+        hostTrace.degradeReason = reason;
+        clientTrace.degraded = true;
+        clientTrace.degradeReason = reason;
+      } finally {
+        activeWriteTask = null;
+        activeWriteToken = null;
+      }
+    })();
+
+    activeWriteTask = writeTask;
+
+    return Promise.race([writeTask, timeout])
+      .catch(err => {
+        token.cancelled = true;
+        const reason = err?.message === 'timeout' ? 'export-timeout' : String(err?.message ?? err);
+        hostTrace.degraded = true;
+        hostTrace.degradeReason = reason;
+        clientTrace.degraded = true;
+        clientTrace.degradeReason = reason;
+      })
+      .finally(() => {
+        if (timer) clearTimeout(timer);
+      });
   };
 
   /**
@@ -151,50 +283,146 @@ export function createPreviewSession(options = {}) {
    * an unproven close re-attaches them (the capture may still be alive and its evidence is
    * still worth keeping), so a successful stop leaves no timer and no duplicate listener.
    */
+  const waitForChildClose = async timeoutMs => {
+    if (!child || childClosed || typeof child.once !== "function") return true;
+    return new Promise(resolve => {
+      let timer = null;
+      const onDone = () => {
+        if (timer) clearTimeout(timer);
+        child?.removeListener('close', onDone);
+        childClosed = true;
+        resolve(true);
+      };
+      timer = setTimeout(() => {
+        child?.removeListener('close', onDone);
+        resolve(childClosed);
+      }, timeoutMs);
+      timer?.unref?.();
+      child.once('close', onDone);
+    });
+  };
+
   const runClose = async () => {
     stopping = true;
-    detach();
+    stopReporting();
     hub.close();
     child?.stdin?.end('stop\n');
-    if (child && child.exitCode === null) killTimer = setTimeout(() => child?.kill(), 2500);
-    killTimer?.unref();
     await writeReport('preview-final.json');
 
     // Bounded verdict: a stop that lands while the window is still being created must
     // still close the window that appears afterwards.
     if (windowAcquisitionWait) { try { await windowAcquisitionWait; } catch { /* reported by create/stop */ } }
 
+    // Controlled shutdown sequence: await capture process close (including stdio drain)
+    let childClosedInBudget = await waitForChildClose(childExitTimeoutMs);
+    let forceKilled = false;
+    if (!childClosedInBudget && child && !childClosed && (child.exitCode === null || child.exitCode === undefined)) {
+      forceKilled = true;
+      try { child.kill(); } catch { /* best effort */ }
+      childClosedInBudget = await waitForChildClose(childKillTimeoutMs);
+    }
+
+    // Verify worker exit safety:
+    // Host accepts explicit terminal states:
+    // 1) Fallback switch disabled (WM_WALLPAPER_TASKBAR_HIDE === '0'), so no worker was requested.
+    // 2) Worker confirmed not started (attempted === false, stage === 'armed' or 'disabled' or 'stopped-before-action').
+    // 3) Worker confirmed exited safely (cleanupSafe === true AND stage is in a terminal settled state, NOT pending).
+    // Any missing status on abnormal exit, force-killed child, unclosed stream, pending state, or cleanupSafe === false is rejected.
+    const taskbarHideActive = env.WM_WALLPAPER_TASKBAR_HIDE !== '0';
+    let workerCleanupSafe = !forceKilled;
+    if (taskbarHideActive && child) {
+      if (forceKilled || !childClosedInBudget || (child.exitCode !== null && child.exitCode !== 0)) {
+        workerCleanupSafe = false;
+      } else {
+        const th = terminalTaskbarHide;
+        if (!th || typeof th !== 'object') {
+          workerCleanupSafe = false;
+        } else if (th.cleanupSafe !== true) {
+          workerCleanupSafe = false;
+        } else {
+          const pendingStages = ['action-pending', 'action-unconfirmed', 'pending'];
+          if (pendingStages.includes(th.stage)) {
+            workerCleanupSafe = false;
+          } else {
+            const validNotStarted = th.attempted === false && ['armed', 'disabled', 'stopped-before-action', 'observing'].includes(th.stage);
+            const validSettled = ['action-done', 'action-failed', 'failed', 'done', 'success', 'armed', 'stopped-before-action'].includes(th.stage);
+            workerCleanupSafe = Boolean(validNotStarted || validSettled);
+          }
+        }
+      }
+    }
+
+    if (!childClosedInBudget || !workerCleanupSafe) {
+      cleanupResult = {
+        outcome: 'worker-unconfirmed',
+        closed: false,
+        error: !childClosedInBudget && child?.exitCode === null
+          ? 'capture process did not exit within budget'
+          : forceKilled
+            ? 'capture process force-killed; worker exit could not be confirmed'
+            : 'worker exit could not be confirmed',
+      };
+      failure ??= `Window cleanup incomplete (worker-unconfirmed): ${cleanupResult.error}`;
+      reattach();
+      if (cadenceTraceEnabled) {
+        await clientTrace.waitForClientFinalize?.(100, issuedConnections);
+      }
+      await writeCadenceTrace();
+      await writeReport('preview-final.json');
+      return cleanupResult;
+    }
+
+    detach();
+
+    let nextCleanupResult = cleanupResult;
     if (windowCreated && location) {
       const closeArgs = ['--window-ensure-closed', location, '15000'];
       if (Number.isInteger(windowPid) && windowPid > 0) closeArgs.push('--expect-pid', String(windowPid));
       try {
         const closed = await helper(closeArgs);
-        cleanupResult = { outcome: closed?.outcome ?? null, closed: closed?.closed === true, waitedMs: closed?.waitedMs ?? null, error: closed?.error ?? null };
+        nextCleanupResult = { outcome: closed?.outcome ?? null, closed: closed?.closed === true, waitedMs: closed?.waitedMs ?? null, error: closed?.error ?? null };
       } catch (error) {
-        cleanupResult = { outcome: 'error', closed: false, error: error.message };
+        nextCleanupResult = { outcome: 'error', closed: false, error: error.message };
       }
-      if (cleanupResult.closed !== true) {
-        const attempt = Number.isInteger(cleanupResult.attempts) ? cleanupResult.attempts + 1 : 1;
-        cleanupResult = { ...cleanupResult, attempts: attempt };
-        failure ??= `Window cleanup incomplete (${cleanupResult.outcome ?? 'unknown'}): ${cleanupResult.error ?? 'no result'}`;
+      if (nextCleanupResult.closed !== true) {
+        const attempt = Number.isInteger(cleanupResult?.attempts) ? cleanupResult.attempts + 1 : 1;
+        nextCleanupResult = { ...nextCleanupResult, attempts: attempt };
+        failure ??= `Window cleanup incomplete (${nextCleanupResult.outcome ?? 'unknown'}): ${nextCleanupResult.error ?? 'no result'}`;
         // The capture may still be running this window: keep its evidence flowing until the
         // next attempt proves the window gone.
         reattach();
+      } else if (failure?.startsWith('Window cleanup incomplete')) {
+        failure = null;
       }
     }
     detach();
+    if (cadenceTraceEnabled) {
+      await clientTrace.waitForClientFinalize?.(100, issuedConnections);
+    }
+    cleanupResult = nextCleanupResult;
+    await writeCadenceTrace();
     await writeReport('preview-final.json');
     return cleanupResult;
   };
 
+  let inClose = false;
   const cleanup = () => {
-    if (!cleaning) cleaning = runClose().finally(() => { cleaning = null; });
+    if (inClose) return cleaning;
+    inClose = true;
+    cleaning = (async () => {
+      try {
+        return await runClose();
+      } finally {
+        cleaning = null;
+        inClose = false;
+      }
+    })();
     return cleaning;
   };
 
   const stop = () => {
     stopRequested = true;
-    if (cleaning) return cleaning;                       // one in-flight close stays idempotent
+    if (inClose || cleaning) return cleaning;            // one in-flight close stays idempotent
     if (cleanupResult?.closed === true) return Promise.resolve(cleanupResult);
     return cleanup();                                    // retry after an unproven close
   };
@@ -237,6 +465,11 @@ export function createPreviewSession(options = {}) {
       offscreenStart,
     };
     location = config.location;
+    if (cadenceTraceEnabled) {
+      hostTrace.runId = location;
+      clientTrace.runId = location;
+      hub.runId = location;
+    }
     if (stopRequested) { await stop(); throw new Error('this playback run was stopped before it started'); }
 
     // 1. Create this run's own window; the name is claimed before the side effect.
@@ -293,8 +526,15 @@ export function createPreviewSession(options = {}) {
     //    by the user, the child exits, the source window goes away, or the parent pipe
     //    closes. Preview mode keeps its bounded seconds.
     const durationArg = config.mode === 'daily' ? '--forever' : String(config.seconds);
-    child = spawnChild(config.helper, [String(config.window), output, durationArg, String(config.fps), 'pipe',
-      '--owned-location', location], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const childArgs = [String(config.window), output, durationArg, String(config.fps), 'pipe',
+      '--owned-location', location];
+    if (env.WM_WALLPAPER_TASKBAR_HIDE !== '0') {
+      childArgs.push('--taskbar-hide');
+    }
+    if (cadenceTraceEnabled) {
+      childArgs.push('--cadence-trace');
+    }
+    child = spawnChild(config.helper, childArgs, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     child.stdin.on('error', () => {});
     attachCapture();
     return report();
@@ -308,6 +548,7 @@ export function createPreviewSession(options = {}) {
   const onChildStdout = data => { try { hub.push(data); } catch { /* keep the last frame */ } };
   const onChildError = error => { failure = error.message; stop(); };
   const onChildClose = code => {
+    childClosed = true;
     clearTimeout(killTimer);
     stopReporting();
     journal.finish();
@@ -318,11 +559,23 @@ export function createPreviewSession(options = {}) {
   const onChildStderr = data => {
     for (const entry of journal.push(data)) {
       if (entry.level === 'error' && !stopping) { failure ??= journal.failureText(entry); stop(); }
-      if (entry.scope === 'Status') {
+      if (entry.scope === 'Status' || entry.scope === 'Summary') {
         try {
           const value = JSON.parse(entry.message);
-          nativeStatus = { ...nativeStatus, ...value };
-          if (value.captureSource === 'window' && !captureStarted) {
+          const record = value.record && typeof value.record === 'object' ? value.record : value;
+          const captureSource = record.captureSource ?? value.captureSource;
+          const hidePayload = value.taskbarHide ?? record.taskbarHide;
+          if (entry.scope === 'Summary' && hidePayload && typeof hidePayload === 'object') {
+            terminalTaskbarHide = hidePayload;
+          }
+          nativeStatus = {
+            ...nativeStatus,
+            ...record,
+            ...(value.taskbarHide ? { taskbarHide: value.taskbarHide } : {}),
+            ...(value.reason ? { reason: value.reason } : {}),
+            ...(value.windowClose ? { windowClose: value.windowClose } : {})
+          };
+          if (captureSource === 'window' && !captureStarted) {
             captureStarted = true;
             const args = ['--window-apply', String(config.window), 'offscreen', '--location', location];
             if (windowPid) args.push('--pid', String(windowPid));
@@ -407,6 +660,9 @@ export function createPreviewSession(options = {}) {
     }),
     state: () => ({ config, location, windowCreated, windowPid, captureStarted, stopRequested, cleanup: cleanupResult }),
     setClientStatus: value => { clientStatus = value; },
+    cadenceTrace: { host: hostTrace, client: clientTrace },
+    issuedConnections,
+    hasInternalCadenceDrain: true,
   };
 }
 
@@ -426,8 +682,8 @@ export function createPreviewSession(options = {}) {
  * The packaged native helper starts the source at a verified positive screen-external position.
  * WM_WALLPAPER_OFFSCREEN_START=0 or an explicit false retains the old create/capture/tuck order.
  */
-export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message), library = null, verifyScene = null } = {}) {
-  const buildSession = () => sessionFactory({ exists });
+export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message), library = null, verifyScene = null, cadenceTrace = false } = {}) {
+  const buildSession = (opts = {}) => sessionFactory({ exists, cadenceTrace: opts.cadenceTrace ?? cadenceTrace });
   // The Host's last failure to re-verify a selection, surfaced to the UI instead of being swallowed.
   let lastSelectionError = null;
 
@@ -585,6 +841,10 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       lastError = '';
       return cleanup;
     }
+    if (!current.hasInternalCadenceDrain && current.cadenceTrace?.client?.enabled) {
+      try { current.hub?.close?.(); } catch {}
+      await current.cadenceTrace.client.waitForClientFinalize?.(100, current.issuedConnections);
+    }
     const result = await current.stop().catch(error => ({ outcome: 'error', closed: false, error: error.message }));
     lastCleanup = result ?? null;
     if (result?.closed === true) {
@@ -639,7 +899,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       await pruneRuns(logRoot);
       // A stop or unload that arrived during preparation wins over this start.
       if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
-      const next = buildSession();
+      const next = buildSession({ cadenceTrace });
       session = next;
       token.started = true;
       try {
@@ -768,7 +1028,12 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
         if (!session || session.isClosed?.() === true || !session.hub.latest || session.hub.closed) {
           res.writeHead(503); res.end('Preview unavailable'); return;
         }
-        streamFrames(session.hub, res);
+        streamFrames(session.hub, res, {
+          cadenceTrace: session.cadenceTrace?.host,
+          clientTrace: session.cadenceTrace?.client,
+          runId: session.state().location,
+          registerConnection: id => session.issuedConnections?.add(id),
+        });
         return;
       }
 
@@ -853,11 +1118,138 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       if (req.method === 'POST' && path === '/whale-wallpaper/metrics') {
         try {
           const value = await readJsonBody(req, 2048);
-          const allowed = ['received', 'rendered', 'dropped', 'sourceSequence', 'seconds', 'meanLatencyMs', 'maxLatencyMs', 'decodeErrors', 'hidden'];
+          const allowed = [
+            'received', 'rendered', 'dropped', 'sourceSequence', 'seconds', 'meanLatencyMs', 'maxLatencyMs', 'decodeErrors', 'hidden',
+            'waitRafCount', 'waitRafSumMs', 'waitRafMaxMs',
+            'waitTimeoutCount', 'waitTimeoutSumMs', 'waitTimeoutMaxMs',
+            'waitCancelledCount',
+            'decodeSuccessCount', 'decodeSuccessSumMs', 'decodeSuccessMaxMs',
+            'decodeFailCount', 'decodeFailSumMs', 'decodeFailMaxMs',
+            'discardHiddenCount', 'discardStaleCount',
+            'syncCount', 'syncSumMs', 'syncMaxMs', 'syncErrorCount',
+            'drawCount', 'drawSumMs', 'drawMaxMs', 'drawErrorCount',
+            'dropDecodingCount', 'dropSyncCount', 'dropWaitingCallbackCount', 'dropOtherCount',
+          ];
           const clean = Object.fromEntries(allowed.filter(key => typeof value?.[key] === 'number' && Number.isFinite(value[key]) && value[key] >= 0).map(key => [key, value[key]]));
           session?.setClientStatus(clean);
           res.writeHead(204); res.end();
         } catch { if (!res.headersSent) res.writeHead(400); res.end(); }
+        return;
+      }
+
+      if (req.method === 'GET' && path === '/whale-wallpaper/cadence-trace') {
+        const live = Boolean(session && session.isClosed?.() !== true);
+        const hostSnapshot = session?.cadenceTrace?.host?.snapshot();
+        const clientSnapshot = session?.cadenceTrace?.client?.snapshot();
+        send(200, {
+          enabled: Boolean(hostSnapshot?.enabled),
+          schemaVersion: 1,
+          runId: session?.state?.().location ?? null,
+          active: live,
+          host: hostSnapshot ?? null,
+          client: clientSnapshot ?? null,
+        });
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/whale-wallpaper/cadence-trace') {
+        try {
+          const body = await readJsonBody(req, 262144);
+          if (!session || session.isClosed?.() === true) {
+            res.writeHead(409); res.end('No active preview session'); return;
+          }
+          const activeLocation = session.state?.().location;
+          if (!body?.runId || !activeLocation || body.runId !== activeLocation) {
+            res.writeHead(400); res.end('Run mismatch'); return;
+          }
+          if (body?.clockDomain !== 'client-mono') {
+            res.writeHead(400); res.end('Invalid clock domain'); return;
+          }
+          if (!body?.connectionId || typeof body.connectionId !== 'string') {
+            res.writeHead(400); res.end('Missing connectionId'); return;
+          }
+          const issued = session.issuedConnections ?? session.cadenceTrace?.client?.issuedConnections;
+          if (issued && !issued.has(body.connectionId)) {
+            res.writeHead(400); res.end('Unknown or foreign connectionId'); return;
+          }
+          if (!Array.isArray(body?.records) || (body.records.length === 0 && body.isStop !== true)) {
+            res.writeHead(400); res.end('Invalid records'); return;
+          }
+          const clientCollector = session.cadenceTrace?.client;
+          const recordSchemaViolation = (droppedLen = 0) => {
+            if (clientCollector) {
+              clientCollector.schemaViolationCount = (clientCollector.schemaViolationCount || 0) + 1;
+              if (droppedLen > 0) {
+                clientCollector.droppedBatchRecords = (clientCollector.droppedBatchRecords || 0) + droppedLen;
+              }
+            }
+          };
+          if (body.generation !== undefined) {
+            if (typeof body.generation !== 'number' || !Number.isInteger(body.generation) || body.generation < 0) {
+              recordSchemaViolation(body.records.length);
+              res.writeHead(400); res.end('Invalid generation'); return;
+            }
+          } else if (body.records.length === 0) {
+            recordSchemaViolation(0);
+            res.writeHead(400); res.end('Missing generation'); return;
+          }
+          for (const counterField of ['trailingUnsentCount', 'overflowCount', 'droppedCount']) {
+            if (body[counterField] !== undefined) {
+              if (typeof body[counterField] !== 'number' || !Number.isInteger(body[counterField]) || body[counterField] < 0) {
+                recordSchemaViolation(body.records.length);
+                res.writeHead(400); res.end(`Invalid ${counterField}`); return;
+              }
+            }
+          }
+          let effectiveGeneration = body.generation;
+          if (effectiveGeneration === undefined && body.records.length > 0) {
+            const firstGen = body.records[0]?.generation;
+            if (typeof firstGen === 'number' && Number.isInteger(firstGen) && firstGen >= 0) {
+              effectiveGeneration = firstGen;
+            }
+          }
+          if (Array.isArray(body.records) && body.records.length > 0) {
+            const result = clientCollector?.appendBatch(body.records, activeLocation, {
+              connectionId: body.connectionId,
+              issuedConnections: issued,
+              generation: effectiveGeneration,
+            });
+            if (result && ((result.appended === 0 && (result.dropped > 0 || result.schemaViolations > 0)) || result.schemaViolations > 0)) {
+              res.writeHead(400); res.end('Batch rejected'); return;
+            }
+          }
+          if (clientCollector) {
+            if (typeof clientCollector.updateClientStream === 'function') {
+              const ok = clientCollector.updateClientStream(body.connectionId, effectiveGeneration, {
+                isStop: body.isStop === true,
+                trailingUnsentCount: body.trailingUnsentCount,
+                overflowCount: body.overflowCount,
+                droppedCount: body.droppedCount,
+              });
+              if (!ok) {
+                recordSchemaViolation(0);
+                res.writeHead(400); res.end('Invalid stream state'); return;
+              }
+            } else {
+              if (body.isStop === true) {
+                clientCollector.clientFinalized = true;
+              }
+              if (typeof body.overflowCount === 'number') {
+                clientCollector.clientOverflowCount = Math.max(clientCollector.clientOverflowCount || 0, body.overflowCount);
+              }
+              if (typeof body.droppedCount === 'number') {
+                clientCollector.clientDroppedCount = Math.max(clientCollector.clientDroppedCount || 0, body.droppedCount);
+              }
+              if (typeof body.trailingUnsentCount === 'number') {
+                clientCollector.clientTrailingUnsentCount = body.trailingUnsentCount;
+              }
+            }
+          }
+          res.writeHead(204); res.end();
+          clientCollector?.notifyFinalizationWaiters?.();
+        } catch {
+          if (!res.headersSent) { res.writeHead(400); res.end(); }
+        }
         return;
       }
 

@@ -18,9 +18,26 @@ const exists = path => path === HELPER || path === SCENE_FILE;
 function fakeChild(onSpawn) {
   const child = new EventEmitter();
   child.pid = 4242; child.exitCode = null; child.killed = false;
-  child.stdin = new EventEmitter(); child.stdin.end = () => { child.exitCode = 0; };
-  child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
-  child.kill = () => { child.killed = true; child.exitCode = 1; };
+  child.stdin = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  child.stdin.end = () => {
+    child.exitCode = 0;
+    if (!child.killed) {
+      child.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Summary',
+        message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'armed', attempted: false, cleanupSafe: true } })
+      }) + '\n');
+    }
+    child.emit('exit', 0);
+    child.emit('close', 0);
+  };
+  child.kill = () => {
+    child.killed = true;
+    child.exitCode = 1;
+    child.emit('exit', 1);
+    child.emit('close', 1);
+  };
   onSpawn(child);
   return child;
 }
@@ -65,7 +82,7 @@ test('a run creates one uniquely named window, then captures with owned-location
   assert.match(opened[1], /^WhaleWallpaperProbe-\d{12}-[0-9a-f]{4}$/, 'the window name is round unique');
   assert.equal(opened[2], SCENE_FILE, 'only the whitelisted project can be opened');
   assert.equal(children.length, 1);
-  assert.deepEqual(children[0].args.slice(4), ['pipe', '--owned-location', opened[1]]);
+  assert.deepEqual(children[0].args.slice(4), ['pipe', '--owned-location', opened[1], '--taskbar-hide']);
   assert.equal(session.state().captureStarted, false);
   await session.stop();
 });
@@ -404,4 +421,559 @@ test('run metadata is written under the controlled directory only', async () => 
     const pruned = await pruneRuns(root, 1);
     assert.deepEqual(pruned, []);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('session passes --taskbar-hide by default and respects WM_WALLPAPER_TASKBAR_HIDE=0', async () => {
+  const normal = sessionHarness();
+  await normal.session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  assert.equal(normal.children[0].args.includes('--taskbar-hide'), true, 'enabled by default');
+  await normal.session.stop();
+
+  const disabledChildren = [];
+  const disabledCalls = [];
+  const disabledSession = createPreviewSession({
+    env: { WM_WALLPAPER_TASKBAR_HIDE: '0' },
+    helperRun: async (helper, args) => {
+      disabledCalls.push(args);
+      if (args[0] === '--we-open') return { opened: true };
+      if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: disabledCalls.find(c => c[0] === '--we-open')?.[1] ?? '', visible: true }];
+      if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+      return {};
+    },
+    spawnChild: (helper, args) => {
+      const child = fakeChild(c => disabledChildren.push({ child: c, args }));
+      return child;
+    },
+    sleep: async () => {},
+    now: () => 1700000000000,
+  });
+
+  await disabledSession.create({ helper: HELPER, output: 'F:\\out2', scene: { scene: 'lucy' } });
+  assert.equal(disabledChildren[0].args.includes('--taskbar-hide'), false, 'fallback switch disables taskbar hide');
+  await disabledSession.stop();
+});
+
+test('controlled shutdown sequence awaits child exit before closing source window', async () => {
+  const order = [];
+  let openedLocation = '';
+  const helperRun = async (helper, args) => {
+    order.push(args[0]);
+    if (args[0] === '--we-open') { openedLocation = args[1]; return { opened: true }; }
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: openedLocation, visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    return {};
+  };
+
+  let mockChild;
+  const spawnChild = (helper, args) => {
+    mockChild = new EventEmitter();
+    mockChild.pid = 9999;
+    mockChild.exitCode = null;
+    mockChild.killed = false;
+    mockChild.stdout = new EventEmitter();
+    mockChild.stderr = new EventEmitter();
+    mockChild.stdin = new EventEmitter();
+    mockChild.stdin.end = () => {
+      order.push('stdin-end');
+      // Simulate child exiting after a delay
+      setTimeout(() => {
+        mockChild.stderr.emit('data', JSON.stringify({
+          kind: 'log', level: 'info', scope: 'Summary',
+          message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'armed', attempted: false, cleanupSafe: true } })
+        }) + '\n');
+        order.push('child-exit');
+        mockChild.exitCode = 0;
+        mockChild.emit('exit', 0);
+        mockChild.emit('close', 0);
+      }, 25);
+    };
+    mockChild.kill = () => { mockChild.killed = true; mockChild.exitCode = 1; };
+    return mockChild;
+  };
+
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 1000, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  await session.stop();
+
+  assert.equal(order.includes('stdin-end'), true);
+  assert.equal(order.includes('child-exit'), true);
+  assert.equal(order.includes('--window-ensure-closed'), true);
+  assert.ok(order.indexOf('stdin-end') < order.indexOf('child-exit'), 'stdin closed before child exit');
+  assert.ok(order.indexOf('child-exit') < order.indexOf('--window-ensure-closed'), 'child exits BEFORE source window close');
+  assert.equal(session.state().cleanup.closed, true);
+});
+
+test('unconfirmed worker aborts source window close and retains session ownership', async () => {
+  const calls = [];
+  let openedLocation = '';
+  const helperRun = async (helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') { openedLocation = args[1]; return { opened: true }; }
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: openedLocation, visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    return {};
+  };
+
+  const spawnChild = (helper, args) => {
+    const child = fakeChild(() => {});
+    // Child exits but reports worker unconfirmed in status
+    child.stdin.end = () => {
+      child.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Status',
+        message: JSON.stringify({ taskbarHide: { cleanupSafe: false, stage: 'action-unconfirmed' } })
+      }) + '\n');
+      child.exitCode = 0;
+      child.emit('close', 0);
+    };
+    return child;
+  };
+
+  const session = createPreviewSession({ helperRun, spawnChild, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0, 'source window close is BLOCKED when worker is unconfirmed');
+  assert.equal(session.isClosed(), false);
+
+  // Next create is blocked because old session was not confirmed closed
+  await assert.rejects(() => session.create({ helper: HELPER, output: 'F:\\out2', scene: { scene: 'lucy' } }), /already (started a run|ended)/);
+});
+
+test('ordinary taskbar hide warning does not stop playback', async () => {
+  const { session, children } = sessionHarness();
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+
+  // Native emits warning for hide failure with cleanupSafe = true
+  children[0].child.stderr.emit('data', JSON.stringify({
+    kind: 'log', level: 'warn', scope: 'TaskbarHide',
+    message: 'Taskbar hide failed (DeleteTab): HRESULT 0x80004005'
+  }) + '\n');
+  children[0].child.stderr.emit('data', JSON.stringify({
+    kind: 'log', level: 'info', scope: 'Status',
+    message: JSON.stringify({ taskbarHide: { cleanupSafe: true, stage: 'failed', warning: 'failed' } })
+  }) + '\n');
+
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(session.report().stopping, false, 'playback continues despite hide warning');
+  assert.equal(session.report().failure, null);
+
+  await session.stop();
+  assert.equal(session.state().cleanup.closed, true);
+});
+
+
+test('F1 regression: parent force-kill without worker proof aborts source close and retains ownership', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9999; child.exitCode = null; child.killed = false;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {}; // Never responds to stop
+    child.kill = () => {
+      child.killed = true; child.exitCode = 1;
+      child.emit('exit', 1); child.emit('close', 1);
+    };
+    return child;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 20, childKillTimeoutMs: 20, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0, 'source window close MUST NOT be called when force-killed without worker proof');
+  assert.equal(session.isClosed(), false);
+});
+
+test('F2 regression: safe Summary consumed after pending Status allows safe close and retry recovery', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  let testChild;
+  const spawnChild = () => {
+    testChild = new EventEmitter();
+    testChild.pid = 9999; testChild.exitCode = null;
+    testChild.stdin = new EventEmitter(); testChild.stdout = new EventEmitter(); testChild.stderr = new EventEmitter();
+    testChild.stdin.end = () => {
+      // Child emits final Summary on stop
+      testChild.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Summary',
+        message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'action-failed', cleanupSafe: true, warning: null } })
+      }) + '\n');
+      testChild.exitCode = 0;
+      testChild.emit('exit', 0);
+      testChild.emit('close', 0);
+    };
+    return testChild;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  // Emit pending Status while capture runs
+  testChild.stderr.emit('data', JSON.stringify({
+    kind: 'log', level: 'info', scope: 'Status',
+    message: JSON.stringify({ record: { captureSource: 'window', frames: 100 }, taskbarHide: { stage: 'action-pending', cleanupSafe: false } })
+  }) + '\n');
+  assert.equal(session.report().native.taskbarHide.cleanupSafe, false);
+
+  // Stop should consume the Summary with cleanupSafe = true and close safely
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, true);
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 1);
+  assert.equal(session.isClosed(), true);
+});
+
+test('F3 regression: both flat status and nested record trigger offscreen window tuck', async () => {
+  for (const nested of [false, true]) {
+    const { session, children, calls } = sessionHarness();
+    await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' }, offscreenStart: false });
+    const record = { captureSource: 'window', frames: 5, width: 1280, height: 720 };
+    const payload = nested ? { record, taskbarHide: { stage: 'armed', cleanupSafe: true } } : record;
+    children[0].child.stderr.emit('data', JSON.stringify({ kind: 'log', level: 'info', scope: 'Status', message: JSON.stringify(payload) }) + '\n');
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(session.state().captureStarted, true, `captureStarted must be true for nested=${nested}`);
+    assert.equal(calls.filter(c => c[0] === '--window-apply').length, 1, `window tuck must occur for nested=${nested}`);
+    await session.stop();
+  }
+});
+
+test('F2 regression: clean normal exit with no terminal proof blocks close and returns worker-unconfirmed', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9991; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      // Normal exit with code 0 but NO summary or taskbar proof
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      child.emit('close', 0);
+    };
+    return child;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0);
+  assert.equal(session.isClosed(), false);
+});
+
+test('F2 regression: delayed Summary arriving before close within budget allows safe close', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9992; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      setTimeout(() => {
+        child.stderr.emit('data', JSON.stringify({
+          kind: 'log', level: 'info', scope: 'Summary',
+          message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'action-failed', cleanupSafe: true } })
+        }) + '\n');
+        child.emit('close', 0);
+      }, 20);
+    };
+    return child;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 100, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, true);
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 1);
+  assert.equal(session.isClosed(), true);
+});
+
+test('F2 regression: delayed Summary exceeding exit budget blocks close initially then succeeds on retry', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  let testChild;
+  const spawnChild = () => {
+    testChild = new EventEmitter();
+    testChild.pid = 9993; testChild.exitCode = null;
+    testChild.stdin = new EventEmitter(); testChild.stdout = new EventEmitter(); testChild.stderr = new EventEmitter();
+    testChild.stdin.end = () => {
+      testChild.exitCode = 0;
+      testChild.emit('exit', 0);
+      setTimeout(() => {
+        testChild.stderr.emit('data', JSON.stringify({
+          kind: 'log', level: 'info', scope: 'Summary',
+          message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'action-failed', cleanupSafe: true } })
+        }) + '\n');
+        testChild.emit('close', 0);
+      }, 40);
+    };
+    return testChild;
+  };
+  // childExitTimeoutMs: 15 < 40ms delay -> initial stop will time out on close
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 15, childKillTimeoutMs: 15, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  testChild.stderr.emit('data', JSON.stringify({
+    kind: 'log', level: 'info', scope: 'Status',
+    message: JSON.stringify({ record: { captureSource: 'window' }, taskbarHide: { stage: 'action-pending', cleanupSafe: false } })
+  }) + '\n');
+  const initialStop = await session.stop();
+  assert.equal(initialStop.closed, false);
+  assert.equal(initialStop.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0);
+
+  // Wait past delayed close
+  await new Promise(resolve => setTimeout(resolve, 50));
+  const retry = await session.stop();
+  assert.equal(retry.closed, true);
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 1);
+  assert.equal(session.isClosed(), true);
+});
+
+test('F2 regression: only periodic safe status without terminal summary proof blocks close', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  let testChild;
+  const spawnChild = () => {
+    testChild = new EventEmitter();
+    testChild.pid = 9994; testChild.exitCode = null;
+    testChild.stdin = new EventEmitter(); testChild.stdout = new EventEmitter(); testChild.stderr = new EventEmitter();
+    testChild.stdin.end = () => {
+      // Exits cleanly but emits NO terminal Summary
+      testChild.exitCode = 0;
+      testChild.emit('exit', 0);
+      testChild.emit('close', 0);
+    };
+    return testChild;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  // Emit periodic Status with armed and cleanupSafe = true
+  testChild.stderr.emit('data', JSON.stringify({
+    kind: 'log', level: 'info', scope: 'Status',
+    message: JSON.stringify({ record: { captureSource: 'window' }, taskbarHide: { stage: 'armed', cleanupSafe: true } })
+  }) + '\n');
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0);
+  assert.equal(session.isClosed(), false);
+});
+
+test('F2 regression: terminal summary with cleanupSafe false blocks close', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9995; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      child.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Summary',
+        message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'action-failed', cleanupSafe: false } })
+      }) + '\n');
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      child.emit('close', 0);
+    };
+    return child;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0);
+});
+
+test('F2 regression: fallback WM_WALLPAPER_TASKBAR_HIDE=0 allows clean close without worker proof', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9996; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      child.emit('close', 0);
+    };
+    return child;
+  };
+  const session = createPreviewSession({
+    env: { WM_WALLPAPER_TASKBAR_HIDE: '0' },
+    helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {}
+  });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, true);
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 1);
+  assert.equal(session.isClosed(), true);
+});
+
+test('F2 regression: early stop with zero frames (stage observing, attempted false, cleanupSafe true) cleans up source window and closes session', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9997; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      child.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Summary',
+        message: JSON.stringify({
+          reason: 'parent-stop',
+          taskbarHide: { stage: 'observing', attempted: false, cleanupSafe: true, warning: null },
+          windowClose: { closed: true }
+        })
+      }) + '\n');
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      child.emit('close', 0);
+    };
+    return child;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, true);
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 1);
+  assert.equal(session.isClosed(), true);
+});
+
+test('F2 regression: early stop with first frame under 10 seconds allows clean stop and subsequent start', async () => {
+  const calls = [];
+  let round = 0;
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555 + round, pid: 33272 + round, title: calls.findLast(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-apply') return { visible: true, left: -32000, top: -32000 };
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    round++;
+    const child = new EventEmitter();
+    child.pid = 9990 + round; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      child.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Summary',
+        message: JSON.stringify({
+          reason: 'parent-stop',
+          taskbarHide: { stage: round === 1 ? 'observing' : 'stopped-before-action', attempted: false, cleanupSafe: true, warning: null },
+          windowClose: { closed: true }
+        })
+      }) + '\n');
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      child.emit('close', 0);
+    };
+    return child;
+  };
+
+  // First session: early stop after first frame
+  const session1 = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session1.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped1 = await session1.stop();
+  assert.equal(stopped1.closed, true);
+  assert.equal(session1.isClosed(), true);
+
+  // Subsequent session on same helper harness creates and stops cleanly
+  const session2 = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session2.create({ helper: HELPER, output: 'F:\\out2', scene: { scene: 'lucy' } });
+  const stopped2 = await session2.stop();
+  assert.equal(stopped2.closed, true);
+  assert.equal(session2.isClosed(), true);
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 2);
+});
+
+test('F2 regression: attempted=true with non-settled stage observing is strictly rejected', async () => {
+  const calls = [];
+  const helperRun = async (_helper, args) => {
+    calls.push(args);
+    if (args[0] === '--we-open') return { opened: true };
+    if (args[0] === '--window-find') return [{ hwnd: 555, pid: 33272, title: calls.find(c => c[0] === '--we-open')[1], visible: true }];
+    if (args[0] === '--window-ensure-closed') return { outcome: 'closed', closed: true };
+    throw new Error('unexpected ' + args[0]);
+  };
+  const spawnChild = () => {
+    const child = new EventEmitter();
+    child.pid = 9998; child.exitCode = null;
+    child.stdin = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin.end = () => {
+      child.stderr.emit('data', JSON.stringify({
+        kind: 'log', level: 'info', scope: 'Summary',
+        message: JSON.stringify({
+          reason: 'parent-stop',
+          taskbarHide: { stage: 'observing', attempted: true, cleanupSafe: true, warning: null }
+        })
+      }) + '\n');
+      child.exitCode = 0;
+      child.emit('exit', 0);
+      child.emit('close', 0);
+    };
+    return child;
+  };
+  const session = createPreviewSession({ helperRun, spawnChild, childExitTimeoutMs: 50, sleep: async () => {} });
+  await session.create({ helper: HELPER, output: 'F:\\out', scene: { scene: 'lucy' } });
+  const stopped = await session.stop();
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.outcome, 'worker-unconfirmed');
+  assert.equal(calls.filter(c => c[0] === '--window-ensure-closed').length, 0);
 });

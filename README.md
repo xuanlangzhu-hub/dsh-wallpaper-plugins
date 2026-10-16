@@ -1,14 +1,15 @@
 # DSH Wallpaper Plugins
 
-为官方 DeepSeek Harness 开发的 Whale Appearance / 鲸系外观插件，提供鲸渊、鲸雾主题、自定义配色、图片和视频背景，以及 Wallpaper Engine 实验预览。
+为官方DeepSeek Harness提供Whale Appearance / 鲸系外观插件，支持主题、图片/视频背景和Wallpaper Engine实验预览。
 
-主要插件位于 [dsh-whale-mist](dsh-whale-mist/README.md)。本机日常安装包 **0.6.0-rc.24** 是 rc.23 的日常试用整理版，播放代码与原生资产相同，未合入选卡 QA 包装。用户选择保留 rc.24，自动播放关闭；[试用交接](docs/RC24_DAILY_TRIAL.md)记录包、验收、引用和回退边界。
+## 当前状态（2026-10-16）
 
-工作区另已完成壁纸库与最小选择入口的[后台审查](docs/WALLPAPER_SELECTION_FINAL_REVIEW_20261011.md)：受限列表/刷新、按ID手动开始/切换、不可用原因与选择持久化。尚未打包或做多壁纸实机验收；当前package版本仍24，不能直接同版本重打覆盖活动包，下一候选必须另取新版本。
+- 日常安装保留 **rc.28**，最近一轮测试后原设置已恢复，用户确认重开正常并停止播放。
+- **P4等待优化已收尾**：rc.31已有真实后端与等待改善证据，Lucy常规短验反馈流畅、停止清理通过；rc.31保留为用户可选择的日常试用候选，尚未自动切换。
+- 三体运动变速在无本轮采集/DSH时也可出现，原因未定，专项暂不推进；不以此否定已有P4改善，也不声称算法已定位。
+- Motion Cadence Trace实现及离线检查保留，rc.32仅为诊断候选。前端仍有丢旧帧，短验不等于零积压、长期稳定或全部壁纸兼容。
 
-[rc.23 短验](docs/RC23_STARTUP_ACCEPTANCE.md)确认无主动闪窗/抢焦点、顶部白条消失、动态与操作正常；rc.21 消息闪字修复保留，rc.13 单 Lucy 35 分钟与生命周期曾验收。任务栏入口仍存在。[GPU 四段对照](docs/DISPLAY_ADAPTER_COST_RESULT_20261010.md)已结束：33 样本、两卡同约21.5fps、解码错误0；继续保留用户当前独显状态，不宣称功耗/游戏收益，也不修改系统设置。
-
-已实施日常持续播放并验收核心生命周期，见 [rc.13](docs/B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)；最新启动观察以 rc.23 为准。真实 DSH 显示的 GPU 对照已完成，源渲染仍是成本重点；数小时/数天、功耗、游戏及多壁纸未验收，不宣称通用稳定版或低开销。
+[当前状态与接续](docs/PROJECT_STATUS.md) · [Lucy短验及恢复](docs/RC31_LUCY_ORDINARY_SHORT_TEST_20261016.md) · [产品路线](docs/PRODUCT_ROADMAP_20261011.md) · [历史记录](docs/PROJECT_HISTORY_20261016.md)
 
 ## 功能与当前边界
 
@@ -17,9 +18,9 @@
 - 官方 Windows Desktop 的透明白鲸运行时窗口图标。
 - Wallpaper Engine 原始渲染 → Windows Graphics Capture → 内存画面流 → DSH 背景层。
 
-已安装rc.24的 Wallpaper Engine 部分仍限于单 **Lucy** 场景。默认限时预览180秒、最多300秒；日常模式与默认关闭的下次启动自动播放，其本机单场景核心行为已验收。需要已安装的 Wallpaper Engine、对应场景与 .NET 10 运行时。工作区A2由Host显式配置库根、按ID重新核验scene；只有Lucy有实机验收，其它scene只允许手动实验。仓库不包含壁纸本体。
+rc.28 由Host显式配置库根、按ID重新核验scene；自动播放已验证名单仍只有 **Lucy**，其它scene只允许手动实验。默认限时预览180秒、最多300秒；日常模式与默认关闭的下次启动自动播放保留，本轮未调整用户原自动播放设置。需要已安装的 Wallpaper Engine、对应场景与 .NET 10 运行时。Lucy/绯雪双向手动切换是rc.26历史，rc.28 只对本轮当前 scene 作平滑度短验。仓库不包含壁纸本体。
 
-源窗口收在屏幕外，任务栏 / Alt-Tab 仍可能显示入口。音频、鼠标交互、其它壁纸兼容性、数小时/数天运行尚未验收，.NET 10 依赖保留。
+源窗口收在屏幕外，初始阶段任务栏仍可能显示入口，随后只尝试移除一次；不承诺跨机器 Alt-Tab 排除或 Explorer 重启后持续隐藏。部分场景的原生鼠标跟随本机已观察到，DSH 专用坐标/点击转发尚未接入；音频、通用交互、其它壁纸兼容性、数小时/数天运行尚未验收，.NET 10 依赖保留。
 
 ## 目录
 
@@ -36,23 +37,21 @@
 
 ## 检查与打包
 
-在 Windows 上使用 Node.js / npm。图标辅助程序需要 Windows 自带的 .NET Framework C# 编译器；重新编译采集程序需要 .NET 10 SDK。
-
-在仓库根目录运行：
+在 `dsh-whale-mist` 中运行：
 
 ```powershell
-New-Item -ItemType Directory -Force .\release\plugins
-Set-Location .\dsh-whale-mist
 npm run check
 npm run test:wallpaper-host
-npm run build:client-protocol
-npm run build:desktop-icon
-npm pack --pack-destination ../release/plugins
+node qa/perf/check-frontend-stages.mjs
+node qa/perf/check-native-pacing.mjs
+node qa/perf/check-motion-cadence.mjs
 ```
 
-目前已有原生采集程序在 `assets/wallpaper`，图标辅助 EXE 由构建脚本生成。生成包不保证与历史归档字节一致；正式交付应记录本次包的指纹并验收，不覆盖同版本归档。
+需要Node.js/npm，原生隔离自测还需要.NET 10 SDK。检查不创建真实WE源窗口；代码/离线检查与用户桌面验收分别记录。
 
-更多检查见插件 README。部分历史 QA 脚本固定了原机器的 SDK、场景或证据路径，使用前需检查并准备独立输出目录；不能把这些路径指向的旧源码或旧证据当成本轮结果。
+工作区manifest与打包资产保留rc.30基线，源码同时保留后续已复审P4/诊断实现；**不要直接把工作区打包当作日常rc.31/rc.32**。已有候选由隔离暂存目录构建和逐文件审计，见[rc.31候选](docs/RC31_NATIVE_WAIT_P4_CANDIDATE_20261015.md)及[rc.32诊断候选](docs/RC32_MOTION_CADENCE_CANDIDATE_20261016.md)。新发布应独立构建、记录新版本/包指纹，不覆盖同版本归档。`release/`和本机证据不随Git推送。
+
+历史QA可能带本机路径，运行前检查输入和独立输出目录。构建缓存可以清理，原始实测/复审证据、源资产、运行环境和正在引用的包须保留。
 
 ## 安装和实机验收
 

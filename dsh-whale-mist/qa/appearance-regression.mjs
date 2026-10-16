@@ -57,7 +57,49 @@ try {
     return result.result.value;
   };
   for (let i = 0; i < 50 && !await evaluate('Boolean(window.fixture?.run && window.whaleModule)'); i++) await sleep(100);
-  if (process.env.WHALE_QA_EXPORT_MEDIA) {
+  if (process.argv.includes('--scene-selection-only')) {
+    // Actual production apply/controller, with only the Host HTTP boundary mocked. A positive
+    // control proves a delayed-ready host WOULD auto-start; choosing a different scene must cancel it.
+    const outcomes = await evaluate(`(async () => {
+      const originalFetch = window.fetch;
+      const cases = [];
+      try {
+        for (const change of [false, true]) {
+          const requests = [];
+          let live = false;
+          window.fetch = async (url, init = {}) => {
+            const path = String(url);
+            const status = () => ({ available: true, active: live, modes: ['preview','daily'],
+              scenes: [{id:'lucy',available:true}], mode: live ? 'daily' : null });
+            if (path.endsWith('/status')) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+              return new Response(JSON.stringify(status()), {status:200,headers:{'content-type':'application/json'}});
+            }
+            if (path.endsWith('/start')) { requests.push(JSON.parse(init.body)); live = true; }
+            if (path.endsWith('/stop')) live = false;
+            if (path.endsWith('/stream')) return new Response('not-yet-ready',{status:503});
+            return new Response(JSON.stringify(status()), {status:200,headers:{'content-type':'application/json'}});
+          };
+          localStorage.setItem('dsh-whale-mist.appearance.v1', JSON.stringify({theme:'abyss',background:'wallpaper',weScene:'lucy',weMode:'daily',weAutoStart:true}));
+          fixture.boot();
+          const c = fixture.controller;
+          if (change) {
+            const id = 'we-' + 'a'.repeat(24);
+            fixture.assert(c.set('weScene', id).weScene === id, 'a real scene change reaches the controller');
+            fixture.assert(c.set('weScene', 'lucy').weScene === 'lucy', 'selection can return to Lucy without applying');
+          }
+          await new Promise(resolve => setTimeout(resolve, 650));
+          const observed = {changed:change,starts:requests.length,bodies:requests};
+          fixture.assert(requests.length === (change ? 0 : 1),
+            change ? 'scene selection cancels a pending automatic start' : 'positive control auto-starts once when the host becomes ready');
+          cases.push(observed);
+          await c.wallpaper.stop(); fixture.dispose();
+        }
+      } finally { window.fetch = originalFetch; }
+      return cases;
+    })()`);
+    console.log(JSON.stringify({sceneSelection:outcomes,isolatedProfile:profile},null,2));
+  } else if (process.env.WHALE_QA_EXPORT_MEDIA) {
     const out = process.env.WHALE_QA_EXPORT_MEDIA;
     await mkdir(out, { recursive: true });
     for (const [name, method] of [['fixture.png', 'makeImage'], ['fixture.webm', 'makeVideo']]) {

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../wallpaper-probe/NativePacingTracker.cs" Link="NativePacingTracker.cs" />
+    <Compile Include="../../wallpaper-probe/ProbeJournal.cs" Link="ProbeJournal.cs" />
+    <Compile Include="../../wallpaper-probe/AtomicFile.cs" Link="AtomicFile.cs" />
+    <Compile Include="../../wallpaper-probe/KernelWaitTimer.cs" Link="KernelWaitTimer.cs" />
+    <Compile Include="../../wallpaper-probe/NativePacingDelay.cs" Link="NativePacingDelay.cs" />
+    <Compile Include="../../wallpaper-probe/ParentStopChannel.cs" Link="ParentStopChannel.cs" />
+  </ItemGroup>
+</Project>

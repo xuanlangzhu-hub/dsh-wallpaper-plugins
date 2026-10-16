@@ -452,10 +452,22 @@ function realSessionRig({ firstCloseFails = false } = {}) {
       child.pid = 9000;
       child.exitCode = null;
       child.stdin = new EventEmitter();
-      child.stdin.end = () => { child.exitCode = 0; };
+      child.stdin.end = () => {
+        child.exitCode = 0;
+        child.stderr.emit('data', JSON.stringify({
+          kind: 'log', level: 'info', scope: 'Summary',
+          message: JSON.stringify({ reason: 'parent-stop', taskbarHide: { stage: 'armed', attempted: false, cleanupSafe: true } })
+        }) + '\n');
+        child.emit('exit', 0);
+        child.emit('close', 0);
+      };
       child.stdout = new EventEmitter();
       child.stderr = new EventEmitter();
-      child.kill = () => { child.exitCode = 1; };
+      child.kill = () => {
+        child.exitCode = 1;
+        child.emit('exit', 1);
+        child.emit('close', 1);
+      };
       state.child = child;
       return child;
     },
@@ -541,4 +553,3 @@ test('a run that ended without a proven close still blocks the next start', asyn
     assert.equal(sessions.length, 1, 'no second run may be built');
   });
 });
-

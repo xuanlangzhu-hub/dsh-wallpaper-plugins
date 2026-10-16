@@ -16,7 +16,7 @@ internal static class CaptureArguments
 
     private static readonly string[] CaptureModes = ["disk", "memory", "readback", "staging", "frames", "pipe"];
     /** Option flags the caller may put anywhere; they are not positional roles. */
-    private static readonly string[] OptionFlags = ["--echo-on-stderr"];
+    private static readonly string[] OptionFlags = ["--echo-on-stderr", "--cadence-trace"];
 
     internal sealed record Parsed(
         long Handle,
@@ -27,14 +27,22 @@ internal static class CaptureArguments
         string CaptureMode,
         string? OwnedLocation,
         bool EchoMode,
-        string[] Args);
+        bool TaskbarHide,
+        string[] Args,
+        bool CadenceTrace = false);
 
     public static Parsed Parse(string[] rawArgs)
     {
+        var taskbarHideCount = rawArgs.Count(a => a == "--taskbar-hide");
+        if (taskbarHideCount > 1)
+            throw new ArgumentException("--taskbar-hide cannot be repeated.");
+        var taskbarHide = taskbarHideCount == 1;
+
         // Unknown flags stay in the list on purpose: they must be reported instead of being
         // silently ignored, so a typo cannot look like a working run.
         var echoMode = rawArgs.Contains("--echo-on-stderr");
-        var tokens = new List<string>(rawArgs.Where(token => !OptionFlags.Contains(token)));
+        var cadenceTrace = rawArgs.Contains("--cadence-trace");
+        var tokens = new List<string>(rawArgs.Where(token => token != "--taskbar-hide" && !OptionFlags.Contains(token)));
         string? ownedLocation = null;
         var ownedIndex = tokens.IndexOf("--owned-location");
         if (ownedIndex >= 0)
@@ -72,9 +80,12 @@ internal static class CaptureArguments
         if (forever && captureMode != "pipe") throw new ArgumentException("Daily (--forever) playback requires the pipe capture mode.");
         if (forever && ownedLocation is null) throw new ArgumentException("Daily (--forever) playback requires --owned-location <this round's window name>.");
 
+        if (taskbarHide && captureMode != "pipe") throw new ArgumentException("--taskbar-hide requires pipe capture mode.");
+        if (taskbarHide && ownedLocation is null) throw new ArgumentException("--taskbar-hide requires --owned-location <this round's window name>.");
+
         var positional = new List<string>(tokens);
         if (forever) positional.RemoveAt(2);
-        return new Parsed(handle, tokens[1], forever, duration, fps, captureMode, ownedLocation, echoMode, positional.ToArray());
+        return new Parsed(handle, tokens[1], forever, duration, fps, captureMode, ownedLocation, echoMode, taskbarHide, positional.ToArray(), cadenceTrace);
     }
 
     /// <summary>Runs the parser over an argument array and prints the result; used by checks.</summary>
@@ -96,6 +107,8 @@ internal static class CaptureArguments
                 captureMode = parsed.CaptureMode,
                 ownedLocation = parsed.OwnedLocation,
                 echoMode = parsed.EchoMode,
+                taskbarHide = parsed.TaskbarHide,
+                cadenceTrace = parsed.CadenceTrace,
             }, options));
         }
         catch (Exception error)

@@ -21,6 +21,7 @@ var cliJson = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolic
 try
 {
 Native.EnsureDefaultDesktop();
+if (args.Length >= 1 && args[0] == "--taskbar-worker") { Environment.ExitCode = TaskbarHideRuntime.RunWorkerEntry(args); return; }
 if (args.Length == 1 && args[0] == "--self-test-pipe") { await FramePipe.Write(Console.OpenStandardOutput(), [255, 216, 255, 217], 7, 1700000000123, 1280, 720, CancellationToken.None); return; }
 if (args.Length == 1 && args[0] == "--window-find") { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.FindProbeWindows(), cliJson)); return; }
 if (args.Length == 1 && args[0] == "--window-screen-physical") { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.PhysicalVirtualScreen(), cliJson)); return; }
@@ -72,7 +73,10 @@ if (args.Length >= 3 && args[0] == "--window-ensure-closed") {
 }
 if (args.Length == 2 && args[0] == "--self-test-publish") { await AtomicFile.SelfTest(args[1]); return; }
 if (args.Length == 2 && args[0] == "--parse-check") { await CaptureArguments.ParseCheck(args[1]); return; }
+if (args.Length == 2 && args[0] == "--self-test-native-pacing") { await NativePacingTracker.SelfTest(args[1]); return; }
+if (args.Length >= 1 && args[0] == "--self-test-native-wait") { await NativePacingDelay.RunComprehensiveSelfTests(args.Length > 1 ? args[1] : null); return; }
 if (args.Length == 2 && args[0] == "--self-test-frame-log") { await SelfTestFrameLog(args[1]); return; }
+if (args.Length >= 1 && args[0] == "--self-test-cadence-trace") { await CadenceTrace.SelfTest(args.Length > 1 ? args[1] : null); return; }
 if (args.Length == 1 && args[0] == "--self-test-lifecycle") { SelfTestLifecycle(); return; }
 if (args.Length == 2 && args[0] == "--window-tree" && long.TryParse(args[1], out var treeHwnd)) { Native.PrintTree((nint)treeHwnd); return; }
 if (args.Length == 2 && args[0] == "--window-inspect" && long.TryParse(args[1], out var inspectHwnd)) { Console.WriteLine(JsonSerializer.Serialize(SourceWindowHelper.Inspect((nint)inspectHwnd), cliJson)); return; }
@@ -113,16 +117,11 @@ var handle = parsed.Handle;
 var fps = parsed.Fps;
 var duration = parsed.Duration;
 var mode = parsed.CaptureMode;
+var taskbarHide = parsed.TaskbarHide;
 var diagnostics = mode == "pipe" || echoMode ? Console.Error : Console.Out;
 using var pipeOutput = mode == "pipe" ? Console.OpenStandardOutput() : Stream.Null;
 using var stopSignal = new CancellationTokenSource();
-if (mode == "pipe") _ = Task.Run(async () => {
-    try {
-        while (await Console.In.ReadLineAsync() is string command)
-            if (command == "stop") break;
-        stopSignal.Cancel(); // Parent closed stdin, or explicitly stopped this capture.
-    } catch (ObjectDisposedException) { }
-});
+using var parentStopChannel = ParentStopChannel.Start(Console.In, stopSignal, enabled: mode == "pipe");
 
 var hwnd = (nint)handle;
 var output = Path.GetFullPath(parsed.OutputDirectory);
@@ -132,6 +131,13 @@ if (File.Exists(Path.Combine(output, "frames.jsonl")) || File.Exists(Path.Combin
 SourceWindowHelper.VerifyTargetIdentity(hwnd);
 Native.GetWindowThreadProcessId(hwnd, out var pid);
 using var target = Process.GetProcessById((int)pid);
+TaskbarHideRuntime? taskbarHideRuntime = null;
+if (taskbarHide)
+{
+    taskbarHideRuntime = TaskbarHideRuntime.Create(hwnd, (int)pid, target.StartTime.ToUniversalTime(), ownedLocation!, output);
+    taskbarHideRuntime.BindStop(() => stopSignal.IsCancellationRequested || File.Exists(Path.Combine(output, "stop.txt")));
+    taskbarHideRuntime.CaptureInitialState();
+}
 if (!GraphicsCaptureSession.IsSupported()) throw new InvalidOperationException("WGC not supported.");
 
 using var device = Native.CreateDevice();
@@ -160,6 +166,20 @@ item.Closed += (_, _) => closed = true;
 session.StartCapture();
 diagnostics.WriteLine(JsonSerializer.Serialize(new { started = true, pid, hwnd = handle, size.Width, size.Height, fps, mode }));
 await using var log = new FrameLog(Path.Combine(output, "frames.jsonl"), FrameLogCapacity);
+var cadenceTrace = new CadenceTrace(parsed.CadenceTrace || Environment.GetEnvironmentVariable("WM_WALLPAPER_CADENCE_TRACE") == "1", ownedLocation ?? string.Empty);
+var pacingTracker = new NativePacingTracker();
+using var pacingDelay = new NativePacingDelay(parentToken: stopSignal.Token);
+var pacingStartupDiag = $"pacing delay initialized: backend={pacingDelay.BackendName}, highResolution={pacingDelay.IsHighResolution}" +
+    (pacingDelay.FallbackReason != null ? $", fallbackReason={pacingDelay.FallbackReason}" : "");
+if (mode == "pipe") ProbeJournal.Info("Pacing", pacingStartupDiag);
+else if (echoMode) ProbeJournal.Info("Pacing", pacingStartupDiag);
+else diagnostics.WriteLine(pacingStartupDiag);
+double? lastFrameStartMs = null;
+double? lastPacingRequestedMs = null;
+double? lastPacingActualMs = null;
+double? lastPostRecordMs = null;
+long emptyRetriesSinceLastFrame = 0;
+double emptyWaitActualSinceLastFrame = 0;
 try
 {
     while (forever || clock.Elapsed.TotalSeconds < duration)
@@ -169,20 +189,47 @@ try
         // application: that poll belongs to the supervised experiment only. Daily runs end
         // on the parent's stop command, the parent pipe closing, the window closing, or a
         // failure; the supervised forms keep the Esc escape hatch.
-        if (!forever && (Native.GetAsyncKeyState(0x1B) & 0x8000) != 0) { reason = "escape"; break; }
+        if (!forever && !taskbarHide && (Native.GetAsyncKeyState(0x1B) & 0x8000) != 0) { reason = "escape"; break; }
         if (File.Exists(Path.Combine(output, "stop.txt"))) { reason = "stop-file"; break; }
         if (closed || !Native.IsWindow(hwnd)) { reason = "target-closed"; break; }
-        var start = clock.Elapsed.TotalMilliseconds;
+        var frameAttemptStart = clock.Elapsed.TotalMilliseconds;
         using var frame = pool.TryGetNextFrame();
-        if (frame is null) { await Task.Delay(2); continue; }
+        if (frame is null)
+        {
+            const int emptyRequestedDelay = 2;
+            var (_, emptyActualDelay) = await pacingTracker.ExecuteEmptyRetryWaitAsync(
+                emptyRequestedDelay,
+                () => clock.Elapsed.TotalMilliseconds,
+                ms => Task.Delay(ms));
+            emptyRetriesSinceLastFrame++;
+            emptyWaitActualSinceLastFrame += emptyActualDelay;
+            continue;
+        }
         if (frame.ContentSize.Width < 1 || frame.ContentSize.Height < 1) continue;
+        var start = frameAttemptStart;
         var acquiredAt = clock.Elapsed.TotalMilliseconds;
+        double? cycleIntervalMs = null;
+        if (lastFrameStartMs.HasValue)
+        {
+            cycleIntervalMs = Math.Round(Math.Max(0, start - lastFrameStartMs.Value), 2);
+            pacingTracker.RecordCycleInterval(cycleIntervalMs.Value);
+        }
+        lastFrameStartMs = start;
+        var prevEmptyRetries = emptyRetriesSinceLastFrame;
+        var prevEmptyActualMs = emptyWaitActualSinceLastFrame;
+        emptyRetriesSinceLastFrame = 0;
+        emptyWaitActualSinceLastFrame = 0;
+        var prevPacingRequestedMs = lastPacingRequestedMs;
+        var prevPacingActualMs = lastPacingActualMs;
+        var prevPostRecordMs = lastPostRecordMs;
         // Do not await on the FrameArrived callback: copy/encode on this independent loop.
         var sourceAgeMs = Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency - frame.SystemRelativeTime.TotalMilliseconds;
         var capturedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - (long)Math.Max(0, sourceAgeMs);
+        cadenceTrace.Record(ownedLocation ?? string.Empty, checked((uint)(frames + 1)), "native-source", start, wgcTimestampMs: frame.SystemRelativeTime.TotalMilliseconds, capturedAt: capturedAt);
         using var bitmap = mode == "frames" ? null : mode == "staging" ? staging.Copy(frame.Surface) :
             await SoftwareBitmap.CreateCopyFromSurfaceAsync(frame.Surface, BitmapAlphaMode.Ignore).AsTask().WaitAsync(TimeSpan.FromSeconds(5));
         var copiedAt = clock.Elapsed.TotalMilliseconds;
+        cadenceTrace.Record(ownedLocation ?? string.Empty, checked((uint)(frames + 1)), "native-read", copiedAt, durationMs: copiedAt - acquiredAt);
         var w = Math.Min(frame.ContentSize.Width, bitmap?.PixelWidth ?? frame.ContentSize.Width);
         var h = Math.Min(frame.ContentSize.Height, bitmap?.PixelHeight ?? frame.ContentSize.Height);
         var encodedAt = copiedAt;
@@ -202,6 +249,7 @@ try
             lastBytes = new byte[(int)stream.Size]; reader.ReadBytes(lastBytes);
             hash = Convert.ToHexString(SHA256.HashData(lastBytes));
             packedAt = clock.Elapsed.TotalMilliseconds;
+            cadenceTrace.Record(ownedLocation ?? string.Empty, checked((uint)(frames + 1)), "native-encode", packedAt, durationMs: packedAt - copiedAt);
         }
         frames++;
         if (hash is not null && hash != previousHash) changed++;
@@ -211,12 +259,18 @@ try
             if (!await AtomicFile.Publish(Path.Combine(output, "latest.jpg"), lastBytes)) skippedPublications++;
         }
         var pipeStart = clock.Elapsed.TotalMilliseconds;
+        bool pipeOk = true;
         if (mode == "pipe" && lastBytes is not null)
-            await FramePipe.Write(pipeOutput, lastBytes, checked((uint)frames), capturedAt, w, h, stopSignal.Token).WaitAsync(TimeSpan.FromSeconds(5));
+            try { await FramePipe.Write(pipeOutput, lastBytes, checked((uint)frames), capturedAt, w, h, stopSignal.Token).WaitAsync(TimeSpan.FromSeconds(5)); }
+            catch (Exception ex) { pipeOk = false; cadenceTrace.Record(ownedLocation ?? string.Empty, checked((uint)frames), "native-pipe-write-error", clock.Elapsed.TotalMilliseconds, durationMs: clock.Elapsed.TotalMilliseconds - pipeStart, success: false, reason: ex.Message); throw; }
         var pipeMs = mode == "pipe" ? clock.Elapsed.TotalMilliseconds - pipeStart : 0;
+        if (pipeOk && mode == "pipe" && lastBytes is not null) cadenceTrace.Record(ownedLocation ?? string.Empty, checked((uint)frames), "native-pipe-write", clock.Elapsed.TotalMilliseconds, durationMs: pipeMs, success: true);
         if (mode != "pipe" && frames == 1 && lastBytes is not null) await File.WriteAllBytesAsync(Path.Combine(output, "first.jpg"), lastBytes);
         var writtenAt = clock.Elapsed.TotalMilliseconds;
+        var publishedThisFrame = lastBytes is not null && (mode != "disk" || skippedPublications == 0);
+        taskbarHideRuntime?.AfterFrame(frames, clock.Elapsed.TotalSeconds, hash, capturedAt, frame.SystemRelativeTime.TotalMilliseconds, publishedThisFrame, stopSignal.IsCancellationRequested);
         var winState = SourceWindowHelper.Inspect(hwnd);
+        var isStatusFrame = clock.Elapsed.TotalMilliseconds >= nextStatusMs;
         var record = new { frames, changed, seconds = Math.Round(clock.Elapsed.TotalSeconds, 3),
             width = w, height = h, bytes = lastBytes?.Length ?? 0, hash, mode, skippedPublications,
             captureSource,
@@ -227,19 +281,46 @@ try
             acquireMs = acquiredAt - start, readbackMs = copiedAt - acquiredAt,
             jpegMs = encodedAt - copiedAt, packHashMs = packedAt - encodedAt,
             imageWriteMs = writtenAt - packedAt,
-            encodeMs = Math.Round(clock.Elapsed.TotalMilliseconds - start, 2) };
+            encodeMs = Math.Round(clock.Elapsed.TotalMilliseconds - start, 2),
+            cycleIntervalMs,
+            prevPacingRequestedMs,
+            prevPacingActualMs,
+            prevPostRecordMs,
+            prevEmptyRetryCount = prevEmptyRetries,
+            prevEmptyWaitActualMs = Math.Round(prevEmptyActualMs, 2),
+            isStatusFrame,
+            pacing = pacingTracker.GetSnapshot() };
+        var recordAssembledAt = clock.Elapsed.TotalMilliseconds;
         log.Add(frames, JsonSerializer.Serialize(record));
-        if (clock.Elapsed.TotalMilliseconds >= nextStatusMs)
+        if (isStatusFrame)
         {
+            var statusStart = clock.Elapsed.TotalMilliseconds;
             await log.FlushAsync();
             await AtomicFile.Publish(Path.Combine(output, "status.json"), Encoding.UTF8.GetBytes(JsonSerializer.Serialize(record)));
-            if (mode == "pipe") ProbeJournal.Status(record);
-            else if (!echoMode) diagnostics.WriteLine(JsonSerializer.Serialize(record));
+            if (taskbarHideRuntime?.HasWarning(out var warnMsg) == true) ProbeJournal.Warning("TaskbarHide", warnMsg!);
+            var statusPayload = taskbarHideRuntime is not null ? (object)new { record.frames, record.changed, record.seconds, record.width, record.height, record.bytes, record.hash, record.mode, record.skippedPublications, record.captureSource, record.sourceTimestampMs, record.capturedAt, record.pipeMs, record.sourceAgeMs, record.minimized, record.foreground, record.visible, record.cloaked, record.winLeft, record.winTop, record.acquireMs, record.readbackMs, record.jpegMs, record.packHashMs, record.imageWriteMs, record.encodeMs, record.cycleIntervalMs, record.prevPacingRequestedMs, record.prevPacingActualMs, record.prevPostRecordMs, record.prevEmptyRetryCount, record.prevEmptyWaitActualMs, record.isStatusFrame, record.pacing, taskbarHide = taskbarHideRuntime.GetStatus() } : record;
+            if (mode == "pipe") ProbeJournal.Status(statusPayload);
+            else if (!echoMode) diagnostics.WriteLine(JsonSerializer.Serialize(statusPayload));
             nextStatusMs = clock.Elapsed.TotalMilliseconds + 1000;
+            var statusEnd = clock.Elapsed.TotalMilliseconds;
+            pacingTracker.RecordStatusPublish(statusEnd - statusStart);
         }
         if (frame.ContentSize.Width != size.Width || frame.ContentSize.Height != size.Height)
         { size = frame.ContentSize; pool.Recreate(device, DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, size); }
-        await Task.Delay(Math.Max(1, (int)(1000.0 / fps - (clock.Elapsed.TotalMilliseconds - start))));
+        var beforeSleep = clock.Elapsed.TotalMilliseconds;
+        var (postRecordMs, totalWorkMs) = pacingTracker.MeasurePostRecord(recordAssembledAt, start, beforeSleep);
+        lastPostRecordMs = Math.Round(postRecordMs, 2);
+
+        // R1: Preserve exact legacy truncation algorithm: Math.Max(1, (int)(1000.0 / fps - (clock.Elapsed.TotalMilliseconds - start)))
+        var elapsedBeforeWait = clock.Elapsed.TotalMilliseconds - start;
+        var (pacingRequested, pacingActual) = await pacingTracker.ExecutePacingWaitAsync(
+            fps,
+            elapsedBeforeWait,
+            () => clock.Elapsed.TotalMilliseconds,
+            ms => pacingDelay.DelayAsync(ms, stopSignal.Token));
+
+        lastPacingRequestedMs = pacingRequested;
+        lastPacingActualMs = Math.Round(pacingActual, 2);
     }
 }
 catch (OperationCanceledException) when (stopSignal.IsCancellationRequested) { reason = "parent-stop"; }
@@ -248,7 +329,13 @@ catch (Exception ex) { ProbeJournal.Error("Capture", ex.GetType().Name, ex.Messa
 finally
 {
     session.Dispose();
+    taskbarHideRuntime?.Finish();
     if (mode != "pipe" && lastBytes is not null) await AtomicFile.Publish(Path.Combine(output, "latest.jpg"), lastBytes);
+    var cadenceOk = await cadenceTrace.FlushAsync(Path.Combine(output, "cadence-trace-native.json"));
+    if (!cadenceOk && cadenceTrace.Enabled)
+    {
+        ProbeJournal.Warning("CadenceTrace", "FlushFailed", "Native cadence trace export timed out or failed to write");
+    }
 
     // R2: the Host closes this round's window while it is alive. If the parent
     // disconnected instead (crash, kill, closed pipe), this process is the only
@@ -257,18 +344,27 @@ finally
     // window or the wallpaper64 process itself.
     var parentLost = reason is "parent-stop" or "pipe-disconnected" or "pipe-eof" or "stdin-eof";
     SourceWindowHelper.CloseResult? windowClose = null;
+    var canClose = taskbarHideRuntime?.CanCloseOwned().Allowed ?? true;
     if (ownedLocation is not null && parentLost)
     {
-        try
+        if (!canClose)
         {
-            windowClose = SourceWindowHelper.EnsureProbeWindowClosed(ownedLocation, 15000);
-            ProbeJournal.Info("Lifecycle", $"parent lost ({reason}); owned window close outcome={windowClose.Outcome} closed={windowClose.Closed}",
-                windowClose.Error);
+            windowClose = new SourceWindowHelper.CloseResult("worker-unconfirmed", false, ownedLocation, 0, null, null, false, "worker exit could not be confirmed; window close blocked");
+            ProbeJournal.Error("Lifecycle", "worker-unconfirmed", windowClose.Error);
         }
-        catch (Exception ex)
+        else
         {
-            windowClose = new SourceWindowHelper.CloseResult("error", false, ownedLocation, 0, null, null, false, ex.Message);
-            ProbeJournal.Error("Lifecycle", ex.GetType().Name, ex.Message);
+            try
+            {
+                windowClose = SourceWindowHelper.EnsureProbeWindowClosed(ownedLocation, 15000);
+                ProbeJournal.Info("Lifecycle", $"parent lost ({reason}); owned window close outcome={windowClose.Outcome} closed={windowClose.Closed}",
+                    windowClose.Error);
+            }
+            catch (Exception ex)
+            {
+                windowClose = new SourceWindowHelper.CloseResult("error", false, ownedLocation, 0, null, null, false, ex.Message);
+                ProbeJournal.Error("Lifecycle", ex.GetType().Name, ex.Message);
+            }
         }
     }
 
@@ -276,8 +372,11 @@ finally
         captureSource,
         ownedLocation,
         windowClose,
+        taskbarHide = taskbarHideRuntime?.GetSummary(),
         frameLog = new { bounded = true, retained = log.Retained, capacity = FrameLogCapacity, total = log.Total },
-        cpuSeconds = (self.TotalProcessorTime - cpuStart).TotalSeconds, workingSetBytes = self.WorkingSet64 },
+        cadenceTrace = cadenceTrace.Enabled ? new { enabled = true, flushFailed = !cadenceOk || cadenceTrace.FlushFailed } : null,
+        cpuSeconds = (self.TotalProcessorTime - cpuStart).TotalSeconds, workingSetBytes = self.WorkingSet64,
+        pacing = pacingTracker.GetSnapshot() },
         new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
     await File.WriteAllTextAsync(Path.Combine(output, "summary.json"), summary);
     if (mode == "pipe") ProbeJournal.Info("Summary", summary);

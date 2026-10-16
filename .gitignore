@@ -44,3 +44,9 @@
 Thumbs.db
 .idea/
 .vscode/
+
+# Rebuildable native QA and Python caches
+/dsh-whale-mist/qa/**/bin/
+/dsh-whale-mist/qa/**/obj/
+**/__pycache__/
+*.py[cod]

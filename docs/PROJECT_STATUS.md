@@ -1,183 +1,35 @@
 # 项目状态与接续入口
 
-更新：2026-10-11。仓库：`xuanlangzhu-hub/dsh-wallpaper-plugins`。本机独立检出：`F:\dsh-wallpaper-plugins`。
+更新：2026-10-16。源码仓库 `xuanlangzhu-hub/dsh-wallpaper-plugins`；本机开发路径 `F:\dsh-wallpaper-plugins`。
 
-A2当前：[源码与后台审查通过](WALLPAPER_SELECTION_FINAL_REVIEW_20261011.md)，F1–F4/R1/R2/R3已闭合。
-catalog16/Host85/check/SDK和独立反例通过；列表/刷新/选择播放已接入工作区，尚未打包或实机，日常rc.24保留。
-此前三份复审单只记录历史返工，不再是待执行任务；DS暂无新编码任务。
+## 版本与现场状态
 
-## 当前状态：rc.24 短验通过，用户保留作日常试用
+| 项目 | 当前结论 |
+| --- | --- |
+| 日常安装 | rc.28；本轮恢复28安装文件、5Profile、10关闭存储，用户重开确认外观布局正常、播放停止 |
+| P4优化候选 | rc.31原归档保持；真实高精度等待及Lucy常规短验通过，尚未自动设为日常 |
+| 诊断候选 | rc.32，Motion Cadence Trace离线复审通过；仅诊断，不视作流畅度修复版 |
+| 开发工作区 | manifest/生产assets冻结在rc.30；后续已复审P4/Trace源码与QA单独保留，构建/安装采用独立候选 |
+| 三体专项 | 无采集、DSH退出时仍有类似变速；根因未定，用户决定暂不推进 |
 
-后续产品需求见 [路线图](PRODUCT_ROADMAP_20261011.md)：壁纸库/选择、入口隐藏、原壁纸公开参数、主题预设和独立选择器。
-第一小步 [只读库登记](CATALOG_DELIVERY_20261011.md)已完成，16/16离线检查；本机26记录中14个scene满足登记条件，
-不表示播放已验证。Profile/日常rc.24包未动；A2已完成后台审查，下一步另备新候选并协作第二张scene短验，不覆盖当前日常rc.24。
+“停止”是最近一次用户确认，未来操作前仍需重新确认当时状态。本轮用户授权推送和清理源码工作区，不包含切换日常版本或重启应用。
 
-下一轮交 DS 编码的具体范围已写入 [A2 最小选择任务](DS_NEXT_WALLPAPER_SELECTION.md)。
-本轮源码与离线审查已完成，选中不启动、重新开始才切换；缩略图、隐藏入口和完整选择器后置，实机另约用户。
+## 已完成与验收范围
 
-rc.24 仅更新版本/说明，26文件除README/package版本外与rc.23相同；不合入 QA 选卡包装。
-核包/check/Host48通过，正式短验用户确认显示/输入/滚动/缩放/模型控件、再次开始/重启/停止正常；三轮最终清理。
-第三轮一度仍运行是用户忘记最终停止，已由用户更正并核最终闭合，不记为插件清理bug。
-用户选择保留rc.24作日常试用，自动播放关闭；当前Profile引用release/plugins内rc.24 tgz，必须保留。
-旧rc.1/备份/原WE/官方EXE保留。本轮没有恢复rc.1；[本轮交接](RC24_DAILY_TRIAL.md)优先。
-GPU 调查已结束，保持当前独显状态，不再重复五阶段/35分钟或修改全局 GPU/FPS。
+- 壁纸受限登记、ID解析/刷新/选择记忆及Lucy/绯雪手动切换：[rc.26记录](RC26_SELECTION_SAVE_REPAIR_20261012.md)。自动播放仅Lucy通过名单。
+- C1正式任务栏worker接入及生命周期、rc.28周期查询卡顿修复：[C1最终复审](C1_HOST_INTEGRATION_FINAL_REVIEW_20261014.md)、[rc.27短验](RC27_TASKBAR_DESKTOP_ACCEPTANCE_20261014.md)、[rc.28修复](RC28_PERIODIC_STUTTER_REPAIR_20261014.md)。
+- P1/P2/P3阶段观测、P4原生等待优化：[P4最终复审](NATIVE_WAIT_P4_INTEGRATION_FINAL_REVIEW_20261015.md)、[三体P4短测](COMPLEX_SCENE_P4_FOREGROUND_RESULT_20261015.md)、[Lucy常规短验](RC31_LUCY_ORDINARY_SHORT_TEST_20261016.md)。Lucy原生全生命周期18.40秒，用户流畅反馈及清理通过；前端仍77丢旧帧，不宣称零积压/全部壁纸或长期稳定。
+- Motion Cadence诊断收尾：[最终复审](MOTION_CADENCE_TRACE_FINAL_REVIEW_20261016.md)、[rc.32实测](RC32_MOTION_CADENCE_SHORT_TEST_20261016.md)。存在Host写到client accept的波动线索，但未定位单一根因。
+- 三体源端分离：[同源结果](MOTION_CADENCE_SAME_SOURCE_RESULT_20261016.md)、[无采集结果](MOTION_CADENCE_UNCAPTURED_SOURCE_RESULT_20261016.md)。不能据此断言算法bug或排除历史采集反馈/下游叠加。
 
-以下为按时间保留的历史记录；旧“下一步/待执行”不表示当前任务。
+## 当前收尾与下一步
 
-## 当前任务：rc.23 启动/白条短实机通过，日常恢复 rc.1
+本轮整理并推送源码、测试及正式报告，清理可重建缓存；保留所有原始实测/复审证据、独立候选归档、发布输出和运行环境备份。详见[本轮工作区收尾](WORKSPACE_CLOSEOUT_20261016.md)。
 
-最新：[实际背景四段选卡对照](DISPLAY_ADAPTER_COST_RESULT_20261010.md)完成：33样本、错误0、条件/尺寸一致、前台正常，
-双卡同约21.5fps，无解码错误；独显捕获CPU较低但自身漂移明显，不作功耗/游戏或普遍优劣结论。
-保留当前独显路线；QA已撤回、5配置/9外观恢复rc.1、原WE/官方EXE/accepted资产保留，用户重开正常。
-GPU调查收束，下一步产品收尾/明确功能，不自动追加实测、改全局FPS/GPU或落实验wrapper。
+P4收尾后小G无新编码任务，不重跑性能/GPU长测、不自动恢复三体调查。后续由用户选择是否将rc.31作为日常试用，或从[产品路线](PRODUCT_ROADMAP_20261011.md)另选壁纸参数/主题预设/选择器功能；任何日常切换均另确认方便并保存新备份。
 
-最新：[显式选卡短验](EXPLICIT_ADAPTER_RESULT_20261010.md)完成：同真实 Host/源/独立 QA helper，
-Intel 与 RTX4060 各 8 秒实际 LUID 匹配、正常动态出帧/尺寸一致、首尾 JPEG 正常；不作成本优劣结论。
-QA 已移除，5配置/9外观、日常 rc.1/原WE/官方EXE恢复，用户重开正常，accepted 原生源码/资产未变。
-下一步先准备含真实背景显示的窄成本对照，不改全局 GPU/生产默认，不自动安装或实测。
+## 记录与目录约定
 
-最新：[真实 Host 同 pipe 对照](CAPTURE_CONTEXT_RESULT_20261010.md)完成：同源/同 helper/capture cwd 与参数，
-Node 两轮 Intel、正式 Host 两轮 RTX4060，帧尺寸一致、duration/exit0/错误0。只证明受测上下文能复现，
-不归因某个环境变量。用户无弹窗/抢焦点，QA 已移除，5配置/9外观恢复、原WE/EXE保留，重开日常正常。
-下一步优先评估进程内显式适配器选择的受限 QA 方案，不改全局 GPU，不自动实测或覆盖 rc.23 helper。
+`release/`是本机包归档，`.tmp/`是本机证据与独立构建，均不随Git推送。活动rc.28和旧包不覆盖/不清理。`NEXT_TASK.md`是忽略的本机短接续入口；当前项目结论以本页为准。
 
-最新：[V1 实测](CAPTURE_MODE_V1_20261010.md)四轮均 Intel，本次 Node 条件中 mode 单独切换未复现；用户报告弹窗/抢焦点。
-下午 [真实 Host 最小对照准备](CAPTURE_CONTEXT_PLAN_20261010.md)已完成 QA 工具、9/9+13/13 隔离检查和本机包；
-尚未安装或执行。日常 rc.1 未动，实际操作另约用户，不改 GPU 设置。
-
-最新：[静态调查复审](CAPTURE_DEVICE_STATIC_REVIEWED.md)。默认 spawn/env、同一默认设备创建和设备诊断事实可采纳；
-纠正 C 实际 Start-Process、日志顺序、注册表/接线口径与实验推断。下一步只准备同 Node 控制进程、同一窗口、
-有限 memory/pipe 四短轮 V1，尚未执行；不让普通 Node 结果代表正式 Host，不自动扩 V2/改 GPU 设置或 Profile。
-
-最新：[同路径 C/D 验证](CAPTURE_GPU_ALIGNMENT_20261010.md)。两段各 5 样本、错误 0、同 1302×776、
-同安装 helper 路径/EXE/DLL，但直接设备诊断仍 C=Intel、D=RTX 4060。路径并不足以对齐，父环境/模式仍未拆开，
-不继续按路径重复实测。5 配置/9 存储已恢复 rc.1，用户重开正常。下一步仅
-[DS 只读启动链核查](DS_CAPTURE_DEVICE_INVESTIGATION.md)，不改生产/GPU 设置或自行实机。
-
-最新：[五阶段成本初筛](SOURCE_COST_DESKTOP_20261010.md)。真实 A0/B/C/D/A1 共 28 样本、错误 0，C/D 同
-1302×776，D 绘制约 21.49 fps、解码错误 0。基线 WE 同一 3D 引擎已约 84%，不能把播放时近 90% 当全部新增；
-新源工作集约 +0.5 GiB。C/D capture 的活动 LUID 不同，净传输/显示开销仍未隔离；下一步仅
-[同安装 helper 路径/GPU 对齐](NEXT_CAPTURE_GPU_ALIGNMENT.md)，等用户选择时段，不重跑全套或擅改全局 FPS。
-本轮 5 配置/9 存储恢复 rc.1、原 WE/官方 EXE 保留、用户重开正常。比较工具键序误报已修，40 项通过。
-
-离线工具第三轮短复审：[PERF_COMPARE_SHORT_REVIEW.md](PERF_COMPARE_SHORT_REVIEW.md)。36/36 自检、
-11/11 保留的独立输入及 CLI 正常输出通过，R1–R4 已补齐，今天收尾。明天准备阶段清单及用户协作窗口时段，
-不再重复工具返工；尚无真实五阶段数据，不自行安装/开窗。以下为历史复审结论。
-
-离线工具第二轮最新：[PERF_COMPARE_SECOND_REVIEW.md](PERF_COMPARE_SECOND_REVIEW.md)。DS 27/27 复跑通过，
-旧九故障加控制组 10/10 已修正；独立边界仍见全 null 误报 ready、GPU 族门槛牵连其它有效项/CPU、
-时间字段遗漏、C/D 两边尺寸未知及非连续集合合并。只补 R1–R4，不重做旧修复或进入实机。
-
-离线对比工具最新复审：[PERF_COMPARE_REVIEW.md](PERF_COMPARE_REVIEW.md)。DS 16/16、采样器 25/25 复跑通过，
-但独立输入复现条件/容量/尺寸未阻断差值、覆盖按多 PID 合计、GPU 门槛借 RAM、阶段/集合/时间边界未正确处理；
-尚未通过。只返工 compare/check/README/交付记录，先补具体差值与门槛断言，不进入实机或改生产。
-
-下一步准备已写好：[阶段协议](PERF_PHASE_PROTOCOL.md)、[给 DS 的离线小任务](DS_NEXT_PERF_COMPARE.md) 和
-[清单模板](perf-phase-manifest.example.json)。DS 仅补 compare/check 脚本，Codex 审查；正式 A0→B→C→D→A1
-须另约用户。特别区分 WE 共用 PID、采集 cap 与源 FPS、C memory 与 D pipe 的链路差异；目前未实测。
-
-性能工具最新：[PERF_SAMPLER_REPAIR.md](PERF_SAMPLER_REPAIR.md)。Codex 接手修复 PowerShell 解析、CPU delta/null、PID/身份复核、GPU 状态/缺失/部分返回、分段和覆盖；确定性回归与静态接口调查见记录。旧 DS 输出保留为历史证据；当前未找到 Lucy 独立 FPS 限制声明。尚未正式阶段采样、开窗或安装，rc.23 与日常 rc.1 不变。下一步先确定阶段清单和协作时段，不能把 QA 合成通过当作实时性能验收。
-
-最新：[rc.23 验收](RC23_STARTUP_ACCEPTANCE.md)。正坐标屏幕外、核验后避免重复放大、官方 borderless 源；用户确认启动/重新开始无主动闪窗或抢焦点、无白条，动态清楚、缩放/滚动/输入与停止正常。rc.22 白条失败保留。任务栏入口仍有，不称完全隐藏。资源清理、5 配置/9 存储哈希恢复，原 WE/EXE 保留，重开正常。source-only 初筛不当最终 DSH 性能；下一步按 [性能计划](NEXT_SOURCE_PERFORMANCE.md)，或用户选择另做入口隐藏，不重复 R8。以下保留历史。
-
-最新：[rc.21 正式桌面验收](RC21_DESKTOP_ACCEPTANCE.md)。用户确认快速滚动/反向无闪字，多行增减、真实新回复自动跟随/返回底部、窗口变化、菜单/选字、区域组合/角点/暗带及停止恢复正常。467.711 秒、7108 采集帧、decodeErrors=0；本轮采集/源窗口均已清理。官方 CLI 恢复 rc.1，5 份配置/9 个外观文件哈希一致，原 WE 与 EXE 保留；用户重开确认正常。候选保留，不自行改为日常。下一步可按用户选择安排启动闪窗小验证、GPU 增量及多壁纸/A/E；不再重复 R8 或 35 分钟。以下保留历史。
-
-最新：[RC21_SCROLL_REPAIR.md](RC21_SCROLL_REPAIR.md)。Codex 接手后复用原生消息视口，输入节点保持原 DOM、相对外层 body 停靠。五轮 554 帧零越界，原同步实验仍 8 帧越界，解除裁剪对照失败；15 个真实文字像素场景、输入/菜单/恢复及相关回归通过。rc.21 核包 26 文件、原生资产不变。尚未安装或实机，日常仍 rc.1；下一步仅用户协作短验真实虚拟列表/自动跟随、滚动、输入和恢复。以下保留历史。
-
-最新：[R8_FIFTH_REVIEW.md](R8_FIFTH_REVIEW.md)。DS 首次修改生产 client，同步 scroll 重算在本次采样里使几何滞后归零，但旧版与同步版独立严格检查各 7 帧可见越界、均退出 1；未修好、无 rc.21。两个 null 是 matched.push 漏传字段，独立副本补传后正常取值；这些上方区域本来就可见，不是“裁剪未生效”的区分判据。下一轮继续单方案生产裁剪对照，不在字段/近似时间测量上绕圈；保留正常历史、壁纸、输入与恢复。本轮日常未动，DS 原修改未覆盖。以下保留历史。
-
-最新：[R8_FOURTH_REVIEW.md](R8_FOURTH_REVIEW.md)。基本时间换算及 T3/T4 输出保护的独立检查通过。无窗口复跑 141 帧中 11 帧卡片下方有消息像素，原图已核查，卡片始终 [552,672]，故固定禁止区域检测无需精确 tick 配对。生产 client 未变、无 rc.21；“写入 0 次落后”不能排除更新间隙/合成器状态，不采纳“两种解释都不成立”。下一轮沿用一个帧入口建立严格失败门槛，再修消息裁剪，保留正常历史/壁纸/输入交互；同时补传输延迟校准与目录回归断言。本轮未动日常。以下保留历史。
-
-最新：[R8_THIRD_REVIEW.md](R8_THIRD_REVIEW.md)。Date.now / performance.now 混用导致全部帧被配到最后 tick，不能据此认定旧帧或推翻用户闪字反馈。常规报告路径保护改善，但 junction 绕过和 WM_RUN_DIR 同毫秒重名已有合成复现。下一轮按 T1–T4 收紧，沿用一个可信帧入口；生产 client 未变、未修闪字、无 rc.21。日常本轮未动，不安装或重复实机。以下第二轮记录保留作历史。
-
-最新：[R8_SECOND_REVIEW.md](R8_SECOND_REVIEW.md)。单一 RAF/默认报告保留/目录归属保护复跑通过；静态像素对照 0→1740→0 有效，但自然滚动的 28 个潜在越界回调样本仍不等于真实呈现帧。下一步只补渲染帧证据与自定义输出不能落到待删 profile 的保护。生产 client 仍 rc.20、未修闪字、未出 rc.21，不安装或重复实机；QA 改动继续留工作树，不把诊断进展写成修复通过。
-
-以下为上一轮复审记录；D1–D4 的已修部分以上述最新复审为准。
-
-最新：[rc.20 实机收尾](RC20_DESKTOP_REVIEW.md)。rc.19 原圆角尖端漏光由 Codex 小范围修成 rc.20，角点失败/通过对照与相关回归通过，26 包文件匹配源码。用户确认角点不再漏光、聊天顶部遮挡/取消恢复正常、侧栏暗带消失；但发现滚动时发送框下方瞬时闪字，因此不记所有交互/整个外观实机全部通过。
-
-最新 [R8 诊断复审](R8_DIAGNOSTIC_REVIEW.md)：生产 client 未改、未出 rc.21。DS 只观察到采样时可能有旧裁剪值，没有建立可见失败循环；探针扫描卡片上方、RAF 循环累积导致重复计数，不能把当前数字当可见泄漏帧。新增清理会删掉默认 profile 内报告，且 recursive rm 缺少本次目录所有权/解析路径边界，QA 改动暂不合并。先按复审 D1–D4 修正测量与清理，再按 [动态计划](NEXT_SCROLL_CLIP_TIMING.md) 建立失败对照后改实现。日常仍沿用已恢复 rc.1，本轮不安装或重复实机；顶部/暗带/角点确认保留。DS 原诊断报告留在工作树供修订，不以其自我反省替代验证结果。
-
-此前 [rc.19 后台复审](RC19_REGION_REVIEW.md) 与 DS 交付记录保留；其通过范围不能替代本次动态反馈。
-
-以下为 DS 交付时记录；原“未提交/指标”不代替上述最新复审。
-
-rc.18 短实机确认默认两区能见壁纸、布局正常，但勾选聊天（或两区）时会话标题与「对话／轨迹」栏仍透出壁纸；
-用户截图另指出侧栏底部、头像上方的矩形暗带。见 [rc.18 实机复审](RC18_DESKTOP_REGION_REVIEW.md) 与
-[侧栏底部补查](SIDEBAR_BOTTOM_FADE_NOTE.md)。rc.19 只做这两件事：
-
-- **聊天区范围**：勾选后覆盖整个右侧聊天列（`.BynINW_centerCol`），包含会话标题与「对话／轨迹」标签栏；
-  文案同步。区域检查同时采 header 与正文，并新增“只遮正文”负对照 `bodyOnlyPainter`。
-- **侧栏底部暗带**：已用官方侧栏夹具复现——透明壁纸态下官方 `._9lTDKa_fade` 的 24px 渐隐再叠一层
-  半透明 sidebar-fill，渐变带内亮度 39.3 → 32.4 且左右为硬边界。现仅当「背景激活且侧栏仍透出壁纸」时
-  移除该渐隐的颜色绘制；侧栏选实色或不使用背景时宿主渐隐原样保留。负对照 `restoreFade` 可复现暗带。
-
-候选 `release/plugins/dsh-whale-mist-0.6.0-rc.19.tgz`，
-SHA256 `B3F31578D522B82DF9F40DDC49FC190A39B73E533275C7C544E3074A1E8D6341`，未安装、未提交。
-检查：`check`、外观 30、壁纸外观 136、布局 6 宽度、区域、消息裁剪、侧栏暗带、Host 46、SDK 契约全部通过；
-相对 rc.18 包内仅 `package.json`、`README.md`、`src/client.js` 变化，原生资产未动。
-
-**未验收**：chat=true 的 header/正文覆盖、四种组合观感、侧栏底部观感、缩放与多行输入需用户短实机确认。
-日常仍 rc.1；rc.18 及全部旧包未改动。
-
-以下为 DS 交付摘要（rc.18/R6），保留作为历史。
-
-rc.17 短实机通过后（[rc.17 验收](RC17_DESKTOP_VISUAL_ACCEPTANCE.md)：卡片外围与底部壁纸可见、无大片黑底、
-旧字不透、多行输入与缩放/菜单正常、清理通过），本轮按 [区域底色计划](NEXT_REGION_BACKGROUNDS.md) 实现 R6：
-
-- 新增两个独立开关 `opaqueSidebar` / `opaqueChat`，默认 `false`（视觉与 rc.17 相同）；
-  非显式 `true`（缺字段、字符串、数字）一律回落到关闭，旧配置与损坏值不会误开区域。
-- 仅在壁纸态给**局部容器**着色：侧栏用主题侧栏色（含 deep 与四配色），聊天区用主题底色；
-  未改任何全局变量，frame、顶部条、输入卡片、菜单不受影响；偏好随外观设置保存，
-  无背景时保留偏好但不绘制，切换开关不启停 WE 轮次。
-- 新增 `qa/appearance-wallpaper-regions.mjs`：四种组合逐一测像素（默认两侧见壁纸、只开侧栏、
-  只开聊天、两开各自成立），并断言标题栏/卡片/frame 不变；另覆盖 UI 回调、持久化与非法值回退、
-  重置、无背景不绘制、停止后不遗留绘制，以及四配色与 deep 的对应底色。
-- 三组负对照（开关联动、整列涂实、座位涂实）各自命中预期检查；替换目标不匹配会直接报错。
-
-候选 `release/plugins/dsh-whale-mist-0.6.0-rc.18.tgz`，
-SHA256 `AF931967464DD2D276E40C47C88E05DA69E585FC95E71DE9C2E33A12F432C5E8`，未安装、未提交。
-检查：`check`、外观 30、壁纸外观 136、布局 6 宽度（含新复选框几何）、区域、像素/裁剪、Host 46、SDK 契约。
-相对 rc.17 包内仅 `package.json`、`README.md`、`src/client.js` 三个文件变化，原生资产未动。
-
-**未验收**：四种组合的真实观感、缩放/最大化、多行输入与滚动、四配色在真实壁纸下的层次需用户短实机确认。
-日常仍 rc.1；rc.17 及全部旧包未改动。
-
-## 当前完成的阶段
-
-Whale Appearance 源码 `0.6.0-rc.13` 的代码/实际 DOM 短复审和**本机单 Lucy 核心实机验收通过**。
-最新：[rc.13 实机验收](B_DAILY_PLAYBACK_RC13_DESKTOP_ACCEPTANCE.md)。同轮 2120.654 秒、42934 帧、0 解码错误；限时预览 180.030 秒自然到期，正常按钮、来源切换、停用、自动播放及正常退出清理均通过。
-用户确认缩放、最小化恢复、输入/选字、文字可读与真实动态画面；自动播放关闭后不启动，开启后完整重开每次仅一轮，勾选不即时播放，手动停止后调整外观不自启。
-
-**验收边界**：启动仍会短暂闪出独立窗口；源窗口仍可能有任务栏/Alt-Tab 入口。共享 WE 单 GPU 引擎采样较高，含原桌面与独立源窗口，未做增量对照或完整 renderer GPU 覆盖；不宣称低开销、完全隐藏、所有场景或数小时/数天稳定。
-
-临时 rc.13 已撤回，日常恢复 rc.1；四份 Profile 与测试前外观存储哈希一致，官方 EXE 哈希未变、签名 Valid。用户重开确认正常，采集/源窗口为 0，原 WE 身份保留。正在引用的包与全部旧归档仍保留。
-
-历史：[rc.13 代码复审](B_DAILY_PLAYBACK_RC13_REVIEW.md)、[rc.12](B_DAILY_PLAYBACK_RC12_REVIEW.md)、[rc.11 布局](B_DAILY_PLAYBACK_RC11_DESKTOP_LAYOUT_REVIEW.md)、[rc.11 代码](B_DAILY_PLAYBACK_RC11_REVIEW.md)；早期复审与 rc.7 预览验收记录保留。
-实现交付：[B_DAILY_PLAYBACK_DELIVERY.md](../dsh-whale-mist/docs/B_DAILY_PLAYBACK_DELIVERY.md) 是交付时快照，旧“未安装/未验收”描述不替代最新实机结论。
-
-## 下一阶段
-
-先完成 R8 滚动瞬时闪字的动态失败对照与修复，交新候选复审后再短实机确认；顶部/暗带/角点不重做。
-通过后再安排启动闪窗小验证、GPU 增量对照及 A 多壁纸/E 打包复现；音频、鼠标交互、全屏坐标锚定后置。
-无需为同一实现重复 35 分钟；若后续改变长期帧循环、资源归属或清理机制，再按影响补测。
-
-## rc.13 长跑归档（历史）
-
-- 验收证据：`F:\deepseekharness\.tmp\wallpaper-daily-rc13-desktop-20261007-085935`。
-- 起点备份：`C:\Users\HP\.dsh\backups\official-desktop-before-daily-rc13-20261007-085935`。
-- rc.13 归档包 SHA256：`DA2C08A187C8A031E6D92DAD416C41A397D273B2EBF5F472590D6FED8DBD81C5`。未重打/覆盖；当前源码 README 的验收补记不在原包里。
-- 本轮仅新增验收/接续文档并更新 README，没有修改实现、原生资产或版本号。
-
-## 本机历史资料
-
-- 原工作区 `F:\deepseekharness` 保留，用于历史源码、资产、归档与验收证据。
-- rc.7 证据：`F:\deepseekharness\.tmp\wallpaper-settings-rc7-desktop-20261006-102024`。
-- rc.7 起点备份：`C:\Users\HP\.dsh\backups\official-desktop-before-settings-rc7-20261006-102024`。
-- 官方程序与 `.dsh` 属于运行环境，不作为源码开发目录。
-
-这些是本机历史路径，不能复用旧 PID、窗口名或证据目录。新检查写入本轮独立目录，保留旧证据。
-
-## 拆分来源
-
-原工作区的插件提交为 `bbab190`、`c838b82`、`8aab3e2`、`a986196` 和 `ff19f3b`；本仓库以最后一项的已提交插件快照为起点。迁移后原工作区的来源历史与正在引用的包均保留。
+旧状态全文保存在[项目历史快照](PROJECT_HISTORY_20261016.md)，各交付、失败报告和修订报告保留。历史PID、窗口名、旧“当前版本/下一步”和旧备份不能直接复用。

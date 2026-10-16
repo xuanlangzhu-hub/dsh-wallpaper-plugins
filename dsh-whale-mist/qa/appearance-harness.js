@@ -81,6 +81,37 @@ fixture.run = async () => {
   localStorage.setItem('dsh-whale-mist.appearance.v1', JSON.stringify({ theme: 'abyss', canvas: 'clear', sidebar: 'deep', glass: 'standard' }));
   fixture.boot(); let c = fixture.controller;
   assert(c.read().sidebar === 'deep' && c.read().background === 'none' && c.read().palette === 'ocean', 'legacy settings retained with additive defaults');
+  // Exercise the picker callback through the REAL appearance controller (not a fake controller.set).
+  // Only the list snapshot is supplied by this fixture; the production callback, validation,
+  // persistence and subsequent render all run unchanged. The old whitelist omission fails here.
+  c.set('background', 'wallpaper'); // Mount the picker before exercising its real callback.
+  const chosenScene = { id: 'we-' + 'a'.repeat(24), title: 'Fixture second scene', type: 'scene', available: true };
+  const pickerControls = () => {
+    const originalUseState = React.useState;
+    let stateSlot = 0;
+    React.useState = initial => {
+      const slot = stateSlot++;
+      return slot === 4
+        ? [{ items: [chosenScene], state: 'ready', loaded: true, loading: false, error: '', rootWarnings: [] }, () => {}]
+        : originalUseState(initial);
+    };
+    try { return fixture.controls(); }
+    finally { React.useState = originalUseState; }
+  };
+  const sceneButton = pickerControls().find(node => node.props['data-wm-scene-item'] === chosenScene.id);
+  assert(sceneButton && sceneButton.props['aria-disabled'] === false, 'the fixture second scene is selectable');
+  sceneButton.props.onClick();
+  assert(c.read().weScene === chosenScene.id, 'clicking a second scene changes the real controller selection');
+  assert(JSON.parse(localStorage.getItem('dsh-whale-mist.appearance.v1')).weScene === chosenScene.id, 'picker selection is persisted through the real controller');
+  const selectedButton = pickerControls().find(node => node.props['data-wm-scene-item'] === chosenScene.id);
+  assert(selectedButton.props['aria-checked'] === true && selectedButton.props.className.includes('is-selected'), 'a subsequent picker render highlights the chosen scene');
+  fixture.dispose(); fixture.boot(); c = fixture.controller;
+  assert(c.read().weScene === chosenScene.id, 'a fresh plugin instance retains the chosen scene');
+  for (const invalid of ['../project.json', '__proto__', 'we-zzzzzzzzzzzzzzzzzzzzzzzz', null]) {
+    assert(c.set('weScene', invalid).weScene === chosenScene.id, 'invalid scene values cannot replace the saved selection: ' + String(invalid));
+  }
+  assert(c.set('weScene', 'lucy').weScene === 'lucy', 'the real controller can switch the selection back to Lucy');
+  c.set('background', 'none');
   const accents = new Set();
   for (const palette of ['ocean', 'graphite', 'violet', 'jade']) {
     c.set('palette', palette); accents.add(getComputedStyle(document.body).getPropertyValue('--dsw-alias-brand-primary').trim());

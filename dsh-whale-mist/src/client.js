@@ -126,6 +126,7 @@ window.__ModuleLoader__.load({
     const BOOLEAN_SETTINGS = Object.freeze(["weAutoStart", "opaqueSidebar", "opaqueChat"]);
 
     function isValidSetting(key, value) {
+      if (key === "weScene") return isSceneId(value);
       if (Object.hasOwn(ALLOWED_SETTINGS, key)) return ALLOWED_SETTINGS[key].includes(value);
       if (BOOLEAN_SETTINGS.includes(key)) return typeof value === "boolean";
       return Object.hasOwn(RANGE_SETTINGS, key) && typeof value === "number" && Number.isFinite(value);
@@ -408,7 +409,10 @@ window.__ModuleLoader__.load({
      * constrained actions (`start` / `stop` / `restart` plus a scene id) and reads the
      * authenticated frame stream. It never sends a path, a command or a window handle.
      */
-    function createWallpaperEngine({ fetchImpl = (...args) => fetch(...args), now = () => Date.now(), firstFrameTimeoutMs, idleTimeoutMs, retryDelayMs, hostStatusTimeoutMs } = {}) {
+    function createWallpaperEngine({ fetchImpl = (...args) => fetch(...args), now = () => Date.now(), monotonicNow, firstFrameTimeoutMs, idleTimeoutMs, retryDelayMs, hostStatusTimeoutMs } = {}) {
+      const monoNow = typeof monotonicNow === "function"
+        ? monotonicNow
+        : (typeof performance !== "undefined" && typeof performance.now === "function" ? () => performance.now() : now);
       firstFrameTimeoutMs = firstFrameTimeoutMs ?? 20000;
       idleTimeoutMs = idleTimeoutMs ?? 8000;
       retryDelayMs = retryDelayMs ?? 400;
@@ -426,14 +430,63 @@ window.__ModuleLoader__.load({
       let abort = null;
       let pollTimer = null;
       let status = Object.freeze({ state: "idle", error: "", host: null, generation: 0 });
-      const metrics = { received: 0, rendered: 0, dropped: 0, sourceSequence: 0, decodeErrors: 0 };
-      let latest = null;
-      let painting = false;
-      let frameRequest = 0;
       let startedAt = 0;
-      let latencySum = 0;
-      let latencyMax = 0;
       let lastFrameAt = 0;
+
+      function createRunContext(gen) {
+        return {
+          generation: gen,
+          metrics: { received: 0, rendered: 0, dropped: 0, sourceSequence: 0, decodeErrors: 0 },
+          startedAt: 0,
+          lastFrameAt: 0,
+          hideStalledFrames: false,
+          latencySum: 0,
+          latencyMax: 0,
+          waitRafCount: 0,
+          waitRafSumMs: 0,
+          waitRafMaxMs: 0,
+          waitTimeoutCount: 0,
+          waitTimeoutSumMs: 0,
+          waitTimeoutMaxMs: 0,
+          waitCancelledCount: 0,
+          decodeSuccessCount: 0,
+          decodeSuccessSumMs: 0,
+          decodeSuccessMaxMs: 0,
+          decodeFailCount: 0,
+          decodeFailSumMs: 0,
+          decodeFailMaxMs: 0,
+          discardHiddenCount: 0,
+          discardStaleCount: 0,
+          syncCount: 0,
+          syncSumMs: 0,
+          syncMaxMs: 0,
+          syncErrorCount: 0,
+          drawCount: 0,
+          drawSumMs: 0,
+          drawMaxMs: 0,
+          drawErrorCount: 0,
+          dropDecodingCount: 0,
+          dropSyncCount: 0,
+          dropWaitingCallbackCount: 0,
+          dropOtherCount: 0,
+          painting: false,
+          paintPhase: "idle",
+          currentSchedule: null,
+          latest: null,
+          cadenceTraceEnabled: false,
+          cadenceTraceRecords: null,
+          cadenceTraceRunId: '',
+          cadenceTraceConnectionId: '',
+          cadenceTraceInFlight: false,
+          cadenceTraceDroppedCount: 0,
+          cadenceTraceOverflowCount: 0,
+          cadenceTraceTrailingUnsentCount: 0,
+          cadenceTraceStopPending: false,
+        };
+      }
+
+      let activeRun = createRunContext(0);
+
       // Every start/stop/switch gets a new generation. Responses, decoded frames and
       // stream callbacks from an older generation can never change the current state,
       // so a late start reply cannot revive a run the user already stopped.
@@ -448,64 +501,453 @@ window.__ModuleLoader__.load({
       const notifyStop = (reason) => listeners.forEach(listener => listener(reason));
       const notifyStalled = () => stallListeners.forEach(listener => listener());
 
-      const snapshot = () => ({ ...metrics, seconds: startedAt ? (now() - startedAt) / 1000 : 0,
-        meanLatencyMs: metrics.rendered ? latencySum / metrics.rendered : 0, maxLatencyMs: latencyMax,
-        hidden: Number(document.hidden) });
+      const snapshot = () => {
+        const r = activeRun;
+        return Object.freeze({
+          received: r.metrics.received,
+          rendered: r.metrics.rendered,
+          dropped: r.metrics.dropped,
+          sourceSequence: r.metrics.sourceSequence,
+          decodeErrors: r.metrics.decodeErrors,
+          seconds: r.startedAt ? Math.max(0, (now() - r.startedAt) / 1000) : 0,
+          meanLatencyMs: r.metrics.rendered ? r.latencySum / r.metrics.rendered : 0,
+          maxLatencyMs: r.latencyMax,
+          hidden: Number(document.hidden),
+          waitRafCount: r.waitRafCount,
+          waitRafSumMs: Number(r.waitRafSumMs.toFixed(3)),
+          waitRafMaxMs: Number(r.waitRafMaxMs.toFixed(3)),
+          waitTimeoutCount: r.waitTimeoutCount,
+          waitTimeoutSumMs: Number(r.waitTimeoutSumMs.toFixed(3)),
+          waitTimeoutMaxMs: Number(r.waitTimeoutMaxMs.toFixed(3)),
+          waitCancelledCount: r.waitCancelledCount,
+          decodeSuccessCount: r.decodeSuccessCount,
+          decodeSuccessSumMs: Number(r.decodeSuccessSumMs.toFixed(3)),
+          decodeSuccessMaxMs: Number(r.decodeSuccessMaxMs.toFixed(3)),
+          decodeFailCount: r.decodeFailCount,
+          decodeFailSumMs: Number(r.decodeFailSumMs.toFixed(3)),
+          decodeFailMaxMs: Number(r.decodeFailMaxMs.toFixed(3)),
+          discardHiddenCount: r.discardHiddenCount,
+          discardStaleCount: r.discardStaleCount,
+          syncCount: r.syncCount,
+          syncSumMs: Number(r.syncSumMs.toFixed(3)),
+          syncMaxMs: Number(r.syncMaxMs.toFixed(3)),
+          syncErrorCount: r.syncErrorCount,
+          drawCount: r.drawCount,
+          drawSumMs: Number(r.drawSumMs.toFixed(3)),
+          drawMaxMs: Number(r.drawMaxMs.toFixed(3)),
+          drawErrorCount: r.drawErrorCount,
+          dropDecodingCount: r.dropDecodingCount,
+          dropSyncCount: r.dropSyncCount,
+          dropWaitingCallbackCount: r.dropWaitingCallbackCount,
+          dropOtherCount: r.dropOtherCount,
+        });
+      };
+
+      const CADENCE_CLIENT_CAPACITY = 8192;
+      const CADENCE_CLIENT_BATCH_LIMIT = 150;
+      const MAX_STOP_FLUSH_ATTEMPTS = 4;
+      let cadenceBatchCounter = 0;
+
+      const flushCadenceTrace = (targetRun = activeRun, options = {}) => {
+        const r = targetRun;
+        if (!r || !r.cadenceTraceEnabled) return;
+        if (r.cadenceTraceStopTerminated) return;
+
+        const hasRecords = Boolean(r.cadenceTraceRecords && r.cadenceTraceRecords.length > 0);
+        if (!hasRecords && !options.isStop) return;
+        if (!hasRecords && (r.cadenceTraceStopConfirmed || r.cadenceTraceStopTerminated)) return;
+
+        if (r.cadenceTraceInFlight) {
+          if (options.isStop) r.cadenceTraceStopPending = true;
+          return;
+        }
+
+        const isStop = Boolean(options.isStop || r.stopped);
+
+        if (isStop) {
+          r.cadenceTraceStopAttempts = (r.cadenceTraceStopAttempts || 0) + 1;
+          if (r.cadenceTraceStopAttempts > MAX_STOP_FLUSH_ATTEMPTS) {
+            r.cadenceTraceStopTerminated = true;
+            r.cadenceTraceStopPending = false;
+            r.cadenceTraceTrailingUnsentCount = (r.cadenceTraceTrailingUnsentCount || 0) + (r.cadenceTraceRecords?.length || 0);
+            r.cadenceTraceRecords = [];
+            return;
+          }
+        }
+
+        const batch = r.cadenceTraceRecords ? r.cadenceTraceRecords.slice(0, CADENCE_CLIENT_BATCH_LIMIT) : [];
+        if (batch.length === 0 && !isStop) return;
+
+        const batchId = ++cadenceBatchCounter;
+        for (const item of batch) {
+          item._batchId = batchId;
+        }
+        r.cadenceTraceInFlight = true;
+
+        const payload = {
+          runId: r.cadenceTraceRunId || `gen-${r.generation}`,
+          connectionId: r.cadenceTraceConnectionId || '',
+          generation: r.generation,
+          clockDomain: "client-mono",
+          overflowCount: r.cadenceTraceOverflowCount || 0,
+          droppedCount: r.cadenceTraceDroppedCount || 0,
+          trailingUnsentCount: r.cadenceTraceRecords ? Math.max(0, r.cadenceTraceRecords.length - batch.length) : (r.cadenceTraceTrailingUnsentCount || 0),
+          isStop,
+          records: batch.map(({ _batchId, ...clean }) => clean),
+        };
+
+        const setTimer = typeof window !== 'undefined' && typeof window.setTimeout === 'function' ? window.setTimeout : setTimeout;
+        const clearTimer = typeof window !== 'undefined' && typeof window.clearTimeout === 'function' ? window.clearTimeout : clearTimeout;
+        const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        r.cadenceTraceAbortController = abortController;
+        let timeoutId = null;
+        if (abortController) {
+          timeoutId = setTimer(() => {
+            try { abortController.abort(new Error('trace-timeout')); } catch {}
+          }, isStop ? 150 : 200);
+        }
+
+        fetchImpl("/whale-wallpaper/cadence-trace", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true,
+          ...(abortController ? { signal: abortController.signal } : {}),
+        }).then(res => {
+          if (res?.ok || res?.status === 204) {
+            // Remove ONLY the records that belong to this acknowledged batch
+            if (r.cadenceTraceRecords) {
+              r.cadenceTraceRecords = r.cadenceTraceRecords.filter(item => item._batchId !== batchId);
+            }
+            if (payload.isStop === true && (!r.cadenceTraceRecords || r.cadenceTraceRecords.length === 0)) {
+              r.cadenceTraceStopConfirmed = true;
+            }
+          } else if (res?.status === 400) {
+            // Schema violation: permanently drop records from this batch
+            if (r.cadenceTraceRecords) {
+              const prevLen = r.cadenceTraceRecords.length;
+              r.cadenceTraceRecords = r.cadenceTraceRecords.filter(item => item._batchId !== batchId);
+              const removed = prevLen - r.cadenceTraceRecords.length;
+              r.cadenceTraceDroppedCount = (r.cadenceTraceDroppedCount || 0) + Math.max(batch.length, removed);
+            } else {
+              r.cadenceTraceDroppedCount = (r.cadenceTraceDroppedCount || 0) + batch.length;
+            }
+          } else if (res?.status === 409) {
+            // Terminal conflict: Host session is closed, stop immediately
+            r.cadenceTraceStopTerminated = true;
+            r.cadenceTraceStopPending = false;
+            if (r.cadenceTraceRecords) {
+              r.cadenceTraceTrailingUnsentCount = (r.cadenceTraceTrailingUnsentCount || 0) + r.cadenceTraceRecords.length;
+              r.cadenceTraceRecords = [];
+            }
+          } else {
+            // Other status / error: if stopping, terminate to avoid infinite retry
+            if (isStop || r.stopped) {
+              r.cadenceTraceStopTerminated = true;
+              r.cadenceTraceStopPending = false;
+              if (r.cadenceTraceRecords) {
+                r.cadenceTraceTrailingUnsentCount = (r.cadenceTraceTrailingUnsentCount || 0) + r.cadenceTraceRecords.length;
+                r.cadenceTraceRecords = [];
+              }
+            } else if (r.cadenceTraceRecords) {
+              for (const item of r.cadenceTraceRecords) {
+                if (item._batchId === batchId) delete item._batchId;
+              }
+            }
+          }
+        }).catch(() => {
+          // Network failure or timeout: if stopping, terminate stop retries immediately
+          if (isStop || r.stopped) {
+            r.cadenceTraceStopTerminated = true;
+            r.cadenceTraceStopPending = false;
+            if (r.cadenceTraceRecords) {
+              r.cadenceTraceTrailingUnsentCount = (r.cadenceTraceTrailingUnsentCount || 0) + r.cadenceTraceRecords.length;
+              r.cadenceTraceRecords = [];
+            }
+          } else if (r.cadenceTraceRecords) {
+            for (const item of r.cadenceTraceRecords) {
+              if (item._batchId === batchId) delete item._batchId;
+            }
+          }
+        }).finally(() => {
+          if (timeoutId) clearTimer(timeoutId);
+          if (r.cadenceTraceAbortController === abortController) {
+            r.cadenceTraceAbortController = null;
+          }
+          r.cadenceTraceInFlight = false;
+          // Check ONLY r (never activeRun)
+          if (!r.cadenceTraceStopTerminated) {
+            if (r.cadenceTraceStopPending || (r.stopped && !r.cadenceTraceStopConfirmed)) {
+              r.cadenceTraceStopPending = false;
+              flushCadenceTrace(r, { isStop: true });
+            }
+          }
+        });
+      };
+
+      const recordCadence = (run, event, fields = {}) => {
+        if (!run || !run.cadenceTraceEnabled || !run.cadenceTraceRecords) return;
+        if (run.cadenceTraceRecords.length >= CADENCE_CLIENT_CAPACITY) {
+          run.cadenceTraceRecords.shift();
+          run.cadenceTraceOverflowCount = (run.cadenceTraceOverflowCount || 0) + 1;
+        }
+        run.cadenceTraceRecords.push({
+          runId: run.cadenceTraceRunId || `gen-${run.generation}`,
+          connectionId: run.cadenceTraceConnectionId || '',
+          sequence: fields.sequence ?? 0,
+          clockDomain: "client-mono",
+          event,
+          atMonoMs: Number((fields.atMonoMs ?? monoNow()).toFixed(3)),
+          generation: run.generation,
+          ...fields,
+        });
+      };
+
+      const recordCadenceDrawStart = (frameGeneration, seq, atMonoMs) => {
+        if (!running || frameGeneration !== activeRun.generation || !activeRun.cadenceTraceEnabled) return;
+        recordCadence(activeRun, "client-draw-start", { sequence: seq, atMonoMs: Number(atMonoMs.toFixed(3)) });
+      };
+
+      const recordCadenceDrawEnd = (frameGeneration, seq, ok, durationMs) => {
+        if (!running || frameGeneration !== activeRun.generation || !activeRun.cadenceTraceEnabled) return;
+        recordCadence(activeRun, "client-draw-end", {
+          sequence: seq,
+          success: ok,
+          durationMs: Number(durationMs.toFixed(3)),
+          reason: ok ? null : "draw-error",
+        });
+      };
+
+      const recordCadenceDrawSkipped = (frameGeneration, seq, reason) => {
+        if (!running || frameGeneration !== activeRun.generation || !activeRun.cadenceTraceEnabled) return;
+        recordCadence(activeRun, "client-draw-skipped", { sequence: seq, success: false, reason });
+      };
 
       const reportMetrics = () => {
         if (!running) return;
         fetchImpl("/whale-wallpaper/metrics", { method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify(snapshot()), keepalive: true }).catch(() => {});
+        flushCadenceTrace();
       };
 
-      const paint = async (runGeneration) => {
-        frameRequest = 0;
-        if (!running || painting || !latest || document.hidden || runGeneration !== generation) return;
-        painting = true;
-        const frame = latest; latest = null;
+      const recordDraw = (frameGeneration, ok, durationMs) => {
+        if (!running || frameGeneration !== activeRun.generation) return;
+        if (ok) {
+          activeRun.drawCount++;
+          activeRun.drawSumMs += durationMs;
+          activeRun.drawMaxMs = Math.max(activeRun.drawMaxMs, durationMs);
+        } else {
+          activeRun.drawErrorCount++;
+        }
+      };
+
+      const cancelSchedule = (sch) => {
+        if (!sch || sch.cancelled || sch.completed) return;
+        sch.cancelled = true;
+        if (sch.rafId !== null) {
+          cancelAnimationFrame(sch.rafId);
+          sch.rafId = null;
+        }
+        if (sch.timeoutId !== null) {
+          window.clearTimeout(sch.timeoutId);
+          sch.timeoutId = null;
+        }
+      };
+
+      const paint = async (run) => {
+        if (!running || run !== activeRun || run.painting || !run.latest || document.hidden) return;
+        run.painting = true;
+        run.paintPhase = "decoding";
+        const frame = run.latest;
+        run.latest = null;
         let bitmap = null;
+        let decodeErr = null;
+        const decodeStart = monoNow();
+        if (run.cadenceTraceEnabled) {
+          recordCadence(run, "client-decode-start", { sequence: frame.sequence, atMonoMs: Number(decodeStart.toFixed(3)) });
+        }
         try {
           bitmap = await createImageBitmap(new Blob([frame.jpeg], { type: "image/jpeg" }));
-          if (running && !document.hidden && runGeneration === generation) {
-            metrics.rendered++; metrics.sourceSequence = frame.sequence;
-            const latency = Math.max(0, now() - frame.capturedAt);
-            latencySum += latency; latencyMax = Math.max(latencyMax, latency);
-            emitFrame(bitmap, frame);
-            emitStatus({ rendered: metrics.rendered, decodeErrors: metrics.decodeErrors, state: "playing", error: "" });
-            bitmap = null;                      // ownership moved to the layer
+        } catch (err) {
+          decodeErr = err;
+        }
+
+        try {
+          if (run !== activeRun) {
+            // A new run has started: clean up old bitmap and do not mutate activeRun
+            bitmap?.close?.();
+            bitmap = null;
+            return;
           }
-        } catch { metrics.decodeErrors++; }
-        finally {
+
+          if (decodeErr) {
+            run.metrics.decodeErrors++;
+            run.decodeFailCount++;
+            const decodeFailMs = Math.max(0, monoNow() - decodeStart);
+            run.decodeFailSumMs += decodeFailMs;
+            run.decodeFailMaxMs = Math.max(run.decodeFailMaxMs, decodeFailMs);
+            if (run.cadenceTraceEnabled) {
+              recordCadence(run, "client-decode-end", {
+                sequence: frame.sequence,
+                durationMs: Number(decodeFailMs.toFixed(3)),
+                success: false,
+                reason: String(decodeErr.message ?? decodeErr),
+              });
+            }
+            return;
+          }
+
+          const decodeMs = Math.max(0, monoNow() - decodeStart);
+          run.decodeSuccessCount++;
+          run.decodeSuccessSumMs += decodeMs;
+          run.decodeSuccessMaxMs = Math.max(run.decodeSuccessMaxMs, decodeMs);
+          if (run.cadenceTraceEnabled) {
+            recordCadence(run, "client-decode-end", {
+              sequence: frame.sequence,
+              durationMs: Number(decodeMs.toFixed(3)),
+              success: true,
+            });
+          }
+
+          if (!running) {
+            run.discardStaleCount++;
+            bitmap?.close?.();
+            bitmap = null;
+            return;
+          }
+
+          if (document.hidden) {
+            run.discardHiddenCount++;
+            bitmap?.close?.();
+            bitmap = null;
+            return;
+          }
+
+          run.paintPhase = "sync";
+          run.metrics.rendered++;
+          run.metrics.sourceSequence = frame.sequence;
+          const latency = Math.max(0, now() - frame.capturedAt);
+          run.latencySum += latency;
+          run.latencyMax = Math.max(run.latencyMax, latency);
+
+          const syncStart = monoNow();
+          try {
+            emitFrame(bitmap, { ...frame, generation: run.generation });
+            emitStatus({ rendered: run.metrics.rendered, decodeErrors: run.metrics.decodeErrors, state: "playing", error: "" });
+            bitmap = null; // ownership moved to subscriber ONLY on successful notification
+          } catch {
+            run.syncErrorCount++;
+          } finally {
+            const syncMs = Math.max(0, monoNow() - syncStart);
+            run.syncCount++;
+            run.syncSumMs += syncMs;
+            run.syncMaxMs = Math.max(run.syncMaxMs, syncMs);
+          }
+        } finally {
           bitmap?.close?.();
-          painting = false;
-          if (latest && running && !document.hidden) schedulePaint(generation);
+          run.painting = false;
+          run.paintPhase = "idle";
+          if (run === activeRun && running && !document.hidden && run.latest) {
+            schedulePaint(run);
+          }
         }
       };
 
       // requestAnimationFrame keeps painting aligned with the display, but it does not
       // fire in a hidden or non-composited page (and may hand back 0). The timeout
       // backstop guarantees an already running preview still paints instead of stalling.
-      let paintBackstop = 0;
-      let paintFrameId = 0;
-      const schedulePaint = (runGeneration) => {
-        if (frameRequest || painting || runGeneration !== generation) return;
-        const run = () => {
-          window.clearTimeout(paintBackstop);
-          cancelAnimationFrame(paintFrameId);
-          paintBackstop = 0; paintFrameId = 0; frameRequest = 0;
-          if (latest) paint(runGeneration);
+      const schedulePaint = (run) => {
+        if (!running || run !== activeRun || run.currentSchedule || run.painting) return;
+        const schedule = {
+          generation: run.generation,
+          startTime: monoNow(),
+          cancelled: false,
+          completed: false,
+          rafId: null,
+          timeoutId: null,
         };
-        paintFrameId = requestAnimationFrame(run);
-        paintBackstop = window.setTimeout(run, 250);
-        frameRequest = paintBackstop;
+        run.currentSchedule = schedule;
+
+        const onFire = (source) => {
+          if (schedule.cancelled || schedule.completed) return;
+          schedule.completed = true;
+          if (schedule.rafId !== null) {
+            cancelAnimationFrame(schedule.rafId);
+            schedule.rafId = null;
+          }
+          if (schedule.timeoutId !== null) {
+            window.clearTimeout(schedule.timeoutId);
+            schedule.timeoutId = null;
+          }
+          if (run.currentSchedule === schedule) {
+            run.currentSchedule = null;
+          }
+          if (!running || run !== activeRun) return;
+
+          const waitMs = Math.max(0, monoNow() - schedule.startTime);
+          if (run.cadenceTraceEnabled) {
+            recordCadence(run, "client-schedule-fire", {
+              sequence: run.latest?.sequence ?? 0,
+              durationMs: Number(waitMs.toFixed(3)),
+              scheduleSource: source,
+            });
+          }
+          if (source === "timeout") {
+            run.waitTimeoutCount++;
+            run.waitTimeoutSumMs += waitMs;
+            run.waitTimeoutMaxMs = Math.max(run.waitTimeoutMaxMs, waitMs);
+          } else {
+            run.waitRafCount++;
+            run.waitRafSumMs += waitMs;
+            run.waitRafMaxMs = Math.max(run.waitRafMaxMs, waitMs);
+          }
+          if (run.latest) paint(run);
+        };
+
+        schedule.rafId = requestAnimationFrame(() => onFire("raf"));
+        schedule.timeoutId = window.setTimeout(() => onFire("timeout"), 250);
       };
 
       const accept = (runGeneration, frame) => {
-        if (runGeneration !== generation) return;
-        metrics.received++; lastFrameAt = now();
-        if (latest) metrics.dropped++;
-        latest = { ...frame, jpeg: frame.jpeg.slice() };
-        if (!painting && !frameRequest && !document.hidden) schedulePaint(runGeneration);
+        if (!running || runGeneration !== activeRun.generation) return;
+        const r = activeRun;
+        r.metrics.received++;
+        r.lastFrameAt = now();
+        lastFrameAt = r.lastFrameAt;
+        if (r.cadenceTraceEnabled) {
+          recordCadence(r, "client-accept", {
+            sequence: frame.sequence,
+            capturedAt: frame.capturedAt,
+          });
+        }
+        if (r.latest) {
+          r.metrics.dropped++;
+          const dropReason = r.painting
+            ? (r.paintPhase === "decoding" ? "drop-decoding" : r.paintPhase === "sync" ? "drop-sync" : "drop-other")
+            : (r.currentSchedule && !r.currentSchedule.cancelled && !r.currentSchedule.completed ? "drop-waiting-callback" : "drop-other");
+          if (r.cadenceTraceEnabled) {
+            recordCadence(r, "client-drop-latest", {
+              sequence: r.latest.sequence,
+              supersededBy: frame.sequence,
+              reason: dropReason,
+            });
+          }
+          if (r.painting) {
+            if (r.paintPhase === "decoding") {
+              r.dropDecodingCount++;
+            } else if (r.paintPhase === "sync") {
+              r.dropSyncCount++;
+            } else {
+              r.dropOtherCount++;
+            }
+          } else if (r.currentSchedule && !r.currentSchedule.cancelled && !r.currentSchedule.completed) {
+            r.dropWaitingCallbackCount++;
+          } else {
+            r.dropOtherCount++;
+          }
+        }
+        r.latest = { ...frame, jpeg: frame.jpeg.slice() };
+        if (!r.painting && !r.currentSchedule && !document.hidden) schedulePaint(r);
       };
 
       /**
@@ -548,6 +990,12 @@ window.__ModuleLoader__.load({
             emitStatus({ state: haveFrame ? "waiting" : "connecting", error: "", attempts });
             await new Promise(resolve => window.setTimeout(resolve, retryDelayMs));
             continue;
+          }
+          if (response.headers?.get?.("x-cadence-trace") === "1" && runGeneration === activeRun.generation) {
+            activeRun.cadenceTraceEnabled = true;
+            activeRun.cadenceTraceRunId = response.headers.get("x-cadence-run-id") || '';
+            activeRun.cadenceTraceConnectionId = response.headers.get("x-cadence-connection-id") || '';
+            if (!activeRun.cadenceTraceRecords) activeRun.cadenceTraceRecords = [];
           }
           const decoder = new WM_FRAME_DECODER(frame => { haveFrame = true; accept(runGeneration, frame); });
           const reader = response.body.getReader();
@@ -604,9 +1052,9 @@ window.__ModuleLoader__.load({
 
       /** Every run reports only its own frames, latency and source sequence. */
       const resetRunMetrics = () => {
-        metrics.received = 0; metrics.rendered = 0; metrics.dropped = 0;
-        metrics.sourceSequence = 0; metrics.decodeErrors = 0;
-        latencySum = 0; latencyMax = 0;
+        activeRun = createRunContext(generation);
+        activeRun.startedAt = startedAt || now();
+        activeRun.lastFrameAt = lastFrameAt || now();
         hideStalledFrames = false;
       };
 
@@ -622,13 +1070,17 @@ window.__ModuleLoader__.load({
           if (!running || runGeneration !== generation) return;
           reportMetrics();
           const seconds = snapshot().seconds;
-          if (hideStalledFrames) { hideStalledFrames = false; return; }
-          const fresh = now() - lastFrameAt < idleTimeoutMs;
+          if (hideStalledFrames || activeRun.hideStalledFrames) {
+            hideStalledFrames = false;
+            activeRun.hideStalledFrames = false;
+            return;
+          }
+          const fresh = now() - (activeRun.lastFrameAt || lastFrameAt) < idleTimeoutMs;
           // A preview that stopped delivering frames stops presenting the last one: the
           // ordinary theme comes back while the client keeps trying to recover.
           emitStatus(fresh
-            ? { state: "playing", error: "", rendered: metrics.rendered, decodeErrors: metrics.decodeErrors, seconds }
-            : { state: "waiting", error: "", rendered: metrics.rendered, decodeErrors: metrics.decodeErrors, seconds });
+            ? { state: "playing", error: "", rendered: activeRun.metrics.rendered, decodeErrors: activeRun.metrics.decodeErrors, seconds }
+            : { state: "waiting", error: "", rendered: activeRun.metrics.rendered, decodeErrors: activeRun.metrics.decodeErrors, seconds });
         }, 500);
         const outcome = await runStream(runGeneration);
         window.clearInterval(pollTimer); pollTimer = null;
@@ -636,8 +1088,11 @@ window.__ModuleLoader__.load({
         running = false; busy = false;
         const message = outcome.ending === "stream-end" ? "" : String(outcome.error || outcome.ending);
         const failed = outcome.ending !== "stream-end";
+        if (!failed) {
+          finalizeRunCadenceTrace(activeRun);
+        }
         emitStatus({ state: failed ? "error" : "stopped", error: message,
-          rendered: metrics.rendered, decodeErrors: metrics.decodeErrors });
+          rendered: activeRun.metrics.rendered, decodeErrors: activeRun.metrics.decodeErrors });
         notifyStop(failed ? "failed" : "ended");
         // A failed run must not leave its Host resources behind; the close result is
         // reported so an unproven cleanup is visible instead of being swallowed.
@@ -695,6 +1150,24 @@ window.__ModuleLoader__.load({
 
       const invalidate = () => { generation += 1; return generation; };
 
+      const finalizeRunCadenceTrace = (targetRun = activeRun) => {
+        if (!targetRun) return;
+        targetRun.stopped = true;
+        if (targetRun.cadenceTraceInFlight && targetRun.cadenceTraceAbortController) {
+          const inFlightCtrl = targetRun.cadenceTraceAbortController;
+          setTimeout(() => {
+            try { inFlightCtrl.abort(new Error('stop-deadline')); } catch {}
+          }, 100);
+        }
+        if (targetRun.cadenceTraceEnabled && targetRun.cadenceTraceConnectionId) {
+          if (targetRun.cadenceTraceInFlight) {
+            targetRun.cadenceTraceStopPending = true;
+          } else {
+            flushCadenceTrace(targetRun, { isStop: true });
+          }
+        }
+      };
+
       const stop = (reason = "user", { bump = true } = {}) => {
         // A user stop uses a new generation so a late start reply cannot revive the run.
         // The internal close that follows a terminal failure keeps the generation: that run
@@ -705,11 +1178,17 @@ window.__ModuleLoader__.load({
         running = false; busy = false;
         abort?.abort(); abort = null;
         window.clearInterval(pollTimer); pollTimer = null;
-        cancelAnimationFrame(frameRequest); frameRequest = 0;
-        latest = null;
+        finalizeRunCadenceTrace(activeRun);
+        if (activeRun.currentSchedule) {
+          cancelSchedule(activeRun.currentSchedule);
+          activeRun.currentSchedule = null;
+          activeRun.waitCancelledCount++;
+        }
+        activeRun.latest = null;
         // The ended run keeps no live timing: a later run measures its own elapsed time
         // instead of inheriting the stopped one's total.
         startedAt = 0;
+        activeRun.startedAt = 0;
         hideStalledFrames = false;
         emitStatus({ state: keptState ?? (reason === "user" ? "stopped" : "idle"), error: keptError, generation: stopGeneration, seconds: 0 });
         // The layer is dropped right away; a close that cannot be proven is reported
@@ -813,6 +1292,9 @@ window.__ModuleLoader__.load({
             if (!ok) throw new Error(payload?.error || "start-failed");
             running = true; busy = false;
             startedAt = now(); lastFrameAt = now();
+            activeRun = createRunContext(runGeneration);
+            activeRun.startedAt = startedAt;
+            activeRun.lastFrameAt = lastFrameAt;
             emitStatus({ host: payload, rendered: 0, decodeErrors: 0, mode });
             connect(runGeneration);
             return status;
@@ -837,6 +1319,9 @@ window.__ModuleLoader__.load({
             if (!ok) throw new Error(payload?.error || "restart-failed");
             running = true; busy = false;
             startedAt = now(); lastFrameAt = now();
+            activeRun = createRunContext(restartGeneration);
+            activeRun.startedAt = startedAt;
+            activeRun.lastFrameAt = lastFrameAt;
             emitStatus({ host: payload, rendered: 0, decodeErrors: 0, mode });
             connect(restartGeneration);
             return status;
@@ -859,10 +1344,28 @@ window.__ModuleLoader__.load({
           running = false; busy = false;
           abort?.abort(); abort = null;
           window.clearInterval(pollTimer); pollTimer = null;
-          cancelAnimationFrame(frameRequest);
+          if (activeRun.currentSchedule) {
+            cancelSchedule(activeRun.currentSchedule);
+            activeRun.currentSchedule = null;
+            activeRun.waitCancelledCount++;
+          }
           frameListeners.clear(); statusListeners.clear(); listeners.clear(); stallListeners.clear();
-          latest = null;
+          activeRun.latest = null;
         },
+        recordDraw,
+        recordCadenceDrawStart,
+        recordCadenceDrawEnd,
+        recordCadenceDrawSkipped,
+        enableCadenceTrace: (enabled, runId, connectionId) => {
+          activeRun.cadenceTraceEnabled = Boolean(enabled);
+          activeRun.cadenceTraceRunId = runId || '';
+          activeRun.cadenceTraceConnectionId = connectionId || '';
+          activeRun.cadenceTraceRecords = enabled ? (activeRun.cadenceTraceRecords || []) : null;
+        },
+        getCadenceTrace: () => activeRun.cadenceTraceRecords ? [...activeRun.cadenceTraceRecords] : [],
+        flushCadenceTrace,
+        monotonicNow: monoNow,
+        acceptFrame: (frame) => accept(activeRun.generation, frame),
       };
     }
 
@@ -989,7 +1492,8 @@ window.__ModuleLoader__.load({
         const found = new Set();
         const ports = new Set();
         const observed = new Set();
-        for (const scroll of document.querySelectorAll("[data-conversation-scroll]")) {
+        const scrollElements = typeof document.querySelectorAll === "function" ? document.querySelectorAll("[data-conversation-scroll]") : [];
+        for (const scroll of scrollElements) {
           const content = scroll.closest("[data-conversation-content]");
           if (content?.dataset.contentPhase !== "active") continue;
           const seat = scroll.querySelector(":scope > [data-composer-seat]");
@@ -1117,20 +1621,42 @@ window.__ModuleLoader__.load({
         // is still the selected one, the layer is (re)created here. A stop removes it, so a
         // new run would otherwise paint into nothing until some unrelated setting change.
         if (!wallpaperLayer && running && settings.background === "wallpaper" && themeActive) mountWallpaper();
-        if (!wallpaperLayer || !running) { bitmap.close?.(); return; }        const canvas = wallpaperLayer.querySelector(".wm-backdrop-media");
-        if (!canvas) { bitmap.close?.(); return; }
+        if (!wallpaperLayer || !running) {
+          engine?.recordCadenceDrawSkipped?.(frame?.generation, frame?.sequence, !wallpaperLayer ? 'no-layer' : 'not-running');
+          bitmap.close?.(); return;
+        }
+        const canvas = wallpaperLayer.querySelector(".wm-backdrop-media");
+        if (!canvas) {
+          engine?.recordCadenceDrawSkipped?.(frame?.generation, frame?.sequence, 'no-canvas');
+          bitmap.close?.(); return;
+        }
         if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
           canvas.width = bitmap.width; canvas.height = bitmap.height;
         }
-        canvas.getContext("2d", { alpha: false }).drawImage(bitmap, 0, 0);
+        const mono = engine?.monotonicNow ?? (typeof performance !== "undefined" && typeof performance.now === "function" ? () => performance.now() : () => Date.now());
+        const drawStart = mono();
+        engine?.recordCadenceDrawStart?.(frame?.generation, frame?.sequence, drawStart);
+        let drawSuccess = false;
+        try {
+          canvas.getContext("2d", { alpha: false }).drawImage(bitmap, 0, 0);
+          drawSuccess = true;
+        } catch {
+          drawSuccess = false;
+        } finally {
+          const drawMs = Math.max(0, mono() - drawStart);
+          engine?.recordDraw?.(frame?.generation, drawSuccess, drawMs);
+          engine?.recordCadenceDrawEnd?.(frame?.generation, frame?.sequence, drawSuccess, drawMs);
+        }
         bitmap.close?.();
-        // The layer becomes visible and the UI becomes transparent only together with a
-        // real frame, so a loading or stalled preview never leaves the chat see-through.
-        wallpaperPainted = true;
-        wallpaperLayer.hidden = false;
-        document.body.dataset.wmBackdrop = "wallpaper";
-        startHistoryTracking();
-        wallpaperLayer.dataset.wmSequence = String(frame.sequence);
+        if (drawSuccess) {
+          // The layer becomes visible and the UI becomes transparent only together with a
+          // real frame, so a loading or stalled preview never leaves the chat see-through.
+          wallpaperPainted = true;
+          wallpaperLayer.hidden = false;
+          document.body.dataset.wmBackdrop = "wallpaper";
+          startHistoryTracking();
+          wallpaperLayer.dataset.wmSequence = String(frame.sequence);
+        }
       };
 
       const mountWallpaper = () => {
@@ -3386,6 +3912,8 @@ window.__ModuleLoader__.load({
         read: () => ({ ...settings }),
         set: (key, value) => {
           if (disposed || !isValidSetting(key, value)) return { ...settings };
+          // Picking the next scene is manual intent; a late automatic-start answer must not apply it.
+          if (key === "weScene") userActionRevision++;
           if (key === "background") selectionRevision++;
           settings = normalizeSettings({ ...settings, [key]: value });
           persistSettings(settings);
@@ -3609,6 +4137,8 @@ window.__ModuleLoader__.load({
       }, WhaleSessionStatus));
     }
 
+    exports.createWallpaperEngine = createWallpaperEngine;
+    exports.createBackdrop = createBackdrop;
     exports.inject = inject;
     exports.apply = apply;
     return module.exports;
