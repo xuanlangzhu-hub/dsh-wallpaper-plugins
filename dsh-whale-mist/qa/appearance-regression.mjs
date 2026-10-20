@@ -57,7 +57,12 @@ try {
     return result.result.value;
   };
   for (let i = 0; i < 50 && !await evaluate('Boolean(window.fixture?.run && window.whaleModule)'); i++) await sleep(100);
-  if (process.argv.includes('--scene-selection-only')) {
+  if (process.argv.includes('--english-suite')) {
+    await evaluate(`Object.defineProperty(navigator, 'language', { configurable: true, get: () => 'en-US' })`);
+    await evaluate('fixture.run()');
+    const results = await evaluate('fixture.results');
+    console.log(JSON.stringify({ language: 'en-US', passed: results.length, isolatedProfile: profile }, null, 2));
+  } else if (process.argv.includes('--scene-selection-only')) {
     // Actual production apply/controller, with only the Host HTTP boundary mocked. A positive
     // control proves a delayed-ready host WOULD auto-start; choosing a different scene must cancel it.
     const outcomes = await evaluate(`(async () => {

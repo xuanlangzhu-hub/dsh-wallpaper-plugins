@@ -1,12 +1,13 @@
-import { mkdir, readdir, rename, rm, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, writeFile, unlink, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { FrameHub, streamFrames } from './frame-hub.js';
 import { CadenceTraceCollector } from './cadence-trace.js';
 import { ProbeJournal } from './probe-log.js';
 import { runHelper, waitForWindow, validateLocation, newLocation } from './managed-window.js';
+import { createMediaBridge } from './media-bridge.js';
 import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_SIZE, resolveSceneRequest, describeScenes, sceneSelection, isSceneId } from './scenes.js';
 
 /**
@@ -87,6 +88,550 @@ export async function prepareRunDirectory(logRoot, sceneId, now = Date.now(), su
 }
 
 /**
+ * In native Windows production: Queries running process IDs that match the specific location argument.
+ * Returns a structured result { ok: true, pids: [...], processes: [...] } on success,
+ * or { ok: false, error: ... } on query execution/parsing failure.
+ */
+export function queryWindowsProcesses(location, { execCommand = execFile, timeoutMs = 3000 } = {}) {
+  return new Promise(resolveQuery => {
+    if (!location || typeof location !== 'string' || !location.trim()) {
+      resolveQuery({ ok: false, error: 'invalid-location', pids: [], processes: [] });
+      return;
+    }
+    const safeLocation = location.replace(/'/g, "''");
+    const cmd = `Get-CimInstance Win32_Process -Filter "CommandLine like '%${safeLocation}%'" -ErrorAction Stop | Where-Object { $_.ProcessId -ne $PID } | Select-Object ProcessId, Name, ExecutablePath, CommandLine, CreationDate | ConvertTo-Json -Compress`;
+
+    const onResult = (err, stdout) => {
+      if (err) {
+        resolveQuery({
+          ok: false,
+          error: err.message || 'powershell-query-failed',
+          pids: [],
+          processes: [],
+        });
+        return;
+      }
+      if (!stdout || !stdout.trim()) {
+        resolveQuery({ ok: true, pids: [], processes: [] });
+        return;
+      }
+      let parsed;
+      try {
+        parsed = JSON.parse(stdout.trim());
+      } catch (parseErr) {
+        resolveQuery({
+          ok: false,
+          error: `process-query-parse-failed: ${parseErr.message}`,
+          pids: [],
+          processes: [],
+        });
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object') {
+        resolveQuery({
+          ok: false,
+          error: 'process-query-invalid-structure',
+          pids: [],
+          processes: [],
+        });
+        return;
+      }
+      const rawList = Array.isArray(parsed) ? parsed : [parsed];
+      if (rawList.length === 0) {
+        resolveQuery({ ok: true, pids: [], processes: [] });
+        return;
+      }
+      const pids = [];
+      const processes = [];
+      for (const item of rawList) {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          resolveQuery({
+            ok: false,
+            error: 'process-query-contains-invalid-item',
+            pids: [],
+            processes: [],
+          });
+          return;
+        }
+        const rawPid = item.ProcessId ?? item.processId;
+        if (rawPid === undefined || rawPid === null) {
+          resolveQuery({
+            ok: false,
+            error: 'process-query-missing-process-id',
+            pids: [],
+            processes: [],
+          });
+          return;
+        }
+        if (typeof rawPid !== 'number' || !Number.isInteger(rawPid) || rawPid <= 0) {
+          resolveQuery({
+            ok: false,
+            error: 'process-query-invalid-pid-type',
+            pids: [],
+            processes: [],
+          });
+          return;
+        }
+        const pid = rawPid;
+        const cmdLine = typeof item.CommandLine === 'string' ? item.CommandLine : '';
+        if (!cmdLine) {
+          resolveQuery({
+            ok: false,
+            error: 'process-query-missing-command-line',
+            pids: [],
+            processes: [],
+          });
+          return;
+        }
+        const name = typeof item.Name === 'string' ? item.Name : '';
+        if (!name) {
+          resolveQuery({
+            ok: false,
+            error: 'process-query-missing-name',
+            pids: [],
+            processes: [],
+          });
+          return;
+        }
+        // Worker processes or processes matching the query must never be silently swallowed.
+        // The PowerShell query caller is already excluded via `$PID` in the PowerShell script itself.
+        // A record claiming to be a worker or matching the target location must be retained.
+        pids.push(pid);
+        processes.push({
+          pid,
+          name,
+          executablePath: typeof item.ExecutablePath === 'string' ? item.ExecutablePath : '',
+          commandLine: cmdLine,
+          creationDate: item.CreationDate,
+        });
+      }
+      resolveQuery({ ok: true, pids, processes });
+    };
+
+    if (typeof execCommand !== 'function') {
+      resolveQuery({ ok: false, error: 'execCommand is not a function', pids: [], processes: [] });
+      return;
+    }
+    try {
+      execCommand('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd], { timeout: timeoutMs }, onResult);
+    } catch (err) {
+      resolveQuery({ ok: false, error: err.message || 'exec-failed', pids: [], processes: [] });
+    }
+  });
+}
+
+const ISO_DATETIME_REGEX = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})$/;
+
+export function parseIsoStartUtc(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  const match = trimmed.match(ISO_DATETIME_REGEX);
+  if (!match) return null;
+
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  const hour = parseInt(match[4], 10);
+  const minute = parseInt(match[5], 10);
+  const second = parseInt(match[6], 10);
+  const rawFrac = match[7] || '';
+  const tz = match[8];
+
+  // Calendar validation
+  if (month < 1 || month > 12) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) return null;
+
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonth = [0, 31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > daysInMonth[month]) return null;
+
+  // Timezone validation & offset in seconds
+  let tzOffsetSeconds = 0;
+  if (tz !== 'Z') {
+    const tzMatch = tz.match(/^([+-])(\d{2}):?(\d{2})$/);
+    if (!tzMatch) return null;
+    const sign = tzMatch[1] === '+' ? 1 : -1;
+    const tzH = parseInt(tzMatch[2], 10);
+    const tzM = parseInt(tzMatch[3], 10);
+    if (tzH > 23 || tzM > 59) return null;
+    tzOffsetSeconds = sign * (tzH * 3600 + tzM * 60);
+  }
+
+  // Calculate base UTC seconds without Date.parse normalization bugs
+  const baseUtcSec = Math.floor(Date.UTC(year, month - 1, day, hour, minute, second) / 1000) - tzOffsetSeconds;
+
+  // Normalize fraction to 7 digits (.NET ticks / 100ns precision)
+  const frac7 = rawFrac.slice(0, 7).padEnd(7, '0');
+  // If excess digits beyond 7 are non-zero, reject as exceeding precision
+  if (rawFrac.length > 7 && rawFrac.slice(7).replace(/0+$/, '').length > 0) {
+    return null;
+  }
+
+  const ms = baseUtcSec * 1000 + Math.floor(parseInt(frac7.slice(0, 3), 10));
+  return { baseUtcSec, frac7, raw: trimmed, ms };
+}
+
+export function areStartUtcsEquivalent(a, b) {
+  const parsedA = parseIsoStartUtc(a);
+  const parsedB = parseIsoStartUtc(b);
+  if (!parsedA || !parsedB) return false;
+  return parsedA.baseUtcSec === parsedB.baseUtcSec && parsedA.frac7 === parsedB.frac7;
+}
+
+/**
+ * In native Windows production: Queries a specific process ID to obtain its creation time in UTC.
+ * Preserves full 7-digit ISO round-trip precision matching native System.Diagnostics.Process.StartTime.ToUniversalTime().
+ * Returns { ok: true, pid, startUtc } on success or { ok: false, error } on failure.
+ */
+export function queryWindowsProcessCreationUtc(pid, { execCommand = execFile, timeoutMs = 3000 } = {}) {
+  return new Promise(resolveQuery => {
+    if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) {
+      resolveQuery({ ok: false, error: 'invalid-process-id', startUtc: null });
+      return;
+    }
+    const numPid = pid;
+    // Query process creation time using .NET System.Diagnostics.Process StartTime.ToUniversalTime().ToString('o')
+    // and format as explicit JSON string to prevent PowerShell ConvertTo-Json from degrading to /Date(ms)/.
+    const cmd = `$p = Get-Process -Id ${numPid} -ErrorAction Stop; [pscustomobject]@{ ProcessId = $p.Id; CreationDate = $p.StartTime.ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress`;
+
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      resolveQuery(result);
+    };
+
+    const timeoutTimer = setTimeout(() => {
+      finish({ ok: false, error: 'process-identity-timeout', startUtc: null });
+    }, timeoutMs + 1000);
+
+    const onResult = (err, stdout) => {
+      try {
+        if (err) {
+          return finish({ ok: false, error: err.message || 'process-identity-query-failed', startUtc: null });
+        }
+        if (!stdout || !stdout.trim()) {
+          return finish({ ok: false, error: 'process-identity-empty', startUtc: null });
+        }
+        let parsed;
+        try {
+          parsed = JSON.parse(stdout.trim());
+        } catch (parseErr) {
+          return finish({ ok: false, error: `process-identity-parse-failed: ${parseErr.message}`, startUtc: null });
+        }
+        // Strict root structure: must be a single non-null plain object, NEVER an array
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          return finish({
+            ok: false,
+            error: Array.isArray(parsed)
+              ? 'process-identity-ambiguous-array-records'
+              : 'process-identity-invalid-root-structure',
+            startUtc: null,
+          });
+        }
+        // Strict ProcessId presence, positive integer type, and match with requested PID
+        const rawPid = parsed.ProcessId ?? parsed.processId;
+        if (rawPid === undefined || rawPid === null) {
+          return finish({ ok: false, error: 'process-identity-missing-pid', startUtc: null });
+        }
+        if (typeof rawPid !== 'number' || !Number.isInteger(rawPid) || rawPid <= 0) {
+          return finish({ ok: false, error: 'process-identity-invalid-pid-type', startUtc: null });
+        }
+        if (rawPid !== numPid) {
+          return finish({
+            ok: false,
+            error: `process-identity-pid-mismatch: requested ${numPid}, returned ${rawPid}`,
+            startUtc: null,
+          });
+        }
+        // Strict CreationDate presence
+        const rawDate = parsed.CreationDate ?? parsed.creationDate ?? parsed.StartUtc ?? parsed.startUtc;
+        if (rawDate === undefined || rawDate === null) {
+          return finish({ ok: false, error: 'process-identity-missing-creation-date', startUtc: null });
+        }
+
+        let isoCandidate = null;
+        if (typeof rawDate === 'string') {
+          const trimmed = rawDate.trim();
+          const dateMatch = trimmed.match(/^\/Date\((\d+)(?:[+-]\d+)?\)\/$/);
+          if (dateMatch) {
+            const ms = Number(dateMatch[1]);
+            if (!Number.isFinite(ms) || ms < 0 || ms > 8640000000000000) {
+              return finish({ ok: false, error: 'process-identity-date-out-of-range', startUtc: null });
+            }
+            const d = new Date(ms);
+            if (Number.isNaN(d.getTime())) {
+              return finish({ ok: false, error: 'process-identity-invalid-date-value', startUtc: null });
+            }
+            try {
+              isoCandidate = d.toISOString();
+            } catch (convErr) {
+              return finish({ ok: false, error: `process-identity-date-conversion-failed: ${convErr.message}`, startUtc: null });
+            }
+          } else if (ISO_DATETIME_REGEX.test(trimmed)) {
+            isoCandidate = trimmed;
+          } else {
+            // WMI format YYYYMMDDHHMMSS.ffffff+UUU
+            const wmiMatch = trimmed.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.(\d{6})([+-]\d{3})$/);
+            if (wmiMatch) {
+              const offsetMin = parseInt(wmiMatch[8], 10);
+              const sign = offsetMin >= 0 ? '+' : '-';
+              const absMin = Math.abs(offsetMin);
+              const tzH = String(Math.floor(absMin / 60)).padStart(2, '0');
+              const tzM = String(absMin % 60).padStart(2, '0');
+              isoCandidate = `${wmiMatch[1]}-${wmiMatch[2]}-${wmiMatch[3]}T${wmiMatch[4]}:${wmiMatch[5]}:${wmiMatch[6]}.${wmiMatch[7]}0${sign}${tzH}:${tzM}`;
+            } else {
+              return finish({ ok: false, error: 'process-identity-unsupported-date-format', startUtc: null });
+            }
+          }
+        } else if (typeof rawDate === 'number') {
+          if (!Number.isFinite(rawDate) || rawDate < 0 || rawDate > 8640000000000000) {
+            return finish({ ok: false, error: 'process-identity-date-out-of-range', startUtc: null });
+          }
+          const d = new Date(rawDate);
+          if (Number.isNaN(d.getTime())) {
+            return finish({ ok: false, error: 'process-identity-invalid-date-value', startUtc: null });
+          }
+          try {
+            isoCandidate = d.toISOString();
+          } catch (convErr) {
+            return finish({ ok: false, error: `process-identity-date-conversion-failed: ${convErr.message}`, startUtc: null });
+          }
+        } else {
+          return finish({ ok: false, error: 'process-identity-invalid-date-type', startUtc: null });
+        }
+
+        const verified = isoCandidate ? parseIsoStartUtc(isoCandidate) : null;
+        if (!verified) {
+          return finish({ ok: false, error: 'process-identity-invalid-creation-date', startUtc: null });
+        }
+        return finish({ ok: true, pid: rawPid, startUtc: verified.raw });
+      } catch (handlerErr) {
+        return finish({ ok: false, error: `process-identity-handler-error: ${handlerErr?.message || String(handlerErr)}`, startUtc: null });
+      }
+    };
+
+    if (typeof execCommand !== 'function') {
+      finish({ ok: false, error: 'execCommand is not a function', startUtc: null });
+      return;
+    }
+    try {
+      execCommand('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd], { timeout: timeoutMs }, onResult);
+    } catch (err) {
+      finish({ ok: false, error: err.message || 'exec-failed', startUtc: null });
+    }
+  });
+}
+
+/**
+ * Independently verifies that the capture process and taskbar worker for this run have fully
+ * and safely exited, before source window cleanup is allowed to proceed.
+ */
+export async function verifyIndependentWorkerCleanup({
+  location,
+  windowHwnd = null,
+  windowPid = null,
+  expectedStartUtc = null,
+  outputDir = null,
+  captureChild = null,
+  captureClosed = false,
+  captureSpawned = false,
+  queryProcesses = null,
+  readFile: customReadFile = readFile,
+  exists = existsSync,
+  writeFile: customWriteFile = writeFile,
+  taskbarHideActive = true,
+  now = Date.now,
+}) {
+  if (!taskbarHideActive) {
+    return { safe: true, reason: 'taskbar-hide-disabled' };
+  }
+
+  if (captureChild && !captureClosed && captureChild.exitCode === null) {
+    return { safe: false, reason: 'capture process is still running' };
+  }
+
+  // Proactively signal worker to exit by writing stop.txt if outputDir exists
+  if (outputDir) {
+    try {
+      const stopFilePath = join(outputDir, 'stop.txt');
+      if (!exists(stopFilePath)) {
+        await (customWriteFile || writeFile)(stopFilePath, 'stop\n').catch(() => {});
+      }
+    } catch { /* best effort */ }
+  }
+
+  // 1. Process presence in OS
+  if (typeof queryProcesses === 'function') {
+    const procResult = await queryProcesses(location);
+    if (!procResult || procResult.ok !== true) {
+      return { safe: false, reason: `process query failed: ${procResult?.error || 'unknown'}` };
+    }
+    const matchingProcs = procResult.processes || [];
+    if (matchingProcs.length > 0) {
+      const workerProc = matchingProcs.find(p => p.commandLine && p.commandLine.includes('--taskbar-worker'));
+      if (workerProc) {
+        return { safe: false, reason: `worker process ${workerProc.pid} is still running` };
+      }
+      if (captureChild && captureChild.pid && matchingProcs.some(p => p.pid === captureChild.pid)) {
+        return { safe: false, reason: `capture process ${captureChild.pid} is still running in OS` };
+      }
+      return { safe: false, reason: `processes still active for location: ${matchingProcs.map(p => p.pid).join(', ')}` };
+    }
+  }
+
+  // 2. Terminal proof from taskbar-action.json
+  const actionFilePath = outputDir ? join(outputDir, 'taskbar-action.json') : null;
+  if (!actionFilePath || !exists(actionFilePath)) {
+    if (!captureSpawned) {
+      return { safe: true, reason: 'worker not started before capture process was spawned' };
+    }
+    return { safe: false, reason: 'taskbar-action.json missing; cannot confirm worker state' };
+  }
+
+  let content;
+  try {
+    content = await (customReadFile || readFile)(actionFilePath, 'utf8');
+  } catch (err) {
+    return { safe: false, reason: `failed to read taskbar-action.json: ${err.message}` };
+  }
+  let record;
+  try {
+    record = JSON.parse(content);
+  } catch (err) {
+    return { safe: false, reason: `corrupted taskbar-action.json: ${err.message}` };
+  }
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    return { safe: false, reason: 'invalid taskbar-action.json structure' };
+  }
+  if (record.schemaVersion !== 1) {
+    return { safe: false, reason: `unsupported taskbar-action schemaVersion: ${record.schemaVersion}` };
+  }
+  if (record.location !== location) {
+    return { safe: false, reason: `taskbar-action location mismatch: expected ${location}, found ${record.location}` };
+  }
+
+  const pendingStages = ['action-pending', 'action-unconfirmed', 'pending'];
+  if (pendingStages.includes(record.stage)) {
+    return { safe: false, reason: `taskbar-action settled in pending stage: ${record.stage}` };
+  }
+
+  if (!record.requestedIdentity || typeof record.requestedIdentity !== 'object' || Array.isArray(record.requestedIdentity)) {
+    return { safe: false, reason: 'taskbar-action missing requestedIdentity' };
+  }
+  const reqHwnd = Number(record.requestedIdentity.hwnd);
+  if (!Number.isInteger(reqHwnd) || reqHwnd <= 0) {
+    return { safe: false, reason: 'taskbar-action missing or invalid requestedIdentity.hwnd' };
+  }
+  if (windowHwnd && reqHwnd !== windowHwnd) {
+    return { safe: false, reason: `taskbar-action hwnd mismatch: expected ${windowHwnd}, found ${reqHwnd}` };
+  }
+
+  const reqPid = Number(record.requestedIdentity.pid);
+  if (!Number.isInteger(reqPid) || reqPid <= 0) {
+    return { safe: false, reason: 'taskbar-action missing or invalid requestedIdentity.pid' };
+  }
+  if (windowPid && reqPid !== windowPid) {
+    return { safe: false, reason: `taskbar-action pid mismatch: expected ${windowPid}, found ${reqPid}` };
+  }
+
+  if (!expectedStartUtc || typeof expectedStartUtc !== 'string' || !expectedStartUtc.trim()) {
+    return { safe: false, reason: 'missing expected creation identity baseline for window' };
+  }
+  const parsedExpected = parseIsoStartUtc(expectedStartUtc);
+  if (!parsedExpected) {
+    return { safe: false, reason: `invalid expectedStartUtc format: ${expectedStartUtc}` };
+  }
+
+  if (!record.requestedIdentity.startUtc || typeof record.requestedIdentity.startUtc !== 'string') {
+    return { safe: false, reason: 'taskbar-action missing requestedIdentity.startUtc' };
+  }
+  const parsedReqStart = parseIsoStartUtc(record.requestedIdentity.startUtc);
+  if (!parsedReqStart) {
+    return { safe: false, reason: `taskbar-action invalid requestedIdentity.startUtc format: ${record.requestedIdentity.startUtc}` };
+  }
+  const currentNowMs = typeof now === 'function' ? now() : Date.now();
+  if (parsedReqStart.ms > currentNowMs + 60000) {
+    return { safe: false, reason: `taskbar-action requestedIdentity.startUtc is in the future: ${record.requestedIdentity.startUtc}` };
+  }
+
+  if (!areStartUtcsEquivalent(record.requestedIdentity.startUtc, expectedStartUtc)) {
+    return { safe: false, reason: `taskbar-action startUtc mismatch with expected: expected ${expectedStartUtc}, found ${record.requestedIdentity.startUtc}` };
+  }
+
+  if (record.beforeIdentity && typeof record.beforeIdentity === 'object' && record.beforeIdentity.startUtc) {
+    if (!areStartUtcsEquivalent(record.requestedIdentity.startUtc, record.beforeIdentity.startUtc)) {
+      return { safe: false, reason: 'taskbar-action startUtc mismatch between requestedIdentity and beforeIdentity' };
+    }
+  }
+
+  // Branch A: Terminal proof of worker stopped before action
+  if (record.stage === 'stopped-before-action') {
+    if (!('action' in record) || !('trigger' in record)) {
+      return { safe: false, reason: 'taskbar-action stopped-before-action missing action or trigger property' };
+    }
+    if (record.trigger !== null) {
+      return { safe: false, reason: 'taskbar-action stopped-before-action trigger is not null' };
+    }
+    if (record.action !== null) {
+      if (typeof record.action !== 'object' || Array.isArray(record.action)) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action has invalid action property' };
+      }
+      if (record.action.started !== false) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action action.started is not false' };
+      }
+      if (record.action.cleanupSafe !== true) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action action.cleanupSafe is not true' };
+      }
+      if (record.action.pending !== false) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action action.pending is not false' };
+      }
+      if (record.action.timedOut !== false) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action action.timedOut is not false' };
+      }
+      if (record.action.terminated !== false) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action action.terminated is not false' };
+      }
+      if (record.action.exited !== false && record.action.exited !== null) {
+        return { safe: false, reason: 'taskbar-action stopped-before-action action.exited is not false or null' };
+      }
+    }
+    return { safe: true, record, reason: 'taskbar worker stopped before action in terminal state' };
+  }
+
+  // Branch B: Terminal proof of action executed
+  const validSettledStages = ['action-done', 'action-failed', 'failed', 'done', 'success', 'blocked'];
+  if (!validSettledStages.includes(record.stage)) {
+    return { safe: false, reason: `unsettled taskbar stage: ${record.stage}` };
+  }
+
+  if (!record.action || typeof record.action !== 'object' || Array.isArray(record.action)) {
+    return { safe: false, reason: 'taskbar-action missing action object' };
+  }
+  if (record.action.cleanupSafe !== true) {
+    return { safe: false, reason: `taskbar worker action cleanupSafe is not true (got ${record.action.cleanupSafe})` };
+  }
+  if (record.action.exited !== true) {
+    return { safe: false, reason: `taskbar worker action not confirmed exited (got exited=${record.action.exited})` };
+  }
+  if (record.action.started !== true) {
+    return { safe: false, reason: `taskbar worker action not marked started (got started=${record.action.started})` };
+  }
+  if (record.action.pending !== false) {
+    return { safe: false, reason: `taskbar worker action pending is not false (got pending=${record.action.pending})` };
+  }
+  if (record.action.timedOut !== false) {
+    return { safe: false, reason: `taskbar worker action timedOut is not false (got timedOut=${record.action.timedOut})` };
+  }
+  if (record.action.terminated !== false) {
+    return { safe: false, reason: `taskbar worker action terminated is not false (got terminated=${record.action.terminated})` };
+  }
+
+  return { safe: true, record, reason: 'taskbar worker confirmed exited safely via action report' };
+}
+
+/**
  * One preview run. `create` builds this run's instance; `stop` is idempotent and always
  * ends by proving this run's window is gone. Injectable for tests: spawnChild,
  * helperRun, sleep, now, exists.
@@ -106,6 +651,10 @@ export function createPreviewSession(options = {}) {
     writeFile: customWriteFile = null,
     unlink: customUnlink = null,
     rename: customRename = null,
+    readFile: customReadFile = null,
+    execCommand: customExecCommand = null,
+    queryProcesses: customQueryProcesses = null,
+    queryProcessIdentity = null,
   } = options;
   const cadenceTraceEnabled = cadenceTrace === true || env.WM_WALLPAPER_CADENCE_TRACE === '1';
   const issuedConnections = new Set();
@@ -115,9 +664,11 @@ export function createPreviewSession(options = {}) {
   const hub = new FrameHub({ cadenceTrace: hostTrace, clientTrace });
   const journal = new ProbeJournal();
 
+  let closeAttempts = 0;
   let config = null;
   let child = null;
   let childClosed = false;
+  let mediaLease = null;
   let terminalTaskbarHide = null;
   let stopping = false;
   let stopRequested = false;
@@ -127,6 +678,7 @@ export function createPreviewSession(options = {}) {
   let location = null;
   let windowCreated = false;
   let windowPid = null;
+  let windowStartUtc = null;
   let captureStarted = false;
   let cleaning = null;
   let attached = false;
@@ -303,6 +855,7 @@ export function createPreviewSession(options = {}) {
   };
 
   const runClose = async () => {
+    closeAttempts += 1;
     stopping = true;
     stopReporting();
     hub.close();
@@ -329,27 +882,54 @@ export function createPreviewSession(options = {}) {
     // 3) Worker confirmed exited safely (cleanupSafe === true AND stage is in a terminal settled state, NOT pending).
     // Any missing status on abnormal exit, force-killed child, unclosed stream, pending state, or cleanupSafe === false is rejected.
     const taskbarHideActive = env.WM_WALLPAPER_TASKBAR_HIDE !== '0';
-    let workerCleanupSafe = !forceKilled;
-    if (taskbarHideActive && child) {
-      if (forceKilled || !childClosedInBudget || (child.exitCode !== null && child.exitCode !== 0)) {
-        workerCleanupSafe = false;
-      } else {
+    let workerCleanupSafe = false;
+    let verificationError = null;
+
+    if (!taskbarHideActive) {
+      workerCleanupSafe = true;
+    } else if (child) {
+      let streamConfirmed = false;
+      if (!forceKilled && childClosedInBudget && (child.exitCode === null || child.exitCode === 0)) {
         const th = terminalTaskbarHide;
-        if (!th || typeof th !== 'object') {
-          workerCleanupSafe = false;
-        } else if (th.cleanupSafe !== true) {
-          workerCleanupSafe = false;
-        } else {
+        if (th && typeof th === 'object' && th.cleanupSafe === true) {
           const pendingStages = ['action-pending', 'action-unconfirmed', 'pending'];
-          if (pendingStages.includes(th.stage)) {
-            workerCleanupSafe = false;
-          } else {
+          if (!pendingStages.includes(th.stage)) {
             const validNotStarted = th.attempted === false && ['armed', 'disabled', 'stopped-before-action', 'observing'].includes(th.stage);
             const validSettled = ['action-done', 'action-failed', 'failed', 'done', 'success', 'armed', 'stopped-before-action'].includes(th.stage);
-            workerCleanupSafe = Boolean(validNotStarted || validSettled);
+            streamConfirmed = Boolean(validNotStarted || validSettled);
           }
         }
       }
+
+      if (streamConfirmed) {
+        workerCleanupSafe = true;
+      } else if (closeAttempts > 1) {
+        const activeQuery = customQueryProcesses || (loc => queryWindowsProcesses(loc, { execCommand: customExecCommand || execFile }));
+        const verification = await verifyIndependentWorkerCleanup({
+          location,
+          windowHwnd: config?.window ?? null,
+          windowPid,
+          expectedStartUtc: windowStartUtc,
+          outputDir: config?.output ?? null,
+          captureChild: child,
+          captureClosed: childClosed,
+          captureSpawned: Boolean(child),
+          queryProcesses: activeQuery,
+          readFile: customReadFile || readFile,
+          exists,
+          writeFile: customWriteFile || writeFile,
+          taskbarHideActive,
+          now,
+        });
+        if (verification.safe === true) {
+          workerCleanupSafe = true;
+        } else {
+          workerCleanupSafe = false;
+          verificationError = verification.reason;
+        }
+      }
+    } else {
+      workerCleanupSafe = !forceKilled;
     }
 
     if (!childClosedInBudget || !workerCleanupSafe) {
@@ -360,9 +940,10 @@ export function createPreviewSession(options = {}) {
           ? 'capture process did not exit within budget'
           : forceKilled
             ? 'capture process force-killed; worker exit could not be confirmed'
-            : 'worker exit could not be confirmed',
+            : verificationError || 'worker exit could not be confirmed',
       };
-      failure ??= `Window cleanup incomplete (worker-unconfirmed): ${cleanupResult.error}`;
+      if (mediaLease) cleanupResult.error = 'MEDIA_BRIDGE_WORKER: source or worker exit unconfirmed; retain media and retry cleanup';
+      failure = `Window cleanup incomplete (worker-unconfirmed): ${cleanupResult.error}`;
       reattach();
       if (cadenceTraceEnabled) {
         await clientTrace.waitForClientFinalize?.(100, issuedConnections);
@@ -380,14 +961,14 @@ export function createPreviewSession(options = {}) {
       if (Number.isInteger(windowPid) && windowPid > 0) closeArgs.push('--expect-pid', String(windowPid));
       try {
         const closed = await helper(closeArgs);
-        nextCleanupResult = { outcome: closed?.outcome ?? null, closed: closed?.closed === true, waitedMs: closed?.waitedMs ?? null, error: closed?.error ?? null };
+        nextCleanupResult = { outcome: closed?.outcome ?? null, closed: closed?.closed === true, waitedMs: closed?.waitedMs ?? null, error: mediaLease && closed?.error ? 'MEDIA_BRIDGE_CLOSE: close failed; retain files and retry cleanup' : closed?.error ?? null };
       } catch (error) {
-        nextCleanupResult = { outcome: 'error', closed: false, error: error.message };
+        nextCleanupResult = { outcome: 'error', closed: false, error: mediaLease ? 'MEDIA_BRIDGE_CLOSE: close failed; retain files and retry cleanup' : error.message };
       }
       if (nextCleanupResult.closed !== true) {
         const attempt = Number.isInteger(cleanupResult?.attempts) ? cleanupResult.attempts + 1 : 1;
         nextCleanupResult = { ...nextCleanupResult, attempts: attempt };
-        failure ??= `Window cleanup incomplete (${nextCleanupResult.outcome ?? 'unknown'}): ${nextCleanupResult.error ?? 'no result'}`;
+        failure = `Window cleanup incomplete (${nextCleanupResult.outcome ?? 'unknown'}): ${nextCleanupResult.error ?? 'no result'}`;
         // The capture may still be running this window: keep its evidence flowing until the
         // next attempt proves the window gone.
         reattach();
@@ -398,6 +979,15 @@ export function createPreviewSession(options = {}) {
     detach();
     if (cadenceTraceEnabled) {
       await clientTrace.waitForClientFinalize?.(100, issuedConnections);
+    }
+    if (mediaLease && (!windowCreated || nextCleanupResult?.closed === true)) {
+      try {
+        await mediaLease.release({ neverOpened: !windowCreated && !child, closed: nextCleanupResult?.closed === true, workersExited: childClosedInBudget && workerCleanupSafe });
+        mediaLease = null;
+      } catch (error) {
+        nextCleanupResult = { outcome: 'media-bridge-retained', closed: false, error: error.message };
+        failure = error.message;
+      }
     }
     cleanupResult = nextCleanupResult;
     await writeCadenceTrace();
@@ -427,9 +1017,10 @@ export function createPreviewSession(options = {}) {
     return cleanup();                                    // retry after an unproven close
   };
 
-  async function create({ helper: helperPath, output, scene, offscreenStart = false }) {
+  async function create({ helper: helperPath, output, scene, offscreenStart = false, mediaLease: preparedMedia = null }) {
     if (cleaning) throw new Error('this playback run has already ended');
     if (config) throw new Error('this session already started a run');
+    mediaLease = preparedMedia;
     // The selection was already re-verified by the caller against the Host's own snapshot; only the
     // id and the re-proved project file reach this point, and neither comes from the request body.
     // The legacy `{ scene, mode }` form is still accepted for a caller that resolved the sample
@@ -447,6 +1038,9 @@ export function createPreviewSession(options = {}) {
         return project;
       } },
     );
+    if (/\.mp4$/i.test(request.project) && (!mediaLease || mediaLease.path !== request.project || !/^[\x20-\x7e]+$/.test(request.project))) {
+      throw new Error('MEDIA_BRIDGE_SELECTION: video requires a verified Host media lease');
+    }
     config = {
       helper: helperPath,
       output,
@@ -471,6 +1065,12 @@ export function createPreviewSession(options = {}) {
       hub.runId = location;
     }
     if (stopRequested) { await stop(); throw new Error('this playback run was stopped before it started'); }
+
+    // Recheck the published copy and original declaration immediately before the side effect.
+    if (mediaLease) {
+      await mediaLease.verify();
+      if (stopRequested) { await stop(); throw new Error('this playback run was stopped before it started'); }
+    }
 
     // 1. Create this run's own window; the name is claimed before the side effect.
     windowCreated = true;
@@ -502,7 +1102,21 @@ export function createPreviewSession(options = {}) {
       const openFailure = await settledWithFailure;
       if (openFailure) {
         const late = await windowAcquisitionWait.catch(() => null);
-        if (late) { config.window = late.hwnd; windowPid = Number.isInteger(late.pid) && late.pid > 0 ? late.pid : null; }
+        if (late) {
+          config.window = late.hwnd;
+          windowPid = Number.isInteger(late.pid) && late.pid > 0 ? late.pid : null;
+          let lateStartUtc = late.startUtc || late.StartUtc || null;
+          if (!lateStartUtc && windowPid) {
+            if (typeof queryProcessIdentity === 'function') {
+              const res = await queryProcessIdentity(windowPid);
+              if (res && res.ok && res.startUtc) lateStartUtc = res.startUtc;
+            } else {
+              const res = await queryWindowsProcessCreationUtc(windowPid, { execCommand: customExecCommand || execFile });
+              if (res && res.ok && res.startUtc) lateStartUtc = res.startUtc;
+            }
+          }
+          windowStartUtc = lateStartUtc;
+        }
         throw openFailure;
       }
       if (!window) {
@@ -512,9 +1126,20 @@ export function createPreviewSession(options = {}) {
       }
       config.window = window.hwnd;
       windowPid = Number.isInteger(window.pid) && window.pid > 0 ? window.pid : null;
+      let startUtc = window.startUtc || window.StartUtc || null;
+      if (!startUtc && windowPid) {
+        if (typeof queryProcessIdentity === 'function') {
+          const res = await queryProcessIdentity(windowPid);
+          if (res && res.ok && res.startUtc) startUtc = res.startUtc;
+        } else {
+          const res = await queryWindowsProcessCreationUtc(windowPid, { execCommand: customExecCommand || execFile });
+          if (res && res.ok && res.startUtc) startUtc = res.startUtc;
+        }
+      }
+      windowStartUtc = startUtc;
       nativeStatus = { windowReady: { hwnd: window.hwnd, pid: window.pid, visible: window.visible, left: window.left, top: window.top } };
     } catch (error) {
-      failure = failure ?? `Window setup failed: ${error.message}`;
+      failure = failure ?? (mediaLease ? 'MEDIA_BRIDGE_OPEN: video source could not be opened; stop and retry after checking the file' : `Window setup failed: ${error.message}`);
       await stop();
       throw new Error(failure);
     }
@@ -654,8 +1279,8 @@ export function createPreviewSession(options = {}) {
       attached,
       reporting: reportTimer !== null,
       closeListeners: child ? child.listenerCount('close') : 0,
-      stdoutListeners: child ? child.listenerCount('data') : 0,
-      stderrListeners: child ? child.listenerCount('data') : 0,
+      stdoutListeners: child?.stdout ? child.stdout.listenerCount('data') : 0,
+      stderrListeners: child?.stderr ? child.stderr.listenerCount('data') : 0,
       cleanup: cleanupResult,
     }),
     state: () => ({ config, location, windowCreated, windowPid, captureStarted, stopRequested, cleanup: cleanupResult }),
@@ -682,8 +1307,9 @@ export function createPreviewSession(options = {}) {
  * The packaged native helper starts the source at a verified positive screen-external position.
  * WM_WALLPAPER_OFFSCREEN_START=0 or an explicit false retains the old create/capture/tuck order.
  */
-export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message), library = null, verifyScene = null, cadenceTrace = false } = {}) {
-  const buildSession = (opts = {}) => sessionFactory({ exists, cadenceTrace: opts.cadenceTrace ?? cadenceTrace });
+export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot, sessionFactory = createPreviewSession, exists = existsSync, offscreenStart = process.env.WM_WALLPAPER_OFFSCREEN_START !== '0', onWarn = message => console.warn(message), library = null, verifyScene = null, cadenceTrace = false, queryProcesses = null, execCommand = null, readFile = null, queryProcessIdentity = null, mediaBridge = null } = {}) {
+  const bridge = mediaBridge ?? createMediaBridge();
+  const buildSession = (opts = {}) => sessionFactory({ exists, cadenceTrace: opts.cadenceTrace ?? cadenceTrace, queryProcesses, execCommand, readFile, queryProcessIdentity });
   // The Host's last failure to re-verify a selection, surfaced to the UI instead of being swallowed.
   let lastSelectionError = null;
 
@@ -760,13 +1386,31 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       if (!exists(SCENES.lucy.project)) throw new Error(`scene file is missing: lucy`);
       return { ...selection, ...seconds, project: SCENES.lucy.project };
     }
-    const verify = verifyScene ?? (library ? id => library.resolveSelection(id) : null);
+    const verify = verifyScene ?? (library ? id => library.resolveForPlayback ? library.resolveForPlayback(id) : library.resolveSelection(id) : null);
     // A well-formed catalogue id is a real selection that this Host cannot resolve, which is a
     // different answer from a name that is not an id at all. Neither falls back to the sample.
     if (!verify) throw new Error(`the wallpaper library is not configured, so ${selection.sceneId} cannot be verified`);
     const verified = await verify(selection.sceneId);
     if (!verified || verified.sceneId !== selection.sceneId) throw new Error(`the wallpaper library could not verify ${selection.sceneId}`);
-    return { sceneId: selection.sceneId, project: verified.project, mode: selection.mode, ...seconds };
+    return { sceneId: selection.sceneId, project: verified.project, type: verified.type, sourceProject: verified.sourceProject, entry: verified.entry, mode: selection.mode, ...seconds };
+  };
+
+  const prepareSelection = async (token, selection) => {
+    if (selection.type !== 'video') {
+      if (/\.mp4$/i.test(selection.project ?? '')) throw new Error('MEDIA_BRIDGE_SELECTION: refresh the wallpaper library before starting video');
+      return selection;
+    }
+    resolveSceneRequest({ scene: selection.sceneId, mode: selection.mode, ...(selection.seconds !== undefined ? { seconds: selection.seconds } : {}) }, { resolveProject: () => selection.project });
+    token.preparing = true;
+    const describe = value => ({ sceneId: value.sceneId, type: value.type, project: value.sourceProject, entry: value.entry });
+    try {
+      token.mediaLease = await bridge.prepare(describe(selection), {
+        isCurrent: () => isCurrent(token),
+        reverify: async () => describe(await verifySelection({ scene: selection.sceneId, mode: selection.mode, seconds: selection.seconds })),
+      });
+      if (!isCurrent(token)) throw new Error('MEDIA_BRIDGE_CANCELLED: playback was stopped during media preparation');
+      return { ...selection, project: token.mediaLease.path };
+    } finally { token.preparing = false; }
   };
 
   const statusPayload = (extra = {}) => {
@@ -893,6 +1537,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
           throw error;
         }
       }
+      if (!token.verifiedSelection) selection = await prepareSelection(token, selection);
       // A stop or unload that arrived during re-verification wins over this start.
       if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
       const output = await prepareRunDirectory(logRoot, selection.sceneId);
@@ -903,7 +1548,9 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       session = next;
       token.started = true;
       try {
-        await next.create({ helper, output, scene: selection, offscreenStart });
+        const preparedMedia = token.mediaLease ?? null;
+        token.mediaLease = null; // ownership transfers even when create throws; session.stop proves release
+        await next.create({ helper, output, scene: { sceneId: selection.sceneId, project: selection.project, mode: selection.mode, ...(selection.seconds !== undefined ? { seconds: selection.seconds } : {}) }, offscreenStart, mediaLease: preparedMedia });
       } catch (error) {
         await next.stop().catch(() => {});
         const result = next.state().cleanup ?? { outcome: 'absent', closed: true };
@@ -931,6 +1578,11 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       lastError = error.message;
       return { ok: false, payload: statusPayload({ error: error.message }) };
     } finally {
+      if (token.mediaLease) {
+        try { await token.mediaLease.release({ neverOpened: true }); }
+        catch (error) { lastError = error.message; onWarn('[Whale wallpaper] ' + error.message); }
+        token.mediaLease = null;
+      }
       release(token);
     }
   };
@@ -960,7 +1612,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     // An external stop is a cancellation for anything that is still verifying a selection.
     cancelGeneration += 1;
     const pending = ownership;
-    const inFlight = pending?.kind === 'start' && pending.started ? pending.promise.catch(() => {}) : null;
+    const inFlight = pending?.kind === 'start' && (pending.started || pending.preparing) ? pending.promise.catch(() => {}) : null;
     if (!session) {
       return { payload: statusPayload({ stopped: true, cleanup: null, pending: Boolean(inFlight), error: '' }), ok: true };
     }
@@ -1062,11 +1714,12 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
             if (!host.available) throw new Error(`wallpaper engine preview is unavailable: ${host.reason}`);
             // Verify the NEXT selection before anything is closed: an unusable new item must leave the
             // current picture playing.
-            const selection = await verifySelection(projectSelectionRequest(body)).catch(error => {
+            let selection = await verifySelection(projectSelectionRequest(body)).catch(error => {
               lastSelectionError = error;
               throw error;
             });
             lastSelectionError = null;
+            selection = await prepareSelection(token, selection);
             if (!isCurrent(token)) throw new Error('the preview was stopped while it was starting');
             // Close the old run in place, still under this token. An unproven close keeps its run and
             // refuses the new one.
@@ -1264,14 +1917,14 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     const pending = ownership;
     // A start whose request body has not been read yet owns nothing, so unloading must not
     // wait for that client; it waits only for a run that has really begun to be built.
-    const inFlight = pending && (pending.kind !== 'start' || pending.started) ? pending.promise.catch(() => {}) : null;
+    const inFlight = pending && (pending.kind !== 'start' || pending.started || pending.preparing) ? pending.promise.catch(() => {}) : null;
     return (async () => {
       if (inFlight) await inFlight;
       await closeSession();
     })();
   }, 'whale-mist: wallpaper preview lifetime');
 
-  return { statusPayload, stopNow, closeSession, releaseFinishedSession, currentSession: () => session, ownership: () => ownership };
+  return { statusPayload, stopNow, closeSession, releaseFinishedSession, currentSession: () => session, ownership: () => ownership, generation: () => generation };
 }
 
 async function readJsonBody(req, limit) {

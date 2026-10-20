@@ -37,6 +37,11 @@
   "files": [
     "src/index.js",
     "src/client.js",
+    "src/detachable-contract.js",
+    "src/detachable-bridge.js",
+    "src/detachable-host.js",
+    "src/detachable-edge-adapter.js",
+    "src/companion",
     "src/wallpaper",
     "src/windows/WhaleDesktopIcon.cs",
     "assets/DeepSeek-Harness.ico",
@@ -46,11 +51,14 @@
     "README.md"
   ],
   "scripts": {
-    "check": "node --check src/index.js && node --check src/client.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js && node --check src/wallpaper/catalog.js && node --check src/wallpaper/library.js && node qa/css-template-guard.mjs",
+    "check": "node --check src/index.js && node --check src/client.js && node --check src/detachable-contract.js && node --check src/detachable-bridge.js && node --check src/detachable-host.js && node --check src/detachable-edge-adapter.js && node --check src/companion/companion.js && node --check src/wallpaper/session.js && node --check src/wallpaper/scenes.js && node --check src/wallpaper/catalog.js && node --check src/wallpaper/library.js && node qa/css-template-guard.mjs",
     "build:client-protocol": "node scripts/build-wm-protocol.mjs",
     "build:desktop-icon": "powershell.exe -NoProfile -File scripts/build-desktop-icon.ps1",
     "test:appearance": "node qa/appearance-regression.mjs",
     "test:appearance-selection": "node qa/appearance-regression.mjs --scene-selection-only",
+    "test:detachable-p0": "node --test qa/detachable-appearance-p0.test.mjs",
+    "test:detachable-e2e": "node qa/detachable-browser-e2e.mjs",
+    "test:detachable-p1a": "node --test qa/detachable-p1a-production.test.mjs",
     "test:appearance-wallpaper": "node qa/appearance-wallpaper-regression.mjs",
     "test:appearance-wallpaper-layout": "node qa/appearance-wallpaper-layout.mjs",
     "test:appearance-wallpaper-overlay": "node qa/appearance-wallpaper-overlay.mjs",

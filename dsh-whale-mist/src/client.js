@@ -55,18 +55,23 @@ window.__ModuleLoader__.load({
     const DEFAULT_SETTINGS = Object.freeze({
       theme: "abyss",
       palette: "ocean",
+      accentMode: "theme",
+      accentColor: "#8c72f2",
       canvas: "soft",
       sidebar: "balanced",
       glass: "standard",
+      textContrast: "standard",
       background: "none",
       motion: "focus",
       weScene: "lucy",
       weMode: "preview",
       weAutoStart: false,
+      weAgeRatings: "Everyone",
       // Per-region backgrounds: which areas may cover the wallpaper with their own colour. Both
       // default to off, so the visual result stays exactly what the previous release shipped.
       opaqueSidebar: false,
       opaqueChat: false,
+      chatBackdrop: 0,
       brightness: 70,
       mask: 45,
       blur: 0,
@@ -75,14 +80,20 @@ window.__ModuleLoader__.load({
     const ALLOWED_SETTINGS = Object.freeze({
       theme: Object.freeze(["mist", "abyss"]),
       palette: Object.freeze(["ocean", "graphite", "violet", "jade"]),
+      accentMode: Object.freeze(["theme", "custom"]),
       canvas: Object.freeze(["soft", "clear"]),
       sidebar: Object.freeze(["balanced", "deep"]),
       glass: Object.freeze(["standard", "restrained"]),
+      textContrast: Object.freeze(["standard", "enhanced"]),
       background: Object.freeze(["none", "image", "video", "wallpaper"]),
       motion: Object.freeze(["focus", "always"]),
       /** `daily` is the daily-driver mode; `preview` is the supervised time-boxed one. */
       weMode: Object.freeze(["daily", "preview"])
     });
+    /**
+     * Strict 6-digit hex color format.
+     */
+    const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
     /**
      * Scene ids come from the Host whitelist; a stale stored value falls back to Lucy.
      *
@@ -105,10 +116,11 @@ window.__ModuleLoader__.load({
      */
     const DEFAULT_PLAYBACK_MODE = "preview";
     const RANGE_SETTINGS = Object.freeze({
-      brightness: Object.freeze([20, 100]),
+      brightness: Object.freeze([20, 120]),
       mask: Object.freeze([0, 90]),
       blur: Object.freeze([0, 24]),
-      surface: Object.freeze([40, 100])
+      surface: Object.freeze([40, 100]),
+      chatBackdrop: Object.freeze([0, 100])
     });
 
     function clampRange(key, value) {
@@ -127,6 +139,13 @@ window.__ModuleLoader__.load({
 
     function isValidSetting(key, value) {
       if (key === "weScene") return isSceneId(value);
+      if (key === "accentColor") return typeof value === "string" && HEX_COLOR_PATTERN.test(value);
+      if (key === "weAgeRatings") {
+        if (typeof value !== "string") return false;
+        if (value.trim() === "") return true;
+        const parts = value.split(",").map(s => s.trim()).filter(Boolean);
+        return parts.length > 0 && parts.every(p => ["Everyone", "Questionable", "Mature"].includes(p));
+      }
       if (Object.hasOwn(ALLOWED_SETTINGS, key)) return ALLOWED_SETTINGS[key].includes(value);
       if (BOOLEAN_SETTINGS.includes(key)) return typeof value === "boolean";
       return Object.hasOwn(RANGE_SETTINGS, key) && typeof value === "number" && Number.isFinite(value);
@@ -134,18 +153,63 @@ window.__ModuleLoader__.load({
 
     function normalizeSettings(value) {
       const source = value && typeof value === "object" ? value : {};
+      let chatBackdrop;
+      if (typeof source.chatBackdrop === "number" && Number.isFinite(source.chatBackdrop)) {
+        chatBackdrop = clampRange("chatBackdrop", source.chatBackdrop);
+      } else {
+        chatBackdrop = source.opaqueChat === true ? 100 : 0;
+      }
+      const opaqueChat = chatBackdrop === 100;
+
+      let accentColor = DEFAULT_SETTINGS.accentColor;
+      let hasValidColor = false;
+      if (typeof source.accentColor === "string" && HEX_COLOR_PATTERN.test(source.accentColor)) {
+        accentColor = source.accentColor.toLowerCase();
+        hasValidColor = true;
+      }
+
+      let accentMode = DEFAULT_SETTINGS.accentMode;
+      if (source.accentMode === "custom") {
+        // Fall back to theme mode if custom is claimed without a valid color
+        accentMode = hasValidColor ? "custom" : "theme";
+      } else if (source.accentMode === "theme") {
+        accentMode = "theme";
+      }
+
+      let weAgeRatings = DEFAULT_SETTINGS.weAgeRatings;
+      if (typeof source.weAgeRatings === "string") {
+        const trimmed = source.weAgeRatings.trim();
+        if (trimmed === "") {
+          weAgeRatings = "";
+        } else {
+          const parts = trimmed.split(",").map(s => s.trim()).filter(Boolean);
+          const allValid = parts.length > 0 && parts.every(p => ["Everyone", "Questionable", "Mature"].includes(p));
+          if (allValid) {
+            const unique = [...new Set(parts)].sort((a, b) => ["Everyone", "Questionable", "Mature"].indexOf(a) - ["Everyone", "Questionable", "Mature"].indexOf(b));
+            weAgeRatings = unique.join(",");
+          } else {
+            weAgeRatings = DEFAULT_SETTINGS.weAgeRatings;
+          }
+        }
+      }
+
       return {
-        ...Object.fromEntries(Object.entries(ALLOWED_SETTINGS).map(([key, allowed]) => [
+        ...Object.fromEntries(Object.entries(ALLOWED_SETTINGS).filter(([k]) => k !== "accentMode").map(([key, allowed]) => [
           key,
           allowed.includes(source[key]) ? source[key] : DEFAULT_SETTINGS[key]
         ])),
-        ...Object.fromEntries(Object.keys(RANGE_SETTINGS).map((key) => [key, clampRange(key, source[key])])),
+        ...Object.fromEntries(Object.keys(RANGE_SETTINGS).filter((k) => k !== "chatBackdrop").map((key) => [key, clampRange(key, source[key])])),
+        accentMode,
+        accentColor,
+        chatBackdrop,
+        weAgeRatings,
         // A well-formed catalogue id is kept even before the list has loaded: normalizing it away
         // would silently replace the user's wallpaper with the sample. The Host still refuses an id
         // it cannot re-verify, so this keeps the choice without granting it.
         weScene: isSceneId(source.weScene) ? source.weScene : DEFAULT_SETTINGS.weScene,
         // Opt-in flags: only an explicit boolean true turns one on.
-        ...Object.fromEntries(BOOLEAN_SETTINGS.map((key) => [key, source[key] === true]))
+        ...Object.fromEntries(BOOLEAN_SETTINGS.filter((k) => k !== "opaqueChat").map((key) => [key, source[key] === true])),
+        opaqueChat
       };
     }
 
@@ -163,40 +227,62 @@ window.__ModuleLoader__.load({
       } catch {}
     }
 
+    const PRESETS_STORAGE_KEY = "dsh-whale-mist.wallpaper-appearance-presets.v1";
+    const PRESET_PROPERTIES = Object.freeze(["brightness", "mask", "blur", "surface"]);
+
+    function sanitizePresetEntry(raw) {
+      if (!raw || typeof raw !== "object") return null;
+      const entry = {};
+      for (const key of PRESET_PROPERTIES) {
+        if (typeof raw[key] !== "number" || !Number.isFinite(raw[key])) return null;
+        entry[key] = clampRange(key, raw[key]);
+      }
+      return Object.freeze(entry);
+    }
+
+    function normalizePresets(raw) {
+      if (!raw || typeof raw !== "object" || raw.version !== 1 || !raw.entries || typeof raw.entries !== "object") {
+        return Object.freeze({ version: 1, entries: Object.freeze({}) });
+      }
+      const entries = {};
+      for (const [key, value] of Object.entries(raw.entries)) {
+        if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+        if (!isSceneId(key)) continue;
+        const sanitized = sanitizePresetEntry(value);
+        if (sanitized) entries[key] = sanitized;
+      }
+      return Object.freeze({ version: 1, entries: Object.freeze(entries) });
+    }
+
+    function readPresets() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(PRESETS_STORAGE_KEY) ?? "null");
+        return normalizePresets(raw);
+      } catch {
+        return Object.freeze({ version: 1, entries: Object.freeze({}) });
+      }
+    }
+
+    function persistPresets(presets) {
+      try {
+        localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     const PROJECTED_VARIABLES = Object.freeze({
       brightness: ["--wm-bg-brightness", (value) => String(value / 100)],
       mask: ["--wm-bg-mask", (value) => String(value / 100)],
       blur: ["--wm-bg-blur", (value) => `${value}px`],
-      surface: ["--wm-ui-alpha", (value) => String(value / 100)]
+      surface: ["--wm-ui-alpha", (value) => String(value / 100)],
+      chatBackdrop: ["--wm-chat-alpha", (value) => String(value / 100)]
     });
     /** Region switches are projected as body attributes, one per region. */
     const PROJECTED_FLAGS = Object.freeze({
-      opaqueSidebar: "wmOpaqueSidebar",
-      opaqueChat: "wmOpaqueChat"
+      opaqueSidebar: "wmOpaqueSidebar"
     });
-
-    function projectSettings(settings) {
-      const body = document.body;
-      body.dataset.wmTheme = settings.theme;
-      body.dataset.wmPalette = settings.palette;
-      body.dataset.wmCanvas = settings.canvas;
-      body.dataset.wmSidebar = settings.sidebar;
-      body.dataset.wmGlass = settings.glass;
-      for (const [key, name] of Object.entries(PROJECTED_FLAGS)) {
-        if (settings[key]) body.dataset[name] = "true";
-        else delete body.dataset[name];
-      }
-      for (const [key, [name, format]] of Object.entries(PROJECTED_VARIABLES)) {
-        body.style.setProperty(name, format(settings[key]));
-      }
-    }
-
-    function clearProjection() {
-      const body = document.body;
-      for (const key of ["wmTheme", "wmPalette", "wmCanvas", "wmSidebar", "wmGlass"]) delete body.dataset[key];
-      for (const name of Object.values(PROJECTED_FLAGS)) delete body.dataset[name];
-      for (const [name] of Object.values(PROJECTED_VARIABLES)) body.style.removeProperty(name);
-    }
 
     // Dark palettes layered on top of Whale Abyss. `ocean` is the registered
     // Abyss token set itself, so the default look stays byte-for-byte as before.
@@ -232,6 +318,193 @@ window.__ModuleLoader__.load({
       : `rgb(${color.join(" ")} / ${alpha})`;
     const mix = (a, b, weight = 0.5) => a.map((value, index) => Math.round(value * (1 - weight) + b[index] * weight));
     const scale = (color, factor) => color.map((value) => Math.round(value * factor));
+
+    const CUSTOM_ACCENT_VARIABLES = Object.freeze([
+      "--wm-custom-raw",
+      "--wm-custom-btn-hover",
+      "--wm-custom-btn-fg",
+      "--wm-custom-ink",
+      "--wm-custom-business-tertiary",
+      "--wm-custom-btn-info-fill",
+      "--wm-custom-btn-info-hover",
+      "--wm-custom-ghost-active-fill",
+      "--wm-custom-interactive-primary",
+      "--wm-custom-interactive-hover",
+      "--wm-custom-interactive-active",
+      "--wm-custom-sidebar-nav-active"
+    ]);
+
+    function hexToRgb(hex) {
+      const num = parseInt(hex.slice(1), 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+    function rgbToHex(rgbArray) {
+      return "#" + rgbArray.map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("");
+    }
+    function srgbToLinear(val255) {
+      const v = val255 / 255;
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    }
+    function relativeLuminance(rgbArray) {
+      return 0.2126 * srgbToLinear(rgbArray[0]) + 0.7152 * srgbToLinear(rgbArray[1]) + 0.0722 * srgbToLinear(rgbArray[2]);
+    }
+    function contrastRatio(rgb1, rgb2) {
+      const l1 = relativeLuminance(rgb1);
+      const l2 = relativeLuminance(rgb2);
+      return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    }
+
+    function deriveButtonForeground(rawRgb) {
+      const ratioBlack = contrastRatio(rawRgb, [0, 0, 0]);
+      const ratioWhite = contrastRatio(rawRgb, [255, 255, 255]);
+      return ratioBlack >= ratioWhite ? "#000000" : "#ffffff";
+    }
+
+    function deriveButtonHover(rawRgb, fgHex) {
+      const fgRgb = fgHex === "#000000" ? [0, 0, 0] : [255, 255, 255];
+      const oppRgb = fgHex === "#000000" ? [255, 255, 255] : [0, 0, 0];
+      const h1 = rawRgb.map((c, i) => Math.round(c * 0.88 + fgRgb[i] * 0.12));
+      if (contrastRatio(h1, fgRgb) >= 4.5) {
+        return rgbToHex(h1);
+      }
+      const h2 = rawRgb.map((c, i) => Math.round(c * 0.88 + oppRgb[i] * 0.12));
+      return rgbToHex(h2);
+    }
+
+    function getReferenceSurfaces(theme, palette) {
+      if (theme === "mist") {
+        return [
+          [239, 247, 254],
+          [255, 255, 255],
+          [230, 242, 251],
+          [252, 254, 255],
+          [228, 240, 249],
+          [207, 229, 246]
+        ];
+      }
+      const p = PALETTES[palette];
+      if (p) {
+        return [
+          p.base,
+          p.l1,
+          p.l2,
+          p.l3,
+          p.sidebar,
+          p.sidebarDeep
+        ];
+      }
+      return [
+        [8, 11, 20],
+        [15, 23, 38],
+        [23, 34, 54],
+        [28, 40, 62],
+        [15, 23, 38],
+        [10, 16, 28]
+      ];
+    }
+
+    function deriveInkColor(rawRgb, theme, palette) {
+      const surfaces = getReferenceSurfaces(theme, palette);
+      const satisfies = (rgbArray) => {
+        for (let i = 0; i < surfaces.length; i++) {
+          if (contrastRatio(rgbArray, surfaces[i]) < 4.5) return false;
+        }
+        return true;
+      };
+      if (satisfies(rawRgb)) {
+        return rgbToHex(rawRgb);
+      }
+      const target = theme === "mist" ? [0, 0, 0] : [255, 255, 255];
+      for (let k = 1; k <= 255; k++) {
+        const factor = k / 255;
+        const cand = [
+          Math.round(rawRgb[0] * (1 - factor) + target[0] * factor),
+          Math.round(rawRgb[1] * (1 - factor) + target[1] * factor),
+          Math.round(rawRgb[2] * (1 - factor) + target[2] * factor)
+        ];
+        if (satisfies(cand)) {
+          return rgbToHex(cand);
+        }
+      }
+      return rgbToHex(target);
+    }
+
+    function deriveAccentValues(accentColor, theme, palette) {
+      const rawRgb = hexToRgb(accentColor);
+      const raw = accentColor.toLowerCase();
+      const btnFg = deriveButtonForeground(rawRgb);
+      const btnHover = deriveButtonHover(rawRgb, btnFg);
+      const ink = deriveInkColor(rawRgb, theme, palette);
+      return {
+        raw,
+        btnHover,
+        btnFg,
+        ink,
+        businessTertiary: `rgba(${rawRgb.join(", ")}, 0.2)`,
+        btnInfoFill: `rgba(${rawRgb.join(", ")}, 0.18)`,
+        btnInfoHover: `rgba(${rawRgb.join(", ")}, 0.26)`,
+        ghostActiveFill: `rgba(${rawRgb.join(", ")}, 0.2)`,
+        interactivePrimary: `rgba(${rawRgb.join(", ")}, 0.16)`,
+        interactiveHover: `rgba(${rawRgb.join(", ")}, 0.12)`,
+        interactiveActive: `rgba(${rawRgb.join(", ")}, 0.2)`,
+        sidebarNavActive: `rgba(${rawRgb.join(", ")}, 0.16)`
+      };
+    }
+
+    function projectSettings(settings) {
+      const body = document.body;
+      body.dataset.wmTheme = settings.theme;
+      body.dataset.wmPalette = settings.palette;
+      body.dataset.wmCanvas = settings.canvas;
+      body.dataset.wmSidebar = settings.sidebar;
+      body.dataset.wmGlass = settings.glass;
+      body.dataset.wmTextContrast = settings.textContrast;
+      body.dataset.wmAccentMode = settings.accentMode;
+      for (const [key, name] of Object.entries(PROJECTED_FLAGS)) {
+        if (settings[key]) body.dataset[name] = "true";
+        else delete body.dataset[name];
+      }
+      if (settings.chatBackdrop === 100) {
+        body.dataset.wmOpaqueChat = "true";
+        delete body.dataset.wmChatTint;
+      } else if (settings.chatBackdrop > 0) {
+        delete body.dataset.wmOpaqueChat;
+        body.dataset.wmChatTint = "true";
+      } else {
+        delete body.dataset.wmOpaqueChat;
+        delete body.dataset.wmChatTint;
+      }
+      for (const [key, [name, format]] of Object.entries(PROJECTED_VARIABLES)) {
+        body.style.setProperty(name, format(settings[key]));
+      }
+      if (settings.accentMode === "custom") {
+        const derived = deriveAccentValues(settings.accentColor, settings.theme, settings.palette);
+        body.style.setProperty("--wm-custom-raw", derived.raw);
+        body.style.setProperty("--wm-custom-btn-hover", derived.btnHover);
+        body.style.setProperty("--wm-custom-btn-fg", derived.btnFg);
+        body.style.setProperty("--wm-custom-ink", derived.ink);
+        body.style.setProperty("--wm-custom-business-tertiary", derived.businessTertiary);
+        body.style.setProperty("--wm-custom-btn-info-fill", derived.btnInfoFill);
+        body.style.setProperty("--wm-custom-btn-info-hover", derived.btnInfoHover);
+        body.style.setProperty("--wm-custom-ghost-active-fill", derived.ghostActiveFill);
+        body.style.setProperty("--wm-custom-interactive-primary", derived.interactivePrimary);
+        body.style.setProperty("--wm-custom-interactive-hover", derived.interactiveHover);
+        body.style.setProperty("--wm-custom-interactive-active", derived.interactiveActive);
+        body.style.setProperty("--wm-custom-sidebar-nav-active", derived.sidebarNavActive);
+      } else {
+        for (const prop of CUSTOM_ACCENT_VARIABLES) {
+          body.style.removeProperty(prop);
+        }
+      }
+    }
+
+    function clearProjection() {
+      const body = document.body;
+      for (const key of ["wmTheme", "wmPalette", "wmCanvas", "wmSidebar", "wmGlass", "wmTextContrast", "wmAccentMode", "wmOpaqueChat", "wmChatTint"]) delete body.dataset[key];
+      for (const name of Object.values(PROJECTED_FLAGS)) delete body.dataset[name];
+      for (const [name] of Object.values(PROJECTED_VARIABLES)) body.style.removeProperty(name);
+      for (const prop of CUSTOM_ACCENT_VARIABLES) body.style.removeProperty(prop);
+    }
 
     function paletteCss(id, p) {
       const s = `body.${ABYSS_ACTIVE_CLASS}[data-wm-palette="${id}"]`;
@@ -423,13 +696,20 @@ window.__ModuleLoader__.load({
       // Subscriptions of the layer: a stall (not a terminal state) hides the last frame
       // while the client keeps trying to recover.
       const stallListeners = new Set();
+      const libraryListeners = new Set();
       let hideStalledFrames = false;
       let running = false;
       let busy = false;
       let disposed = false;
       let abort = null;
       let pollTimer = null;
-      let status = Object.freeze({ state: "idle", error: "", host: null, generation: 0 });
+      let status = Object.freeze({ state: "idle", error: "", host: null, generation: 0, cleanupPending: false });
+      let stopRevision = 0;
+      let activeStopId = 0;
+      let activeStopGeneration = 0;
+      let librarySnapshot = null;
+      let libraryRevision = 0;
+      let libraryRefreshing = false;
       let startedAt = 0;
       let lastFrameAt = 0;
 
@@ -1113,24 +1393,66 @@ window.__ModuleLoader__.load({
        * starts, stops or rescans anything.
        */
       async function readLibrary({ refresh = false, ensure = false, signal = null } = {}) {
-        const path = refresh ? "/whale-wallpaper/library/refresh" : ensure ? "/whale-wallpaper/library?ensure=1" : "/whale-wallpaper/library";
-        const response = await fetchImpl(path,
-          { method: refresh ? "POST" : "GET", cache: "no-store", ...(signal ? { signal } : {}) });
-        const payload = await response.json().catch(() => null);
-        const items = Array.isArray(payload?.items) ? payload.items.map(cleanLibraryItem).filter(Boolean) : [];
-        return {
-          ok: response.ok,
-          items,
-          state: typeof payload?.state === "string" ? payload.state : "failed",
-          loaded: payload?.loaded === true,
-          ensureScan: payload?.ensureScan === true,
-          truncated: payload?.truncated === true,
-          scannedAt: typeof payload?.scannedAt === "string" ? payload.scannedAt : null,
-          error: typeof payload?.error === "string" ? payload.error : (response.ok ? "" : `library-${response.status}`),
-          rootsConfigured: Number.isInteger(payload?.rootsConfigured) ? payload.rootsConfigured : 0,
-          rootsAvailable: Number.isInteger(payload?.rootsAvailable) ? payload.rootsAvailable : 0,
-          rootWarnings: Array.isArray(payload?.rootWarnings) ? payload.rootWarnings.map(entry => String(entry?.reason ?? "")).filter(Boolean) : [],
-        };
+        const reqId = ++libraryRevision;
+        if (refresh) {
+          libraryRefreshing = true;
+          if (librarySnapshot) {
+            librarySnapshot = Object.freeze({ ...librarySnapshot, loading: true });
+          } else {
+            librarySnapshot = Object.freeze({ items: [], state: "loading", loaded: false, loading: true, error: null });
+          }
+          for (const listener of libraryListeners) {
+            try { listener(librarySnapshot); } catch {}
+          }
+        }
+        try {
+          const path = refresh ? "/whale-wallpaper/library/refresh" : ensure ? "/whale-wallpaper/library?ensure=1" : "/whale-wallpaper/library";
+          const response = await fetchImpl(path,
+            { method: refresh ? "POST" : "GET", cache: "no-store", ...(signal ? { signal } : {}) });
+          const payload = await response.json().catch(() => null);
+          const items = Array.isArray(payload?.items) ? payload.items.map(cleanLibraryItem).filter(Boolean) : [];
+          const result = {
+            ok: response.ok,
+            items,
+            state: typeof payload?.state === "string" ? payload.state : (response.ok ? "ready" : "failed"),
+            loaded: payload?.loaded === true,
+            ensureScan: payload?.ensureScan === true,
+            truncated: payload?.truncated === true,
+            scannedAt: typeof payload?.scannedAt === "string" ? payload.scannedAt : null,
+            error: typeof payload?.error === "string" ? payload.error : (response.ok ? "" : `library-${response.status}`),
+            rootsConfigured: Number.isInteger(payload?.rootsConfigured) ? payload.rootsConfigured : 0,
+            rootsAvailable: Number.isInteger(payload?.rootsAvailable) ? payload.rootsAvailable : 0,
+            rootWarnings: Array.isArray(payload?.rootWarnings) ? payload.rootWarnings.map(entry => String(entry?.reason ?? "")).filter(Boolean) : [],
+          };
+          if (reqId === libraryRevision) {
+            libraryRefreshing = false;
+            librarySnapshot = Object.freeze(result);
+            for (const listener of libraryListeners) {
+              try { listener(librarySnapshot); } catch {}
+            }
+          }
+          return result;
+        } catch (error) {
+          if (reqId === libraryRevision) {
+            libraryRefreshing = false;
+            librarySnapshot = Object.freeze({
+              ok: false,
+              items: librarySnapshot?.items || [],
+              state: "failed",
+              loaded: Boolean(librarySnapshot?.loaded),
+              loading: false,
+              truncated: false,
+              error: error.message || "library_fetch_failed",
+              rootsConfigured: 0,
+              rootsAvailable: 0,
+              rootWarnings: [],
+            });
+            for (const listener of libraryListeners) {
+              try { listener(librarySnapshot); } catch {}
+            }
+          }
+          throw error;
+        }
       }
 
       /** Keep only the fields the UI is allowed to show, and never treat a title as markup. */
@@ -1142,9 +1464,14 @@ window.__ModuleLoader__.load({
           title: typeof raw.title === "string" ? raw.title.slice(0, 200) : raw.id,
           type: ["scene", "video", "web", "unknown"].includes(raw.type) ? raw.type : "unknown",
           available: raw.available === true,
+          contentRating: ["Everyone", "Questionable", "Mature"].includes(raw.contentRating) ? raw.contentRating : (raw.id === "lucy" ? "Everyone" : "unknown"),
           // Anything the Host did not mark as verified stays experimental, whatever the field says.
           playbackVerified: raw.playbackVerified === true && raw.id === "lucy",
           reason: typeof raw.reason === "string" ? raw.reason : null,
+          previewRef: raw.previewRef && typeof raw.previewRef === "object" ? {
+            wallpaperId: raw.previewRef.wallpaperId || raw.id,
+            kind: raw.previewRef.kind || "preview",
+          } : { wallpaperId: raw.id, kind: "preview" },
         };
       }
 
@@ -1172,7 +1499,10 @@ window.__ModuleLoader__.load({
         // A user stop uses a new generation so a late start reply cannot revive the run.
         // The internal close that follows a terminal failure keeps the generation: that run
         // is already over, and bumping it would erase the failure the user must see.
+        const stopId = ++stopRevision;
+        activeStopId = stopId;
         const stopGeneration = bump ? invalidate() : generation;
+        activeStopGeneration = stopGeneration;
         const keptError = reason === "failed" ? status.error : "";
         const keptState = reason === "failed" && ["error", "cleanup-failed"].includes(status.state) ? status.state : null;
         running = false; busy = false;
@@ -1190,22 +1520,30 @@ window.__ModuleLoader__.load({
         startedAt = 0;
         activeRun.startedAt = 0;
         hideStalledFrames = false;
-        emitStatus({ state: keptState ?? (reason === "user" ? "stopped" : "idle"), error: keptError, generation: stopGeneration, seconds: 0 });
+        emitStatus({ state: keptState ?? (reason === "user" ? "stopped" : "idle"), error: keptError, generation: stopGeneration, seconds: 0, cleanupPending: true });
         // The layer is dropped right away; a close that cannot be proven is reported
         // afterwards so the UI can say so instead of pretending the run stopped cleanly.
         notifyStop(reason);
         return command("stop").then(({ ok, payload }) => {
+          const isCurrent = (activeStopId === stopId) && (generation === stopGeneration) && !disposed;
+          if (!isCurrent) return status;
+          activeStopId = 0;
+          activeStopGeneration = 0;
           lastCleanup = payload?.cleanup ?? payload?.lastCleanup ?? null;
           const proven = ok && lastCleanup?.closed !== false;
           if (!proven) {
             const detail = payload?.error || lastCleanup?.error || `cleanup not confirmed (${lastCleanup?.outcome ?? "unknown"})`;
-            emitStatus({ state: "cleanup-failed", error: String(detail), host: payload });
+            emitStatus({ state: "cleanup-failed", error: String(detail), host: payload, cleanupPending: false });
           } else {
-            emitStatus({ state: keptState ?? (reason === "user" ? "stopped" : "idle"), error: keptError, host: payload });
+            emitStatus({ state: keptState ?? (reason === "user" ? "stopped" : "idle"), error: keptError, host: payload, cleanupPending: false });
           }
           return status;
         }).catch(error => {
-          emitStatus({ state: "cleanup-failed", error: String(error?.message || "stop-failed") });
+          const isCurrent = (activeStopId === stopId) && (generation === stopGeneration) && !disposed;
+          if (!isCurrent) return status;
+          activeStopId = 0;
+          activeStopGeneration = 0;
+          emitStatus({ state: "cleanup-failed", error: String(error?.message || "stop-failed"), cleanupPending: false });
           return status;
         });
       };
@@ -1278,9 +1616,11 @@ window.__ModuleLoader__.load({
         },
         async start(scene = "lucy", mode = DEFAULT_PLAYBACK_MODE) {
           if (disposed || busy) return status;
+          activeStopId = 0;
+          activeStopGeneration = 0;
           busy = true;
           const runGeneration = invalidate();
-          emitStatus({ state: "starting", error: "", generation: runGeneration });
+          emitStatus({ state: "starting", error: "", generation: runGeneration, cleanupPending: false });
           try {
             const { ok, payload } = await command("start", { scene, mode });
             // A stop, a source switch or an unload during the request invalidates this run;
@@ -1307,9 +1647,11 @@ window.__ModuleLoader__.load({
         },
         async restart(scene = "lucy", mode = DEFAULT_PLAYBACK_MODE) {
           if (disposed || busy) return status;
+          activeStopId = 0;
+          activeStopGeneration = 0;
           busy = true;
           const restartGeneration = invalidate();
-          emitStatus({ state: "starting", error: "", generation: restartGeneration });
+          emitStatus({ state: "starting", error: "", generation: restartGeneration, cleanupPending: false });
           try {
             const { ok, payload } = await command("restart", { scene, mode });
             if (disposed || restartGeneration !== generation) {
@@ -1336,10 +1678,33 @@ window.__ModuleLoader__.load({
         stop,
         snapshot,
         readLibrary,
+        hasPendingCleanup: () => Boolean(status.cleanupPending || activeStopId !== 0 || activeStopGeneration !== 0),
+        getLibrarySnapshot: () => librarySnapshot,
+        setLibrarySnapshot: (s) => {
+          if (libraryRefreshing) return;
+          if (s && s.loaded && s.state === "ready" && !s.loading) {
+            libraryRevision++;
+            librarySnapshot = Object.freeze({
+              ...s,
+              items: Array.isArray(s.items) ? s.items.map(cleanLibraryItem).filter(Boolean) : []
+            });
+          } else {
+            librarySnapshot = null;
+          }
+          for (const listener of libraryListeners) {
+            try { listener(librarySnapshot); } catch {}
+          }
+        },
+        subscribeLibrary(listener) {
+          libraryListeners.add(listener);
+          return () => libraryListeners.delete(listener);
+        },
         /** Last close result reported by the Host, or null when nothing was closed yet. */
         lastCleanup: () => lastCleanup,
         dispose() {
           disposed = true;
+          activeStopId = 0;
+          activeStopGeneration = 0;
           invalidate();
           running = false; busy = false;
           abort?.abort(); abort = null;
@@ -2131,7 +2496,14 @@ window.__ModuleLoader__.load({
       const [previewActionError, setPreviewActionError] = React.useState("");
       // The bounded wallpaper list. It is read on demand (the settings panel opening) and on an
       // explicit refresh; a status poll, a frame or a re-render never scans the library.
-      const [library, setLibrary] = React.useState(() => ({ items: [], state: "idle", loaded: false, loading: false, truncated: false, error: "", scannedAt: null, rootWarnings: [] }));
+      const [library, setLibrary] = React.useState(() => {
+        const existing = typeof controller?.wallpaper?.getLibrarySnapshot === "function"
+          ? controller.wallpaper.getLibrarySnapshot()
+          : null;
+        return existing ?? { items: [], state: "idle", loaded: false, loading: false, truncated: false, error: "", scannedAt: null, rootWarnings: [] };
+      });
+      const presetsState = React.useSyncExternalStore(controller.presets.subscribe, controller.presets.getSnapshot);
+      const [presetActionError, setPresetActionError] = React.useState("");
       const libraryRequest = React.useRef(0);
       const libraryAbort = React.useRef(null);
       const mounted = React.useRef(true);
@@ -2169,16 +2541,31 @@ window.__ModuleLoader__.load({
         badge: "Whale",
         description: "选择浅雾或深色配色，可设置图片或视频背景；输入卡片始终保持不透明。",
         reset: "恢复默认",
+        readabilityTitle: "界面可读性",
+        textContrast: "文字可读性",
+        textContrastStandardHint: "保持主题原有文字，跟随系统高对比度",
+        textContrastEnhancedHint: "提高正文、次要说明和普通工具行的区分，不改变状态含义",
+        enhanced: "增强",
+        chatBackdrop: "聊天底色强度",
+        chatBackdropHint: "0%保留壁纸，100%使用主题实色；覆盖整个聊天列，与侧栏/卡片不透明度分开",
         theme: "主题",
         themeHint: "在鲸雾蓝与鲸渊深色之间切换",
         mist: "鲸雾",
         abyss: "鲸渊",
         palette: "深色配色",
-        paletteHint: "鲸渊的底色与强调色",
+        paletteHint: "鲸渊的主题底色；跟随主题时同时决定强调色",
         ocean: "深海",
         graphite: "石墨",
         violet: "暗紫",
         jade: "墨绿",
+        accentMode: "强调色",
+        accentTheme: "跟随主题",
+        accentCustom: "自定义",
+        accentHint: "按钮使用所选颜色；链接、高亮和焦点会随主题调整深浅以便识别。跟随主题恢复原配色",
+        customAccent: "自定义颜色",
+        customAccentHint: "仅使用 6 位十六进制色值；自动调整文字与焦点对比度",
+        previewButton: "主按钮",
+        previewLink: "链接",
         canvas: "背景层次",
         canvasHint: "控制主画布的雾感与边界清晰度",
         soft: "柔雾",
@@ -2212,7 +2599,7 @@ window.__ModuleLoader__.load({
         sceneVerified: "已验证样例",
         sceneExperimental: "未验证，实验播放",
         sceneUnavailable: "不可用",
-        sceneReasonUnsupported: "本版本只播放 scene",
+        sceneReasonUnsupported: "本版本仅支持 scene 和 MP4 视频",
         sceneReasonUnknownType: "类型未知",
         sceneReasonMissing: "文件登记不完整",
         sceneReasonUnsafe: "路径不安全",
@@ -2256,9 +2643,9 @@ window.__ModuleLoader__.load({
         replace: "更换",
         remove: "移除",
         brightness: "背景亮度",
-        brightnessHint: "只调暗壁纸本身",
+        brightnessHint: "100%保留原亮度，可继续提亮；最终效果还受遮罩和界面底色影响",
         mask: "遮罩",
-        maskHint: "用主题底色压低壁纸，提升文字可读性",
+        maskHint: "叠加主题底色；数值越大，主题底色覆盖越强，0%关闭这层遮罩",
         blur: "模糊",
         blurHint: "柔化壁纸细节，视频较大时会增加显卡负担",
         surface: "界面不透明度",
@@ -2282,22 +2669,49 @@ window.__ModuleLoader__.load({
           size: "文件超过大小上限",
           "image-decode": "这张图片无法解码",
           "video-decode": "视频无法播放，建议转为 H.264 MP4 或 WebM"
-        }
+        },
+        presetTitle: "壁纸外观预设",
+        presetHint: "每张壁纸保存一份亮度、遮罩、模糊与不透明度；手动应用到当前外观，全局恢复默认不删除预设",
+        presetSelectedTarget: "所选壁纸",
+        presetPlayingTarget: "播放壁纸",
+        presetSaved: "已保存预设",
+        presetEmpty: "未保存预设",
+        presetSave: "保存当前外观",
+        presetApply: "应用已保存外观",
+        presetDelete: "删除预设",
+        presetMismatch: "请先停止当前播放或切换到所选壁纸",
+        presetBusy: "播放状态切换中，预设暂不可用",
+        presetStorageError: "本机存储不可用，无法保存预设"
       } : {
         title: "Whale appearance",
         badge: "Whale",
         description: "Choose mist or a dark palette, and optionally an image or video background. The composer stays opaque.",
         reset: "Reset",
+        readabilityTitle: "Interface readability",
+        textContrast: "Text readability",
+        textContrastStandardHint: "Preserves original theme text and follows system high contrast",
+        textContrastEnhancedHint: "Increases separation between body text, secondary notes, and normal tool rows without altering semantic states",
+        enhanced: "Enhanced",
+        chatBackdrop: "Chat backdrop opacity",
+        chatBackdropHint: "0% preserves wallpaper, 100% uses solid theme color; covers the whole chat column, separate from sidebar/card opacity",
         theme: "Theme",
         themeHint: "Switch between Whale Mist and Whale Abyss",
         mist: "Mist",
         abyss: "Abyss",
         palette: "Dark palette",
-        paletteHint: "Base and accent colors for Whale Abyss",
+        paletteHint: "Base color for Whale Abyss; also decides accent color when following theme",
         ocean: "Ocean",
         graphite: "Graphite",
         violet: "Violet",
         jade: "Jade",
+        accentMode: "Accent color",
+        accentTheme: "Follow theme",
+        accentCustom: "Custom",
+        accentHint: "Buttons use the selected color; links, highlights, and focus rings adapt to maintain readability across themes. Follow theme restores default colors.",
+        customAccent: "Custom color",
+        customAccentHint: "6-digit hex color only; text and focus contrast adjust automatically",
+        previewButton: "Primary button",
+        previewLink: "Link",
         canvas: "Canvas depth",
         canvasHint: "Controls mist and edge separation on the main canvas",
         soft: "Soft",
@@ -2331,7 +2745,7 @@ window.__ModuleLoader__.load({
         sceneVerified: "Verified sample",
         sceneExperimental: "Unverified, experimental",
         sceneUnavailable: "Unavailable",
-        sceneReasonUnsupported: "This version only plays scenes",
+        sceneReasonUnsupported: "This version supports scenes and MP4 videos only",
         sceneReasonUnknownType: "Unknown type",
         sceneReasonMissing: "Incomplete file registration",
         sceneReasonUnsafe: "Unsafe path",
@@ -2375,9 +2789,9 @@ window.__ModuleLoader__.load({
         replace: "Replace",
         remove: "Remove",
         brightness: "Brightness",
-        brightnessHint: "Dims only the wallpaper",
+        brightnessHint: "100% preserves original brightness, higher values brighten further; final look is also affected by scrim and surface opacity",
         mask: "Scrim",
-        maskHint: "Tints the wallpaper with the theme base for readable text",
+        maskHint: "Overlays the theme base colour; higher values cover more, 0% turns this scrim off",
         blur: "Blur",
         blurHint: "Softens detail; costs more GPU on large videos",
         surface: "Surface opacity",
@@ -2401,7 +2815,19 @@ window.__ModuleLoader__.load({
           size: "File exceeds the size limit",
           "image-decode": "This image could not be decoded",
           "video-decode": "This video cannot play; try H.264 MP4 or WebM"
-        }
+        },
+        presetTitle: "Wallpaper appearance preset",
+        presetHint: "Saves brightness, scrim, blur, and opacity per wallpaper; manually apply to current look; global reset preserves presets",
+        presetSelectedTarget: "Selected wallpaper",
+        presetPlayingTarget: "Playing wallpaper",
+        presetSaved: "Preset saved",
+        presetEmpty: "No preset saved",
+        presetSave: "Save current look",
+        presetApply: "Apply saved look",
+        presetDelete: "Delete preset",
+        presetMismatch: "Stop current playback or switch to the selected wallpaper first",
+        presetBusy: "Playback in transition; presets temporarily unavailable",
+        presetStorageError: "Local storage unavailable; cannot save preset"
       };
 
       const update = (key, value) => {
@@ -2435,7 +2861,56 @@ window.__ModuleLoader__.load({
           h("span", { className: "wm-palette-swatch", "aria-hidden": "true", key: "swatch",
             style: { background: `linear-gradient(135deg, ${PALETTE_SWATCHES[value][0]} 50%, ${PALETTE_SWATCHES[value][1]} 50%)` } }),
           copy[value]
-        ] : key === "background" && value === "wallpaper" ? copy.wallpaperEngine : copy[value])))
+        ] : key === "accentMode" ? (value === "theme" ? copy.accentTheme : copy.accentCustom)
+          : key === "background" && value === "wallpaper" ? copy.wallpaperEngine : copy[value])))
+      ]);
+
+      const customAccentRow = () => h("div", {
+        className: "wm-settings-row wm-accent-custom-row",
+        key: "accent-custom"
+      }, [
+        h("div", { className: "wm-settings-copy", key: "copy" }, [
+          h("div", { className: "wm-settings-label", key: "label" }, copy.customAccent),
+          h("div", { className: "wm-settings-hint", key: "hint" }, copy.customAccentHint)
+        ]),
+        h("div", { className: "wm-accent-controls", key: "controls" }, [
+          h("input", {
+            type: "color",
+            className: "wm-accent-picker",
+            key: "picker",
+            value: settings.accentColor,
+            "aria-label": copy.customAccent,
+            "data-wm-setting": "accentColor",
+            onChange: (event) => update("accentColor", event.currentTarget.value),
+            onInput: (event) => update("accentColor", event.currentTarget.value)
+          }),
+          h("span", {
+            className: "wm-accent-hex",
+            key: "hex",
+            "data-wm-accent-hex": settings.accentColor
+          }, settings.accentColor),
+          h("div", { className: "wm-accent-preview", key: "preview" }, [
+            h("button", {
+              type: "button",
+              className: "wm-accent-preview-button",
+              key: "preview-button",
+              "data-wm-preview": "button",
+              tabIndex: -1,
+              style: {
+                background: "var(--dsw-alias-button-primary-fill)",
+                color: "var(--dsw-alias-label-primary-foreground)"
+              }
+            }, copy.previewButton),
+            h("span", {
+              className: "wm-accent-preview-link",
+              key: "preview-link",
+              "data-wm-preview": "link",
+              style: {
+                color: "var(--dsw-alias-link)"
+              }
+            }, copy.previewLink)
+          ])
+        ])
       ]);
 
       const range = (key) => h("label", { className: "wm-settings-row", key }, [
@@ -2563,13 +3038,13 @@ window.__ModuleLoader__.load({
       const sceneReasonText = (item) => {
         if (item.available) return "";
         const map = { playback_type_not_supported: copy.sceneReasonUnsupported, unknown_type: copy.sceneReasonUnknownType, unsafe_path: copy.sceneReasonUnsafe, unsafe_preview: copy.sceneReasonUnsafe };
-        if (item.type && item.type !== "scene") return map.playback_type_not_supported;
+        if (item.type && !["scene", "video"].includes(item.type)) return map.playback_type_not_supported;
         return map[item.reason] ?? copy.sceneReasonOther;
       };
       const sceneItemTitle = (item) => {
         const parts = [item.title];
         if (item.playbackVerified) parts.push(`（${copy.sceneVerified}）`);
-        else if (item.type === "scene" && item.available) parts.push(`（${copy.sceneExperimental}）`);
+        else if (["scene", "video"].includes(item.type) && item.available) parts.push(`（${copy.sceneExperimental}）`);
         if (!item.available) parts.push(`（${copy.sceneUnavailable}：${sceneReasonText(item)}）`);
         return parts.join(" ");
       };
@@ -2767,6 +3242,131 @@ window.__ModuleLoader__.load({
         className: "wm-settings-hint", role: "status", "aria-live": "polite", key: "wallpaper-status",
         "data-wm-wallpaper-state": wallpaperStatus.state
       }, previewStatusText());
+      const wallpaperPresetsRow = () => {
+        const targetResolution = controller.presets.resolveTarget();
+        const targetId = targetResolution.ok ? targetResolution.targetId : null;
+        const isPlaying = Boolean(targetResolution.ok && targetResolution.isPlaying);
+        const targetItem = targetId ? (knownItems().find(item => item.id === targetId) ?? { id: targetId, title: targetId }) : null;
+        const hasPreset = Boolean(targetId && presetsState.entries[targetId]);
+        const usableInIdle = Boolean(targetResolution.ok && !isPlaying && selectionUsable());
+        const canOperate = Boolean(targetResolution.ok && (isPlaying || usableInIdle));
+
+        const canSave = canOperate;
+        const canApply = canOperate && hasPreset;
+        const canDelete = canOperate && hasPreset;
+
+        let targetLine = "";
+        let hintLine = presetActionError;
+
+        if (targetResolution.ok) {
+          const prefix = isPlaying ? copy.presetPlayingTarget : copy.presetSelectedTarget;
+          const statusText = hasPreset ? copy.presetSaved : copy.presetEmpty;
+          targetLine = `${prefix}：${targetItem?.title || targetId}（${statusText}）`;
+          if (!hintLine) {
+            if (!isPlaying) {
+              if (selectionPending()) hintLine = copy.selectedPending;
+              else if (selectionKnownUnusable()) hintLine = copy.selectedUnavailable;
+              else hintLine = copy.presetHint;
+            } else {
+              hintLine = copy.presetHint;
+            }
+          }
+        } else {
+          if (targetResolution.error === "mismatch") {
+            const activeTitle = (knownItems().find(i => i.id === targetResolution.activeId) ?? { title: targetResolution.activeId }).title;
+            const selectedTitle = (knownItems().find(i => i.id === settings.weScene) ?? { title: settings.weScene }).title;
+            targetLine = `${copy.presetPlayingTarget}：${activeTitle}（${copy.selectedItem}：${selectedTitle}）`;
+            if (!hintLine) hintLine = copy.presetMismatch;
+          } else if (targetResolution.error === "transition") {
+            targetLine = `${copy.presetPlayingTarget}：…`;
+            if (!hintLine) hintLine = copy.presetBusy;
+          } else if (targetResolution.error === "cleanup-failed") {
+            targetLine = `${copy.presetPlayingTarget}：…`;
+            if (!hintLine) hintLine = copy.previewCleanupFailed;
+          } else if (targetResolution.error === "error") {
+            targetLine = "--";
+            if (!hintLine) hintLine = copy.errorUnavailable;
+          } else if (targetResolution.error === "scene-unconfirmed") {
+            const selectedTitle = (knownItems().find(i => i.id === settings.weScene) ?? { title: settings.weScene }).title;
+            targetLine = `${copy.presetSelectedTarget}：${selectedTitle}`;
+            if (!hintLine) hintLine = copy.selectedPending;
+          } else if (targetResolution.error === "scene-unavailable") {
+            const selectedTitle = (knownItems().find(i => i.id === settings.weScene) ?? { title: settings.weScene }).title;
+            targetLine = `${copy.presetSelectedTarget}：${selectedTitle}`;
+            if (!hintLine) hintLine = copy.selectedUnavailable;
+          } else {
+            targetLine = "--";
+            if (!hintLine) hintLine = copy.presetHint;
+          }
+        }
+
+        return h("div", {
+          className: "wm-settings-row wm-wallpaper-presets-row",
+          key: "wallpaper-presets",
+          "data-wm-presets-target": targetId || "",
+          "data-wm-presets-has": String(hasPreset)
+        }, [
+          h("div", { className: "wm-settings-copy", key: "copy" }, [
+            h("div", { className: "wm-settings-label", key: "label" }, copy.presetTitle),
+            h("div", { className: "wm-wallpaper-preset-target", key: "target" }, targetLine),
+            h("div", { className: "wm-settings-hint", key: "hint", role: "status", "aria-live": "polite" }, hintLine)
+          ]),
+          h("div", { className: "wm-wallpaper-preset-actions", key: "actions" }, [
+            h("button", {
+              type: "button",
+              className: "wm-settings-reset wm-preset-button",
+              key: "save",
+              "data-wm-action": "preset-save",
+              disabled: !canSave,
+              onClick: () => {
+                setPresetActionError("");
+                const res = controller.presets.save();
+                if (!res.ok) {
+                  if (res.error === "storage-failed") setPresetActionError(copy.presetStorageError);
+                  else if (res.error === "mismatch") setPresetActionError(copy.presetMismatch);
+                  else if (res.error === "transition") setPresetActionError(copy.presetBusy);
+                  else setPresetActionError(res.error);
+                }
+              }
+            }, copy.presetSave),
+            h("button", {
+              type: "button",
+              className: "wm-settings-reset wm-preset-button",
+              key: "apply",
+              "data-wm-action": "preset-apply",
+              disabled: !canApply,
+              onClick: () => {
+                setPresetActionError("");
+                const res = controller.presets.apply();
+                if (res.ok) {
+                  setSettings(controller.read());
+                } else {
+                  if (res.error === "mismatch") setPresetActionError(copy.presetMismatch);
+                  else if (res.error === "transition") setPresetActionError(copy.presetBusy);
+                  else setPresetActionError(res.error);
+                }
+              }
+            }, copy.presetApply),
+            h("button", {
+              type: "button",
+              className: "wm-settings-reset wm-preset-button",
+              key: "delete",
+              "data-wm-action": "preset-delete",
+              disabled: !canDelete,
+              onClick: () => {
+                setPresetActionError("");
+                const res = controller.presets.remove();
+                if (!res.ok) {
+                  if (res.error === "storage-failed") setPresetActionError(copy.presetStorageError);
+                  else if (res.error === "mismatch") setPresetActionError(copy.presetMismatch);
+                  else if (res.error === "transition") setPresetActionError(copy.presetBusy);
+                  else setPresetActionError(res.error);
+                }
+              }
+            }, copy.presetDelete)
+          ])
+        ]);
+      };
 
       return h("section", {
         className: "wm-settings-group",
@@ -2787,9 +3387,14 @@ window.__ModuleLoader__.load({
         h("p", { className: "wm-settings-description", key: "description" }, copy.description),
         row("theme", copy.theme, copy.themeHint, ALLOWED_SETTINGS.theme),
         settings.theme === "abyss" && row("palette", copy.palette, copy.paletteHint, ALLOWED_SETTINGS.palette),
+        row("accentMode", copy.accentMode, copy.accentHint, ALLOWED_SETTINGS.accentMode),
+        settings.accentMode === "custom" && customAccentRow(),
         row("canvas", copy.canvas, copy.canvasHint, ALLOWED_SETTINGS.canvas),
         row("sidebar", copy.sidebar, copy.sidebarHint, ALLOWED_SETTINGS.sidebar),
         row("glass", copy.glass, copy.glassHint, ALLOWED_SETTINGS.glass),
+        h("h3", { className: "wm-settings-subtitle", key: "readability-title" }, copy.readabilityTitle),
+        row("textContrast", copy.textContrast, settings.textContrast === "enhanced" ? copy.textContrastEnhancedHint : copy.textContrastStandardHint, ALLOWED_SETTINGS.textContrast),
+        settings.background !== "none" && range("chatBackdrop"),
         h("h3", { className: "wm-settings-subtitle", key: "wallpaper-title" }, copy.wallpaper),
         row("background", copy.background, copy.backgroundHint, ALLOWED_SETTINGS.background),
         settings.background === "wallpaper" && wallpaperRow(),
@@ -2802,12 +3407,12 @@ window.__ModuleLoader__.load({
         settings.background !== "none" && range("mask"),
         settings.background !== "none" && range("blur"),
         settings.background !== "none" && range("surface"),
+        settings.background === "wallpaper" && wallpaperPresetsRow(),
         // Which regions may cover the background. The preference is kept even when no background is
         // selected, so switching back finds the same choice; nothing changes while it is inactive.
         settings.background !== "none" && h("h3", {
           className: "wm-settings-subtitle", key: "region-title" }, copy.regionTitle),
         settings.background !== "none" && regionRow("opaqueSidebar"),
-        settings.background !== "none" && regionRow("opaqueChat"),
         (settings.background === "image" || settings.background === "video") && h("p", {
           className: "wm-settings-hint", role: "status", "aria-live": "polite", key: "status" },
           copy.status[mediaState.error || mediaState.status] || "")
@@ -3463,10 +4068,112 @@ window.__ModuleLoader__.load({
           --dsw-alias-bg-layer-1: rgba(15, 23, 38, 0.99) !important;
         }
       }
+
+      body.${ACTIVE_CLASS}[data-wm-text-contrast="enhanced"] {
+        --dsw-alias-label-primary: #0c263b !important;
+        --dsw-alias-label-secondary: #3c566b !important;
+        --dsw-alias-label-tertiary: #506b80 !important;
+      }
+
+      body.${ABYSS_ACTIVE_CLASS}[data-wm-text-contrast="enhanced"] {
+        --dsw-alias-label-primary: #f2f5fc !important;
+        --dsw-alias-label-secondary: #c0cada !important;
+        --dsw-alias-label-tertiary: #a3afc2 !important;
+      }
     `;
 
     const backdropSelector = `body:is(.${ACTIVE_CLASS}, .${ABYSS_ACTIVE_CLASS})[data-wm-backdrop][data-wm-canvas]`;
+    const accentSelector = `body:is(.${ACTIVE_CLASS}, .${ABYSS_ACTIVE_CLASS})[data-wm-accent-mode="custom"]`;
+    const accentPaletteSelector = `body:is(.${ACTIVE_CLASS}, .${ABYSS_ACTIVE_CLASS})[data-wm-palette][data-wm-accent-mode="custom"]`;
+    const accentDeepSidebarSelector = `body:is(.${ACTIVE_CLASS}, .${ABYSS_ACTIVE_CLASS})[data-wm-palette][data-wm-sidebar][data-wm-accent-mode="custom"]`;
     const backdropCss = `
+      ${accentSelector},
+      ${accentPaletteSelector},
+      ${accentDeepSidebarSelector} {
+        --dsw-alias-button-primary-fill: var(--wm-custom-raw) !important;
+        --dsw-alias-button-primary-hover: var(--wm-custom-btn-hover) !important;
+        --dsw-alias-label-primary-foreground: var(--wm-custom-btn-fg) !important;
+        --dsw-alias-brand-primary: var(--wm-custom-ink) !important;
+        --dsw-alias-brand-primary-new-colorprimary-new-color: var(--wm-custom-ink) !important;
+        --dsw-alias-link: var(--wm-custom-ink) !important;
+        --dsw-alias-markdown-citation: var(--wm-custom-ink) !important;
+        --dsw-alias-state-business-primary: var(--wm-custom-ink) !important;
+        --dsw-alias-state-business-tertiary: var(--wm-custom-business-tertiary) !important;
+        --dsw-alias-button-info-fill: var(--wm-custom-btn-info-fill) !important;
+        --dsw-alias-button-info-hover: var(--wm-custom-btn-info-hover) !important;
+        --dsw-alias-button-ghost-active-fill: var(--wm-custom-ghost-active-fill) !important;
+        --dsw-alias-interactive-bg-primary: var(--wm-custom-interactive-primary) !important;
+        --dsw-alias-interactive-bg-hover: var(--wm-custom-interactive-hover) !important;
+        --dsw-alias-interactive-bg-active: var(--wm-custom-interactive-active) !important;
+        --dsw-specific-sidebar-nav-item-active: var(--wm-custom-sidebar-nav-active) !important;
+        --dsw-specific-sidebar-nav-item-active-accent: var(--wm-custom-ink) !important;
+        --dsw-focus-ring-color: var(--wm-custom-ink) !important;
+      }
+
+      ${accentSelector} :focus-visible {
+        outline: 2px solid var(--wm-custom-ink) !important;
+        outline-offset: 2px !important;
+      }
+
+      ${accentSelector} .wm-session-status:not(.wm-session-status-waiting):not(.wm-session-status-complete) .wm-status-mark {
+        background: var(--wm-custom-raw) !important;
+        color: var(--wm-custom-btn-fg) !important;
+      }
+
+      ${accentSelector} .wm-session-status-running .wm-status-mark::after {
+        border-color: var(--wm-custom-interactive-primary) !important;
+      }
+
+      ${accentSelector} .wm-settings-option.is-selected,
+      ${accentPaletteSelector} .wm-settings-option.is-selected,
+      ${accentDeepSidebarSelector} .wm-settings-option.is-selected {
+        color: var(--dsw-alias-label-primary) !important;
+        background: var(--wm-custom-interactive-active) !important;
+      }
+
+      .wm-accent-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+      .wm-accent-picker {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.2));
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+      }
+      .wm-accent-picker::-webkit-color-swatch-wrapper { padding: 2px; }
+      .wm-accent-picker::-webkit-color-swatch { border: 0; border-radius: 4px; }
+      .wm-accent-hex {
+        font-family: var(--dsw-font-mono, monospace);
+        font-size: 12px;
+        color: var(--dsw-alias-label-secondary);
+        user-select: all;
+      }
+      .wm-accent-preview {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 4px;
+      }
+      .wm-accent-preview-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 24px;
+        padding: 2px 8px;
+        border: 0;
+        border-radius: 6px;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 500;
+        cursor: default;
+      }
+      .wm-accent-preview-link {
+        font-size: 12px;
+        text-decoration: underline;
+        cursor: default;
+      }
+
       body.${ACTIVE_CLASS} {
         --wm-base-rgb: 239 247 254; --wm-sidebar-rgb: 228 240 249;
         --wm-layer1-rgb: 255 255 255; --wm-layer2-rgb: 230 242 251; --wm-layer3-rgb: 252 254 255;
@@ -3541,6 +4248,9 @@ window.__ModuleLoader__.load({
         /* The host rounds this corner by 16px. An opaque chat must also cover its tip;
            otherwise the transparent frame exposes a wedge of wallpaper beside the sidebar. */
         border-top-left-radius: 0 !important;
+      }
+      ${backdropSelector}[data-wm-chat-tint] .BynINW_centerCol {
+        background: rgb(var(--wm-base-rgb) / var(--wm-chat-alpha)) !important;
       }
       /* The session list ends with its own 24px fade to the sidebar fill, which softens the last
          rows against the account area in the normal theme. In the wallpaper state that fill is
@@ -3842,12 +4552,1822 @@ window.__ModuleLoader__.load({
       .wm-settings-option:focus-visible, .wm-settings-reset:focus-visible, .wm-range-control input:focus-visible {
         outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px;
       }
+      .wm-wallpaper-presets-row { align-items: flex-start; }
+      .wm-wallpaper-preset-target { font-size: 12px; color: var(--dsw-alias-label-primary); margin-top: 2px; font-weight: 500; }
+      .wm-wallpaper-preset-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+      .wm-preset-button { white-space: nowrap; }
       @media (max-width: 720px) {
         .wm-settings-segment { flex-wrap: wrap; }
         .wm-range-control { width: 100%; }
         .wm-range-control input { flex: 1; min-width: 0; }
+        .wm-wallpaper-preset-actions { width: 100%; justify-content: flex-start; }
       }
     `;
+
+    const DETACHABLE_MODES = Object.freeze({
+      DOCKED: 'docked',
+      DETACHING: 'detaching',
+      DETACHED: 'detached',
+      DOCKING: 'docking',
+    });
+
+    const DETACHABLE_ACTIONS = Object.freeze({
+      SET_SETTING: 'set-setting',
+      RESET_SETTINGS: 'reset-settings',
+      SAVE_PRESET: 'save-preset',
+      APPLY_PRESET: 'apply-preset',
+      REMOVE_PRESET: 'remove-preset',
+      REQUEST_DOCK: 'request-dock',
+      CLOSE_WINDOW: 'close-window',
+      START_WALLPAPER: 'start-wallpaper',
+      STOP_WALLPAPER: 'stop-wallpaper',
+      REFRESH_CATALOG: 'refresh-catalog',
+    });
+
+    const DETACHABLE_RANGE_BOUNDS = Object.freeze({
+      brightness: Object.freeze({ min: 20, max: 120 }),
+      mask: Object.freeze({ min: 0, max: 90 }),
+      blur: Object.freeze({ min: 0, max: 24 }),
+      surface: Object.freeze({ min: 40, max: 100 }),
+      chatBackdrop: Object.freeze({ min: 0, max: 100 }),
+    });
+
+    function buildAppearanceSnapshot(controller, revision = 1) {
+      const currentSettings = controller.read ? controller.read() : controller.getSettingsSnapshot?.() || {};
+      const presets = controller.presets?.getSnapshot ? controller.presets.getSnapshot() : { version: 1, entries: {} };
+      const wp = controller.wallpaper?.getStatus ? controller.wallpaper.getStatus() : null;
+      const presetTarget = controller.presets?.resolveTarget
+        ? Object.freeze({ ...controller.presets.resolveTarget() })
+        : null;
+
+      const catalogSource = (typeof controller.wallpaper?.getLibrarySnapshot === 'function'
+        ? controller.wallpaper.getLibrarySnapshot()
+        : controller.catalog) || { items: [], state: 'idle', loaded: false, loading: false, truncated: false, error: null, scannedAt: null, rootWarnings: [] };
+
+      const rawItems = Array.isArray(catalogSource.items) ? [...catalogSource.items] : [];
+      if (catalogSource.state !== 'failed' && !rawItems.some(item => item.id === 'lucy')) {
+        const verified = Array.isArray(wp?.host?.scenes) ? wp.host.scenes.find(scene => scene.id === 'lucy') : null;
+        rawItems.unshift({
+          id: 'lucy',
+          title: 'Lucy',
+          type: 'scene',
+          available: verified ? verified.available !== false : true,
+          playbackVerified: true,
+          reason: null,
+          warnings: [],
+          previewRef: { wallpaperId: 'lucy', kind: 'preview' },
+        });
+      }
+
+      const catalog = Object.freeze({
+        items: Object.freeze(rawItems),
+        state: catalogSource.state || 'idle',
+        loaded: Boolean(catalogSource.loaded),
+        loading: Boolean(catalogSource.loading),
+        truncated: Boolean(catalogSource.truncated),
+        error: catalogSource.error || null,
+        scannedAt: catalogSource.scannedAt || null,
+        rootWarnings: Array.isArray(catalogSource.rootWarnings) ? catalogSource.rootWarnings : [],
+      });
+
+      return Object.freeze({
+        protocolVersion: 1,
+        revision,
+        settings: Object.freeze({ ...currentSettings }),
+        presets,
+        presetTarget,
+        catalog,
+        wallpaper: Object.freeze({
+          state: wp?.state ?? 'idle',
+          activeSceneId: wp?.activeSceneId ?? wp?.host?.activeSceneId ?? null,
+          cleanupPending: Boolean(wp?.cleanupPending),
+        }),
+      });
+    }
+
+    function validateDetachableAction(action) {
+      if (!action || typeof action !== 'object' || Array.isArray(action)) {
+        return { valid: false, error: 'action-invalid-object' };
+      }
+      if (!Object.values(DETACHABLE_ACTIONS).includes(action.type)) {
+        return { valid: false, error: 'action-unsupported-type' };
+      }
+      if (!action.clientActionId || typeof action.clientActionId !== 'string') {
+        return { valid: false, error: 'action-missing-client-id' };
+      }
+      if (!Number.isInteger(action.expectedRevision) || action.expectedRevision <= 0) {
+        return { valid: false, error: 'action-invalid-expected-revision' };
+      }
+      if (action.type === DETACHABLE_ACTIONS.SET_SETTING) {
+        if (!isValidSetting(action.key, action.value)) {
+          return { valid: false, error: 'setting-key-disallowed', key: action.key };
+        }
+        if (Object.hasOwn(DETACHABLE_RANGE_BOUNDS, action.key)) {
+          if (typeof action.value !== 'number' || !Number.isFinite(action.value)) {
+            return { valid: false, error: 'setting-value-not-numeric', key: action.key };
+          }
+          const bounds = DETACHABLE_RANGE_BOUNDS[action.key];
+          if (action.value < bounds.min || action.value > bounds.max) {
+            return { valid: false, error: 'setting-value-out-of-bounds', key: action.key, min: bounds.min, max: bounds.max };
+          }
+        }
+      } else if (
+        action.type === DETACHABLE_ACTIONS.SAVE_PRESET ||
+        action.type === DETACHABLE_ACTIONS.APPLY_PRESET ||
+        action.type === DETACHABLE_ACTIONS.REMOVE_PRESET
+      ) {
+        if (!isSceneId(action.sceneId)) {
+          return { valid: false, error: 'preset-scene-invalid', sceneId: action.sceneId };
+        }
+      } else if (action.type === DETACHABLE_ACTIONS.START_WALLPAPER) {
+        if (!isSceneId(action.sceneId)) {
+          return { valid: false, error: 'wallpaper-scene-invalid', sceneId: action.sceneId };
+        }
+        if (action.mode !== undefined && !['preview', 'daily'].includes(action.mode)) {
+          return { valid: false, error: 'wallpaper-mode-invalid', mode: action.mode };
+        }
+      }
+      return { valid: true };
+    }
+
+    async function executeAuthoritativeAction({
+      controller,
+      action,
+      expectedRevisionCheck = true,
+      currentRevision = 1,
+      actionCache = null,
+      onRequestDock = null,
+      getSnapshot = null,
+    }) {
+      const val = validateDetachableAction(action);
+      if (!val.valid) {
+        return {
+          ok: false,
+          error: val.error,
+          snapshot: typeof getSnapshot === 'function' ? getSnapshot() : undefined,
+        };
+      }
+
+      const fingerprint = JSON.stringify({
+        type: action.type,
+        clientActionId: action.clientActionId,
+        expectedRevision: action.expectedRevision,
+        key: action.key,
+        value: action.value,
+        sceneId: action.sceneId,
+        mode: action.mode,
+      });
+
+      if (actionCache && actionCache.has(action.clientActionId)) {
+        const cached = actionCache.get(action.clientActionId);
+        if (cached.fingerprint !== fingerprint) {
+          return {
+            ok: false,
+            error: 'action-payload-mismatch',
+            clientActionId: action.clientActionId,
+            snapshot: typeof getSnapshot === 'function' ? getSnapshot() : undefined,
+          };
+        }
+        return { ...cached.result, duplicate: true, snapshot: typeof getSnapshot === 'function' ? getSnapshot() : undefined };
+      }
+
+      if (expectedRevisionCheck && action.expectedRevision !== currentRevision) {
+        return {
+          ok: false,
+          error: 'stale-revision',
+          expectedRevision: action.expectedRevision,
+          latestRevision: currentRevision,
+          snapshot: typeof getSnapshot === 'function' ? getSnapshot() : undefined,
+        };
+      }
+
+      let executionResult = null;
+      try {
+        if (action.type === DETACHABLE_ACTIONS.SET_SETTING) {
+          const res = controller.set(action.key, action.value);
+          if (!res || typeof res !== 'object') {
+            executionResult = { ok: false, error: 'set-setting-rejected' };
+          } else {
+            executionResult = { ok: true };
+          }
+        } else if (action.type === DETACHABLE_ACTIONS.RESET_SETTINGS) {
+          controller.reset?.();
+          executionResult = { ok: true };
+        } else if (
+          action.type === DETACHABLE_ACTIONS.SAVE_PRESET ||
+          action.type === DETACHABLE_ACTIONS.APPLY_PRESET ||
+          action.type === DETACHABLE_ACTIONS.REMOVE_PRESET
+        ) {
+          const op =
+            action.type === DETACHABLE_ACTIONS.SAVE_PRESET
+              ? 'save'
+              : action.type === DETACHABLE_ACTIONS.APPLY_PRESET
+              ? 'apply'
+              : 'remove';
+          const fn = controller.presets?.[op];
+          if (typeof fn !== 'function') {
+            executionResult = { ok: false, error: `preset-op-unsupported: ${op}` };
+          } else {
+            const res = fn(action.sceneId, action.name);
+            if (res && typeof res === 'object' && res.ok === false) {
+              executionResult = { ok: false, error: res.error || 'preset-op-failed', details: res };
+            } else {
+              executionResult = { ok: true, result: res };
+            }
+          }
+        } else if (action.type === DETACHABLE_ACTIONS.START_WALLPAPER) {
+          const currentSettings = typeof controller.read === 'function'
+            ? controller.read()
+            : (typeof controller.getSettingsSnapshot === 'function' ? controller.getSettingsSnapshot() : null);
+          const currentSelectedScene = currentSettings?.weScene || 'lucy';
+          const currentMode = action.mode || currentSettings?.weMode || 'daily';
+
+          const wp = controller.wallpaper?.getStatus ? controller.wallpaper.getStatus() : null;
+          const wpState = wp?.state ?? 'idle';
+          const cleanupPending = Boolean(wp?.cleanupPending);
+          const activeSceneId = wp?.activeSceneId ?? wp?.host?.activeSceneId ?? null;
+
+          if (action.sceneId !== currentSelectedScene) {
+            executionResult = {
+              ok: false,
+              error: 'target-drift-or-mismatch',
+              selectedSceneId: currentSelectedScene,
+              requestedSceneId: action.sceneId,
+            };
+          } else if (!['idle', 'stopped', 'error'].includes(wpState) || cleanupPending || wpState === 'cleanup-failed' || activeSceneId != null) {
+            executionResult = { ok: false, error: 'playback-active-or-transitioning', state: wpState, activeSceneId };
+          } else {
+            const catalog = controller.wallpaper?.getLibrarySnapshot ? controller.wallpaper.getLibrarySnapshot() : null;
+            const catalogReady = catalog?.state === 'ready' && catalog?.loaded === true;
+            if (!catalogReady) {
+              executionResult = { ok: false, error: 'catalog-not-ready', state: catalog?.state || 'unloaded' };
+            } else {
+              const items = Array.isArray(catalog?.items) ? catalog.items : [];
+              const isLucy = action.sceneId === 'lucy';
+              const catalogItem = items.find(item => item.id === action.sceneId);
+
+              const lucyHostScene = Array.isArray(wp?.host?.scenes) ? wp.host.scenes.find(s => s.id === 'lucy') : null;
+              const lucyAvailable = lucyHostScene ? lucyHostScene.available !== false : true;
+
+              if (isLucy && !lucyAvailable) {
+                executionResult = { ok: false, error: 'scene-unavailable', sceneId: 'lucy', reason: 'sample_unavailable' };
+              } else if (!isLucy && (!catalogItem || catalogItem.available !== true || !['scene', 'video'].includes(catalogItem.type))) {
+                executionResult = {
+                  ok: false,
+                  error: 'scene-unavailable',
+                  sceneId: action.sceneId,
+                  reason: catalogItem?.reason || 'not_available',
+                };
+              } else if (typeof controller.wallpaper?.start === 'function') {
+                try {
+                  const startRes = await controller.wallpaper.start(action.sceneId, currentMode);
+                  if (!startRes || startRes.ok === false || startRes.state === 'error' || startRes.state === 'cleanup-failed') {
+                    executionResult = {
+                      ok: false,
+                      error: startRes?.error || `start-failed: ${startRes?.state || 'error'}`,
+                      state: startRes?.state || 'error',
+                      result: startRes,
+                    };
+                  } else {
+                    executionResult = { ok: true, activeSceneId: action.sceneId, result: startRes };
+                  }
+                } catch (err) {
+                  executionResult = { ok: false, error: `start-failed: ${err.message}` };
+                }
+              } else {
+                executionResult = { ok: false, error: 'wallpaper-controller-unavailable' };
+              }
+            }
+          }
+        } else if (action.type === DETACHABLE_ACTIONS.STOP_WALLPAPER) {
+          if (typeof controller.wallpaper?.stop === 'function') {
+            try {
+              const stopRes = await controller.wallpaper.stop('user');
+              if (!stopRes || stopRes.ok === false || stopRes.state === 'cleanup-failed' || stopRes.state === 'error') {
+                executionResult = {
+                  ok: false,
+                  error: stopRes?.error || `stop-failed: ${stopRes?.state || 'error'}`,
+                  state: stopRes?.state || 'error',
+                  result: stopRes,
+                };
+              } else {
+                executionResult = { ok: true, result: stopRes };
+              }
+            } catch (err) {
+              executionResult = { ok: false, error: `stop-failed: ${err.message}` };
+            }
+          } else {
+            executionResult = { ok: false, error: 'wallpaper-controller-unavailable' };
+          }
+        } else if (action.type === DETACHABLE_ACTIONS.REFRESH_CATALOG) {
+          if (typeof controller.wallpaper?.readLibrary === 'function') {
+            try {
+              const libRes = await controller.wallpaper.readLibrary({ refresh: true });
+              if (!libRes || libRes.ok === false || libRes.state === 'failed') {
+                executionResult = {
+                  ok: false,
+                  error: libRes?.error || 'refresh-failed',
+                  state: libRes?.state || 'failed',
+                  result: libRes,
+                };
+              } else {
+                executionResult = { ok: true, result: libRes };
+              }
+            } catch (err) {
+              executionResult = { ok: false, error: `refresh-failed: ${err.message}` };
+            }
+          } else {
+            executionResult = { ok: false, error: 'wallpaper-controller-unavailable' };
+          }
+        } else if (
+          action.type === DETACHABLE_ACTIONS.REQUEST_DOCK ||
+          action.type === DETACHABLE_ACTIONS.CLOSE_WINDOW
+        ) {
+          if (typeof onRequestDock === 'function') {
+            const dockRes = await onRequestDock();
+            if (!dockRes || !dockRes.ok) {
+              executionResult = { ok: false, error: dockRes?.error || 'dock-failed' };
+            } else {
+              executionResult = { ok: true, mode: DETACHABLE_MODES.DOCKED };
+            }
+          } else {
+            executionResult = { ok: false, error: 'dock-handler-unavailable' };
+          }
+        } else {
+          executionResult = { ok: false, error: 'action-unsupported-type' };
+        }
+      } catch (err) {
+        executionResult = { ok: false, error: `controller-error: ${err.message}` };
+      }
+
+      if (actionCache && executionResult != null) {
+        actionCache.set(action.clientActionId, {
+          fingerprint,
+          result: executionResult,
+        });
+        if (actionCache.size > 200) {
+          const oldest = actionCache.keys().next().value;
+          actionCache.delete(oldest);
+        }
+      }
+
+      return { ...executionResult, snapshot: typeof getSnapshot === 'function' ? getSnapshot() : undefined };
+    }
+
+    function createMainRendererBridgeClient({ baseUrl, instanceId, mainToken, controller }) {
+      let mode = DETACHABLE_MODES.DOCKED;
+      let unconfirmedCleanup = false;
+      let lastCleanupError = null;
+      let revision = 1;
+      let currentGeneration = 1;
+      let activeToken = null;
+      let sseAbort = null;
+      let disposed = false;
+      const subscribers = new Set();
+      const actionCache = new Map();
+
+      const getSnapshot = () => buildAppearanceSnapshot(controller, revision);
+
+      function notify() {
+        const snap = getSnapshot();
+        for (const sub of subscribers) {
+          try {
+            sub({
+              snapshot: snap,
+              mode,
+              revision,
+              generation: currentGeneration,
+              unconfirmedCleanup,
+              lastError: lastCleanupError,
+            });
+          } catch {}
+        }
+      }
+
+      const pushSnapshotToHost = async () => {
+        if (disposed) return;
+        try {
+          await fetch(`${baseUrl}/api/main/snapshot`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Whale-Main-Token': mainToken,
+              'X-Whale-Generation': String(currentGeneration),
+            },
+            body: JSON.stringify({ snapshot: getSnapshot(), revision, instanceId, generation: currentGeneration }),
+          });
+        } catch {}
+      };
+
+      const unsubSettings = controller.subscribeSettings?.(() => {
+        revision++;
+        notify();
+        pushSnapshotToHost();
+      });
+
+      const unsubPresets = controller.presets?.subscribe?.(() => {
+        revision++;
+        notify();
+        pushSnapshotToHost();
+      });
+
+      const unsubWallpaper = controller.wallpaper?.subscribeStatus?.(() => {
+        revision++;
+        notify();
+        pushSnapshotToHost();
+      });
+
+      const unsubLibrary = controller.wallpaper?.subscribeLibrary?.(() => {
+        revision++;
+        notify();
+        pushSnapshotToHost();
+      });
+
+      const handlePageUnload = () => {
+        try {
+          const url = `${baseUrl}/api/main/disconnect?mainToken=${encodeURIComponent(mainToken)}&instanceId=${encodeURIComponent(instanceId)}&generation=${encodeURIComponent(currentGeneration)}`;
+          if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            navigator.sendBeacon(url);
+          } else {
+            fetch(url, {
+              method: 'POST',
+              mode: 'no-cors',
+              keepalive: true,
+            }).catch(() => {});
+          }
+        } catch {}
+      };
+
+      if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('pagehide', handlePageUnload);
+        window.addEventListener('beforeunload', handlePageUnload);
+      }
+
+      async function connect() {
+        const res = await fetch(`${baseUrl}/api/main/connect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instanceId, mainToken, snapshot: getSnapshot() }),
+        });
+        const data = await res.json();
+        if (!data.ok) return data;
+
+        currentGeneration = data.generation ?? 1;
+        sseAbort = new AbortController();
+        startActionStream().catch(() => {});
+        return data;
+      }
+
+      async function startActionStream() {
+        try {
+          const res = await fetch(
+            `${baseUrl}/api/main/actions?instanceId=${encodeURIComponent(instanceId)}&mainToken=${encodeURIComponent(mainToken)}&generation=${encodeURIComponent(currentGeneration)}`,
+            {
+              headers: {
+                'Accept': 'text/event-stream',
+                'X-Whale-Generation': String(currentGeneration),
+              },
+              signal: sseAbort.signal,
+            }
+          );
+          if (!res.ok || !res.body?.getReader) return;
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (!disposed) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const blocks = buffer.split('\n\n');
+            buffer = blocks.pop() || '';
+            for (const block of blocks) {
+              if (!block.trim() || block.startsWith(':')) continue;
+              let eventName = 'action';
+              let eventData = '';
+              for (const line of block.split('\n')) {
+                if (line.startsWith('event:')) eventName = line.slice(6).trim();
+                else if (line.startsWith('data:')) eventData = line.slice(5).trim();
+              }
+              if (eventName === 'action') {
+                let parsed;
+                try {
+                  parsed = JSON.parse(eventData);
+                } catch {
+                  continue;
+                }
+                const { action, clientActionId } = parsed;
+                let result;
+                try {
+                  result = await executeAuthoritativeAction({
+                    controller,
+                    action,
+                    expectedRevisionCheck: true,
+                    currentRevision: revision,
+                    actionCache,
+                    onRequestDock: async () => {
+                      return await requestDock();
+                    },
+                    getSnapshot,
+                  });
+                } catch (err) {
+                  result = { ok: false, error: `execution-error: ${err.message}`, snapshot: getSnapshot() };
+                }
+
+                try {
+                  await fetch(`${baseUrl}/api/main/action-result`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-Whale-Main-Token': mainToken,
+                      'X-Whale-Generation': String(currentGeneration),
+                    },
+                    body: JSON.stringify({ clientActionId, result, instanceId, generation: currentGeneration }),
+                  });
+                } catch {}
+              } else if (eventName === 'window-state') {
+                let state;
+                try {
+                  state = JSON.parse(eventData);
+                } catch {
+                  continue;
+                }
+                if (state.generation != null && state.generation !== currentGeneration) {
+                  continue;
+                }
+                if (state.mode) {
+                  mode = state.mode;
+                }
+                unconfirmedCleanup = Boolean(state.unconfirmedCleanup);
+                lastCleanupError = state.lastError || null;
+                if (mode === DETACHABLE_MODES.DOCKED && !unconfirmedCleanup) {
+                  activeToken = null;
+                }
+                notify();
+              } else if (eventName === 'dock') {
+                if (!unconfirmedCleanup) {
+                  mode = DETACHABLE_MODES.DOCKED;
+                  activeToken = null;
+                  notify();
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      async function requestDetach() {
+        const res = await fetch(`${baseUrl}/api/main/detach`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Whale-Main-Token': mainToken,
+            'X-Whale-Generation': String(currentGeneration),
+          },
+          body: JSON.stringify({ instanceId, generation: currentGeneration }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          mode = data.mode || DETACHABLE_MODES.DETACHED;
+          activeToken = data.token;
+          notify();
+        }
+        return data;
+      }
+
+      async function requestDock() {
+        const res = await fetch(`${baseUrl}/api/main/dock`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Whale-Main-Token': mainToken,
+            'X-Whale-Generation': String(currentGeneration),
+          },
+          body: JSON.stringify({ instanceId, generation: currentGeneration }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          mode = DETACHABLE_MODES.DOCKED;
+          unconfirmedCleanup = false;
+          lastCleanupError = null;
+          activeToken = null;
+          notify();
+        } else {
+          if (data.mode) mode = data.mode;
+          unconfirmedCleanup = Boolean(data.unconfirmedCleanup);
+          lastCleanupError = data.error || null;
+          notify();
+        }
+        return data;
+      }
+
+      async function dispose() {
+        if (disposed) return { ok: true };
+        disposed = true;
+        if (typeof window !== 'undefined' && window.removeEventListener) {
+          window.removeEventListener('pagehide', handlePageUnload);
+          window.removeEventListener('beforeunload', handlePageUnload);
+        }
+        try { sseAbort?.abort(); } catch {}
+        try { unsubSettings?.(); } catch {}
+        try { unsubPresets?.(); } catch {}
+        try { unsubWallpaper?.(); } catch {}
+        try { unsubLibrary?.(); } catch {}
+        subscribers.clear();
+        let res = { ok: true };
+        try {
+          const resp = await fetch(
+            `${baseUrl}/api/main/disconnect?mainToken=${encodeURIComponent(mainToken)}&instanceId=${encodeURIComponent(instanceId)}&generation=${encodeURIComponent(currentGeneration)}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Whale-Main-Token': mainToken,
+                'X-Whale-Generation': String(currentGeneration),
+              },
+              body: JSON.stringify({ instanceId, generation: currentGeneration }),
+            }
+          );
+          res = await resp.json();
+        } catch {}
+        mode = DETACHABLE_MODES.DOCKED;
+        activeToken = null;
+        notify();
+        return res;
+      }
+
+      async function fetchPreviewBlob(sceneId, { signal } = {}) {
+        if (disposed) throw new Error('bridge-disposed');
+        if (!baseUrl || !mainToken) throw new Error('bridge-not-connected');
+        if (!sceneId) throw new Error('invalid-scene-id');
+
+        const url = `${baseUrl}/api/wallpaper-preview?id=${encodeURIComponent(sceneId)}`;
+        const resp = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'X-Whale-Main-Token': mainToken,
+            'X-Whale-Instance-Id': instanceId,
+            'X-Whale-Generation': String(currentGeneration),
+          },
+          signal,
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          throw new Error(`preview-fetch-failed: ${resp.status} ${errText}`);
+        }
+
+        return await resp.blob();
+      }
+
+      return {
+        get instanceId() { return instanceId; },
+        get revision() { return revision; },
+        get generation() { return currentGeneration; },
+        connect,
+        getSnapshot,
+        getMode: () => mode,
+        hasUnconfirmedCleanup: () => unconfirmedCleanup,
+        getLastError: () => lastCleanupError,
+        requestDetach,
+        requestDock,
+        fetchPreviewBlob,
+        dispose,
+        subscribe(listener) {
+          subscribers.add(listener);
+          return () => subscribers.delete(listener);
+        },
+      };
+    }
+
+    function WhaleHeaderAppearanceTrigger({ appearanceBridge }) {
+      const h = React.createElement;
+      const bridgeState = React.useSyncExternalStore(
+        appearanceBridge.subscribe,
+        appearanceBridge.getSnapshot,
+        appearanceBridge.getSnapshot
+      );
+      const isOpen = bridgeState.isOpen;
+      const isDetached = bridgeState.mode === DETACHABLE_MODES.DETACHED;
+
+      return h('button', {
+        type: 'button',
+        id: 'whale-appearance-header-btn',
+        className: 'dsw-btn dsw-header-action-btn' + (isOpen ? ' active' : ''),
+        style: {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '4px 10px',
+          fontSize: '12px',
+          fontWeight: '500',
+          borderRadius: '6px',
+          border: '1px solid var(--dsw-alias-border-subtle, rgba(140, 165, 210, 0.2))',
+          background: isOpen ? 'var(--dsw-alias-brand-primary, #8c72f2)' : 'transparent',
+          color: isOpen ? '#ffffff' : 'var(--dsw-alias-text-primary, #e6edf8)',
+          cursor: 'pointer',
+          lineHeight: '1.2',
+          userSelect: 'none',
+          transition: 'background 0.15s ease, border-color 0.15s ease',
+        },
+        title: isDetached ? '外观设置（已在独立窗口打开）' : '切换外观面板',
+        onClick: () => {
+          appearanceBridge.togglePanel();
+        },
+      }, [
+        h('span', { key: 'badge', style: { fontWeight: '700', fontSize: '11px', opacity: '0.85' } }, 'Whale'),
+        h('span', { key: 'label' }, isDetached ? '独立窗口' : '外观'),
+      ]);
+    }
+
+    function DockedPreviewImage({ sceneId, appearanceBridge, alt, style }) {
+      const h = React.createElement;
+      const [blobUrl, setBlobUrl] = React.useState(null);
+      const [failed, setFailed] = React.useState(false);
+
+      React.useEffect(() => {
+        if (!sceneId || !appearanceBridge?.fetchPreviewBlob) {
+          setBlobUrl(null);
+          setFailed(true);
+          return;
+        }
+
+        let active = true;
+        let createdUrl = null;
+        const abortCtrl = new AbortController();
+
+        appearanceBridge.fetchPreviewBlob(sceneId, { signal: abortCtrl.signal })
+          .then((blob) => {
+            if (!active) return;
+            createdUrl = URL.createObjectURL(blob);
+            setBlobUrl(createdUrl);
+            setFailed(false);
+          })
+          .catch(() => {
+            if (active) {
+              setBlobUrl(null);
+              setFailed(true);
+            }
+          });
+
+        return () => {
+          active = false;
+          try { abortCtrl.abort(); } catch {}
+          if (createdUrl) {
+            try { URL.revokeObjectURL(createdUrl); } catch {}
+          }
+        };
+      }, [sceneId, appearanceBridge]);
+
+      if (failed || !blobUrl) {
+        return h('div', {
+          style: {
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '11px',
+            color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+            opacity: 0.6,
+          },
+        }, '🖼');
+      }
+
+      return h('img', {
+        src: blobUrl,
+        alt: alt || sceneId,
+        style,
+        onError: () => setFailed(true),
+      });
+    }
+
+    function WhaleDockedAppearancePanel({ appearanceBridge, controller }) {
+      const h = React.createElement;
+      const bridgeState = React.useSyncExternalStore(
+        appearanceBridge.subscribe,
+        appearanceBridge.getSnapshot,
+        appearanceBridge.getSnapshot
+      );
+      const settings = React.useSyncExternalStore(
+        controller.subscribeSettings,
+        controller.getSettingsSnapshot,
+        controller.getSettingsSnapshot
+      );
+      const presetsState = React.useSyncExternalStore(
+        controller.presets?.subscribe ?? (() => () => {}),
+        controller.presets?.getSnapshot ?? (() => ({ version: 1, entries: {} })),
+        controller.presets?.getSnapshot ?? (() => ({ version: 1, entries: {} }))
+      );
+
+      const [inFlightDetach, setInFlightDetach] = React.useState(false);
+      const [actionError, setActionError] = React.useState('');
+
+      if (!bridgeState.isOpen) {
+        return null;
+      }
+
+      const isDetached = bridgeState.mode === DETACHABLE_MODES.DETACHED;
+      const isDetaching = bridgeState.mode === DETACHABLE_MODES.DETACHING;
+      const unconfirmedCleanup = bridgeState.unconfirmedCleanup;
+
+      // Age ratings filter handling
+      const rawAgeRatings = settings.weAgeRatings;
+      const parseAgeRatingsLocal = (val) => {
+        if (typeof val === 'string') {
+          const trimmed = val.trim();
+          if (trimmed === '') return [];
+          const parts = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+          if (parts.length === 0 || !parts.every(p => ['Everyone', 'Questionable', 'Mature'].includes(p))) {
+            return ['Everyone'];
+          }
+          const unique = [...new Set(parts)].sort((a, b) => ['Everyone', 'Questionable', 'Mature'].indexOf(a) - ['Everyone', 'Questionable', 'Mature'].indexOf(b));
+          return unique;
+        }
+        return ['Everyone'];
+      };
+      const allowedRatings = parseAgeRatingsLocal(rawAgeRatings);
+
+      const handleToggleRating = (rating) => {
+        let next;
+        if (allowedRatings.includes(rating)) {
+          next = allowedRatings.filter(r => r !== rating);
+        } else {
+          next = [...allowedRatings, rating];
+        }
+        next.sort((a, b) => ['Everyone', 'Questionable', 'Mature'].indexOf(a) - ['Everyone', 'Questionable', 'Mature'].indexOf(b));
+        controller.set('weAgeRatings', next.join(','));
+      };
+
+      // Catalog & Wallpaper extraction
+      const catalog = bridgeState.snapshot?.catalog || bridgeState.catalog || (controller.wallpaper?.getLibrarySnapshot ? controller.wallpaper.getLibrarySnapshot() : null) || { items: [] };
+      const wp = bridgeState.snapshot?.wallpaper || bridgeState.wallpaper || (controller.wallpaper?.getStatus ? controller.wallpaper.getStatus() : null) || {};
+      const selectedSceneId = settings.weScene || 'lucy';
+      const activeSceneId = isSceneId(wp.activeSceneId) ? wp.activeSceneId : (isSceneId(wp.host && wp.host.activeSceneId) ? wp.host.activeSceneId : null);
+      const wpState = wp.state || 'idle';
+      const cleanupPending = Boolean(wp.cleanupPending);
+
+      const rawItems = Array.isArray(catalog.items) ? catalog.items.map(i => ({
+        ...i,
+        contentRating: ['Everyone', 'Questionable', 'Mature'].includes(i.contentRating) ? i.contentRating : (i.id === 'lucy' ? 'Everyone' : 'unknown'),
+      })) : [];
+      if (catalog.state !== 'failed' && !rawItems.some(item => item.id === 'lucy')) {
+        const verified = Array.isArray(wp?.host?.scenes) ? wp.host.scenes.find(scene => scene.id === 'lucy') : null;
+        rawItems.unshift({
+          id: 'lucy',
+          title: 'Lucy',
+          type: 'scene',
+          contentRating: 'Everyone',
+          available: verified ? verified.available !== false : true,
+          playbackVerified: true,
+          previewRef: { wallpaperId: 'lucy', kind: 'preview' },
+        });
+      }
+
+      const visibleItems = rawItems.filter(item => allowedRatings.includes(item.contentRating));
+
+      const selectedItem = rawItems.find(i => i.id === selectedSceneId) || {
+        id: selectedSceneId,
+        title: selectedSceneId,
+        type: 'unknown',
+        contentRating: selectedSceneId === 'lucy' ? 'Everyone' : 'unknown',
+        available: false,
+        playbackVerified: false,
+        reason: 'unknown_wallpaper',
+      };
+
+      const isSelectedHidden = !allowedRatings.includes(selectedItem.contentRating);
+      const isBusy = wpState === 'starting' || wpState === 'stopping' || cleanupPending;
+      const isCurrentlyPlaying = wpState === 'playing';
+      const isMismatch = isCurrentlyPlaying && activeSceneId !== selectedSceneId;
+      const isLucy = selectedSceneId === 'lucy';
+      const catalogReady = catalog?.state === 'ready' && catalog?.loaded === true;
+      const STARTABLE_STATES = ['idle', 'stopped', 'error'];
+      const isStartableState = STARTABLE_STATES.includes(wpState) && !cleanupPending && wpState !== 'cleanup-failed' && activeSceneId == null;
+      const canStartWp = !isDetached && isStartableState && !isSelectedHidden && catalogReady && (isLucy ? selectedItem.available !== false : (selectedItem.available === true && ['scene', 'video'].includes(selectedItem.type))) && !isMismatch;
+      const canStopWp = !isDetached && (isCurrentlyPlaying || wpState === 'starting' || wpState === 'cleanup-failed');
+
+      // Settings extraction
+      const brightnessVal = settings.brightness ?? 70;
+      const maskVal = settings.mask ?? 45;
+      const blurVal = settings.blur ?? 0;
+      const surfaceVal = settings.surface ?? 82;
+      const chatBackdropVal = settings.chatBackdrop ?? 0;
+      const themeVal = settings.theme ?? 'abyss';
+      const paletteVal = settings.palette ?? 'ocean';
+      const contrastVal = settings.textContrast ?? 'standard';
+      const accentModeVal = settings.accentMode ?? 'theme';
+      const accentColorVal = settings.accentColor ?? '#8c72f2';
+
+      // Preset target resolution & gating
+      const targetResolution = controller.presets?.resolveTarget ? controller.presets.resolveTarget() : { ok: false, error: 'unavailable' };
+      const targetId = targetResolution.ok ? targetResolution.targetId : null;
+      const isPlaying = Boolean(targetResolution.ok && targetResolution.isPlaying);
+      const presetsEntries = presetsState?.entries || {};
+      const hasPreset = Boolean(targetId && presetsEntries[targetId]);
+      const canOperate = Boolean(targetResolution.ok && !isDetached);
+      const canSave = canOperate;
+      const canApply = canOperate && hasPreset;
+      const canDelete = canOperate && hasPreset;
+
+      let targetLine = '';
+      if (targetResolution.ok) {
+        const prefix = isPlaying ? '当前播放' : '所选壁纸';
+        const title = targetId === 'lucy' ? 'Lucy' : targetId;
+        const status = hasPreset ? '已保存预设' : '未保存预设';
+        targetLine = `${prefix}：${title}（${status}）`;
+      } else {
+        if (targetResolution.error === 'transition') targetLine = '播放状态切换中，预设暂不可用';
+        else if (targetResolution.error === 'cleanup-failed') targetLine = '源窗口关闭未确认，请重试清理';
+        else if (targetResolution.error === 'mismatch') targetLine = '请先停止当前播放或切换到所选壁纸';
+        else if (targetResolution.error === 'scene-unconfirmed') targetLine = '壁纸目录未确认，预设暂不可用';
+        else if (targetResolution.error === 'scene-unavailable') targetLine = '壁纸当前不可用，预设暂不可用';
+        else if (targetResolution.error === 'unknown-scene') targetLine = '当前播放壁纸未知，预设暂不可用';
+        else targetLine = '壁纸预设不可用';
+      }
+
+      const cardStyle = {
+        background: 'rgba(24, 38, 64, 0.55)',
+        border: '1px solid var(--dsw-alias-border-subtle, rgba(140, 165, 210, 0.16))',
+        borderRadius: '8px',
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        opacity: isDetached ? '0.45' : '1',
+        pointerEvents: isDetached ? 'none' : 'auto',
+      };
+
+      const groupHeaderStyle = {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        paddingBottom: '4px',
+        borderBottom: '1px solid rgba(140, 165, 210, 0.12)',
+      };
+
+      const groupTitleStyle = {
+        fontSize: '13px',
+        fontWeight: '600',
+        color: 'var(--dsw-alias-text-primary, #e6edf8)',
+      };
+
+      const groupSubtitleStyle = {
+        fontSize: '11px',
+        color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+      };
+
+      const rowLabelStyle = {
+        fontSize: '12px',
+        fontWeight: '500',
+        color: 'var(--dsw-alias-text-primary, #e6edf8)',
+      };
+
+      const rowValStyle = {
+        fontSize: '12px',
+        fontFamily: 'monospace',
+        color: '#8c72f2',
+      };
+
+      const hintStyle = {
+        fontSize: '10.5px',
+        color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+        lineHeight: 1.35,
+        margin: 0,
+      };
+
+      const segmentGroupStyle = {
+        display: 'flex',
+        gap: '4px',
+        background: 'rgba(10, 16, 28, 0.6)',
+        border: '1px solid rgba(140, 165, 210, 0.16)',
+        borderRadius: '6px',
+        padding: '2px',
+      };
+
+      const segmentBtn = (active, label, onClick, id) => h('button', {
+        id,
+        key: id,
+        type: 'button',
+        disabled: isDetached,
+        style: {
+          flex: 1,
+          padding: '4px 6px',
+          fontSize: '11px',
+          border: 'none',
+          borderRadius: '4px',
+          background: active ? '#8c72f2' : 'transparent',
+          color: active ? '#fff' : 'var(--dsw-alias-text-secondary, #9cb0d1)',
+          cursor: isDetached ? 'not-allowed' : 'pointer',
+          fontWeight: active ? '600' : '400',
+          transition: 'all 0.15s ease',
+        },
+        onClick,
+      }, label);
+
+      const renderSliderRow = (key, label, val, min, max, unit, sliderId, valId, hint) => h('div', {
+        key,
+        style: { display: 'flex', flexDirection: 'column', gap: '4px' },
+      }, [
+        h('div', {
+          key: 'header',
+          style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+        }, [
+          h('label', { key: 'lbl', htmlFor: sliderId, style: rowLabelStyle }, label),
+          h('span', { key: 'val', id: valId, style: rowValStyle }, `${val}${unit}`),
+        ]),
+        h('input', {
+          key: 'slider',
+          id: sliderId,
+          type: 'range',
+          min,
+          max,
+          step: 1,
+          value: val,
+          disabled: isDetached,
+          style: { width: '100%', cursor: isDetached ? 'not-allowed' : 'pointer' },
+          onChange: (e) => {
+            const next = parseInt(e.target.value, 10);
+            controller.set(key, next);
+          },
+        }),
+        hint ? h('p', { key: 'hint', style: hintStyle }, hint) : null,
+      ]);
+
+      return h('div', {
+        id: 'whale-docked-panel',
+        role: 'region',
+        'aria-label': '鲸系外观设置',
+        style: {
+          position: 'fixed',
+          right: '16px',
+          top: '64px',
+          width: '360px',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100vh - 80px)',
+          zIndex: 1000,
+          pointerEvents: 'auto',
+          background: 'var(--dsw-specific-menu, rgba(19, 29, 47, 0.96))',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid var(--dsw-alias-border-subtle, rgba(140, 165, 210, 0.2))',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          color: 'var(--dsw-alias-text-primary, #e6edf8)',
+          fontFamily: 'inherit',
+          boxSizing: 'border-box',
+        },
+      }, [
+        // 1. Header
+        h('div', {
+          key: 'header',
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingBottom: '8px',
+            borderBottom: '1px solid var(--dsw-alias-border-subtle, rgba(140, 165, 210, 0.15))',
+            flexShrink: 0,
+          },
+        }, [
+          h('div', { key: 'brand', style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [
+            h('span', {
+              key: 'badge',
+              style: {
+                background: 'linear-gradient(135deg, #8c72f2, #4a3891)',
+                color: '#fff',
+                fontSize: '11px',
+                fontWeight: '700',
+                padding: '2px 6px',
+                borderRadius: '4px',
+              },
+            }, 'Whale'),
+            h('span', { key: 'title', style: { fontWeight: '600', fontSize: '14px' } }, '外观快捷设置'),
+          ]),
+          h('button', {
+            key: 'close-btn',
+            type: 'button',
+            id: 'whale-docked-close-x',
+            style: {
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+            },
+            onClick: () => appearanceBridge.closePanel(),
+            'aria-label': '关闭面板',
+          }, '✕'),
+        ]),
+
+        // 2. Unconfirmed cleanup alert
+        unconfirmedCleanup ? h('div', {
+          key: 'cleanup-err',
+          id: 'whale-docked-cleanup-error',
+          role: 'alert',
+          style: {
+            padding: '8px 10px',
+            borderRadius: '6px',
+            background: 'rgba(255, 113, 133, 0.15)',
+            border: '1px solid rgba(255, 113, 133, 0.35)',
+            color: '#ff7185',
+            fontSize: '12px',
+            flexShrink: 0,
+          },
+        }, `窗口关闭待确认: ${bridgeState.lastError || '请重试吸附'}`) : null,
+
+        // 2b. Independent action error alert (R4)
+        actionError ? h('div', {
+          key: 'action-err',
+          id: 'whale-docked-action-error',
+          role: 'alert',
+          'aria-live': 'assertive',
+          style: {
+            padding: '8px 10px',
+            borderRadius: '6px',
+            background: 'rgba(255, 113, 133, 0.15)',
+            border: '1px solid rgba(255, 113, 133, 0.35)',
+            color: '#ff7185',
+            fontSize: '12px',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+          },
+        }, [
+          h('span', { key: 'msg' }, actionError),
+          h('button', {
+            key: 'dismiss',
+            type: 'button',
+            id: 'whale-docked-action-error-dismiss',
+            style: {
+              background: 'transparent',
+              border: 'none',
+              color: '#ff7185',
+              cursor: 'pointer',
+              fontSize: '12px',
+              padding: '2px 4px',
+            },
+            onClick: () => setActionError(''),
+            'aria-label': '清除提示',
+          }, '✕'),
+        ]) : null,
+
+        // 3. Detached Guidance Banner
+        isDetached ? h('div', {
+          key: 'detached-banner',
+          style: {
+            padding: '10px',
+            borderRadius: '8px',
+            background: 'rgba(140, 114, 242, 0.12)',
+            border: '1px solid rgba(140, 114, 242, 0.25)',
+            fontSize: '13px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            flexShrink: 0,
+          },
+        }, [
+          h('div', { key: 'text' }, '已在独立 Edge 窗口中打开设置。在吸附回主界面之前，本地界面写入已锁定。'),
+          h('button', {
+            key: 'dock-btn',
+            type: 'button',
+            id: 'whale-docked-btn-dock',
+            style: {
+              background: 'var(--dsw-alias-brand-primary, #8c72f2)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: 'pointer',
+            },
+            onClick: async () => {
+              setActionError('');
+              const res = await appearanceBridge.requestDock();
+              if (!res.ok) {
+                setActionError(res.error || '吸附失败');
+              } else {
+                setActionError('');
+              }
+            },
+          }, '吸附回主界面'),
+        ]) : null,
+
+        // 4. Scrollable Content Body
+        h('div', {
+          key: 'scroll-body',
+          style: {
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            paddingRight: '2px',
+          },
+        }, [
+          // Group 0: 壁纸图库与所选壁纸 (Wallpaper Gallery & Selection)
+          h('div', { key: 'group-wallpaper', id: 'whale-docked-wallpaper-group', style: cardStyle }, [
+            h('div', { key: 'gh', style: groupHeaderStyle }, [
+              h('div', { key: 'title-wrap', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [
+                h('span', { key: 'gt', style: groupTitleStyle }, '壁纸图库'),
+                h('span', { key: 'count', id: 'whale-docked-catalog-count', style: { fontSize: '10px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)', background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: '4px' } }, `${visibleItems.length} 项`),
+              ]),
+              h('button', {
+                key: 'refresh-btn',
+                id: 'whale-docked-catalog-refresh',
+                type: 'button',
+                disabled: isDetached || catalog.loading,
+                style: {
+                  background: 'transparent',
+                  border: '1px solid rgba(140, 165, 210, 0.16)',
+                  borderRadius: '4px',
+                  color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  cursor: (isDetached || catalog.loading) ? 'not-allowed' : 'pointer',
+                },
+                onClick: () => {
+                  if (typeof controller.wallpaper?.loadLibrary === 'function') {
+                    controller.wallpaper.loadLibrary(true);
+                  } else if (typeof controller.wallpaper?.readLibrary === 'function') {
+                    controller.wallpaper.readLibrary({ refresh: true });
+                  }
+                },
+              }, catalog.loading ? '刷新中...' : '↻ 刷新'),
+            ]),
+
+            // Age rating filter checkboxes
+            h('div', {
+              key: 'age-filters',
+              id: 'whale-docked-age-filters',
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '11px',
+                color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+                padding: '2px 0 4px 0',
+              },
+            }, [
+              h('span', { key: 'lbl' }, '分级：'),
+              ...[
+                { id: 'Everyone', label: '所有人' },
+                { id: 'Questionable', label: '敏感内容' },
+                { id: 'Mature', label: '成人内容' },
+              ].map(({ id, label }) => {
+                const isChecked = allowedRatings.includes(id);
+                return h('label', {
+                  key: id,
+                  style: { display: 'flex', alignItems: 'center', gap: '3px', cursor: isDetached ? 'not-allowed' : 'pointer' },
+                }, [
+                  h('input', {
+                    type: 'checkbox',
+                    id: `whale-docked-filter-${id.toLowerCase()}`,
+                    checked: isChecked,
+                    disabled: isDetached,
+                    onChange: () => handleToggleRating(id),
+                  }),
+                  h('span', null, label),
+                ]);
+              }),
+            ]),
+
+            // Catalog notices
+            catalog.loading ? h('div', { key: 'notice-loading', style: hintStyle }, '正在刷新壁纸库...') : null,
+            catalog.error ? h('div', { key: 'notice-error', style: { ...hintStyle, color: '#ff7185' } }, `读取失败: ${catalog.error}`) : null,
+            catalog.truncated ? h('div', { key: 'notice-truncated', style: { ...hintStyle, color: '#e3a85d' } }, '壁纸较多，已显示前部分条目') : null,
+            (catalog.loaded && visibleItems.length === 0) ? h('div', { key: 'notice-empty', style: hintStyle }, allowedRatings.length === 0 ? '未勾选任何年龄分级' : '未发现匹配分级的可用壁纸') : null,
+
+            // Compact Wallpaper Cards List
+            h('div', {
+              key: 'cards-list',
+              id: 'whale-docked-wallpaper-list',
+              style: {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                maxHeight: '160px',
+                overflowY: 'auto',
+                paddingRight: '2px',
+              },
+            }, visibleItems.map(item => {
+              const isSelected = item.id === selectedSceneId;
+              const isPlayingItem = item.id === activeSceneId && (wpState === 'playing' || wpState === 'starting');
+              return h('button', {
+                key: item.id,
+                type: 'button',
+                disabled: isDetached || item.available === false,
+                'aria-checked': isSelected,
+                'data-scene-id': item.id,
+                style: {
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: isSelected ? 'rgba(140, 114, 242, 0.22)' : 'rgba(10, 16, 28, 0.5)',
+                  border: isSelected ? '1px solid #8c72f2' : (isPlayingItem ? '1px solid rgba(72, 177, 136, 0.5)' : '1px solid rgba(140, 165, 210, 0.16)'),
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  cursor: (isDetached || item.available === false) ? 'not-allowed' : 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                  color: isSelected ? '#ffffff' : 'var(--dsw-alias-text-primary, #e6edf8)',
+                },
+                onClick: () => {
+                  if (!isDetached && item.available !== false) {
+                    controller.set('weScene', item.id);
+                  }
+                },
+              }, [
+                h('div', {
+                  key: 'thumb-title-wrap',
+                  style: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 },
+                }, [
+                  h('div', {
+                    key: 'thumb-wrap',
+                    style: {
+                      width: '36px',
+                      height: '24px',
+                      borderRadius: '3px',
+                      overflow: 'hidden',
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                  }, [
+                    h(DockedPreviewImage, {
+                      key: 'thumb-img',
+                      sceneId: item.previewRef ? item.id : null,
+                      appearanceBridge,
+                      alt: item.title || item.id,
+                      style: {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      },
+                    }),
+                  ]),
+                  h('span', {
+                    key: 'title',
+                    title: item.title || item.id,
+                    style: {
+                      fontSize: '12px',
+                      fontWeight: isSelected ? '600' : '400',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '140px',
+                    },
+                  }, item.title || item.id),
+                ]),
+                h('div', {
+                  key: 'tags',
+                  style: { display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 },
+                }, [
+                  h('span', { key: 'type', style: { fontSize: '10px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)', background: 'rgba(255, 255, 255, 0.05)', padding: '1px 4px', borderRadius: '3px' } }, item.type || 'scene'),
+                  isPlayingItem ? h('span', { key: 'playing', style: { fontSize: '10px', color: '#48b188', background: 'rgba(72, 177, 136, 0.2)', padding: '1px 4px', borderRadius: '3px', fontWeight: '500' } }, '正在播放') : null,
+                  isSelected ? h('span', { key: 'selected', style: { fontSize: '10px', color: '#8c72f2', background: 'rgba(140, 114, 242, 0.25)', padding: '1px 4px', borderRadius: '3px', fontWeight: '500' } }, '本次选择') : null,
+                ]),
+              ]);
+            })),
+
+            // Details and Playback controls
+            h('div', {
+              key: 'details-wrap',
+              id: 'whale-docked-details-wrap',
+              style: {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                background: 'rgba(10, 16, 28, 0.4)',
+                border: '1px solid rgba(140, 165, 210, 0.14)',
+                borderRadius: '6px',
+                padding: '8px',
+              },
+            }, [
+              h('div', {
+                key: 'details-preview-wrap',
+                id: 'whale-docked-details-preview-wrap',
+                style: {
+                  width: '100%',
+                  height: '70px',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                  background: 'rgba(0, 0, 0, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              }, [
+                isSelectedHidden ? h('div', {
+                  key: 'hidden-notice',
+                  id: 'whale-docked-details-hidden-notice',
+                  style: {
+                    fontSize: '11px',
+                    color: '#e3a85d',
+                    textAlign: 'center',
+                    padding: '8px',
+                  },
+                }, '已被年龄分级筛选隐藏') : h(DockedPreviewImage, {
+                  key: `details-img-${selectedItem.id}`,
+                  id: 'whale-docked-details-img',
+                  sceneId: selectedItem.previewRef ? selectedItem.id : null,
+                  appearanceBridge,
+                  alt: selectedItem.title || selectedItem.id,
+                  style: {
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  },
+                }),
+              ]),
+              h('div', { key: 'details-header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }, [
+                h('span', { key: 'lbl', id: 'whale-docked-selected-title', style: { fontSize: '12px', fontWeight: '600', color: 'var(--dsw-alias-text-primary, #e6edf8)' } }, isSelectedHidden ? `所选壁纸：${selectedItem.title || selectedItem.id}（已被筛选隐藏）` : `所选壁纸：${selectedItem.title || selectedItem.id}`),
+                h('span', { key: 'status-tag', style: { fontSize: '10px', color: selectedItem.playbackVerified ? '#48b188' : '#e3a85d' } }, selectedItem.playbackVerified ? '已验证' : (selectedItem.available ? '实验性' : '不可用')),
+              ]),
+              h('div', { key: 'status-text', id: 'whale-docked-playback-status', style: { fontSize: '11px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)' } },
+                wpState === 'playing' ? `正在播放：${activeSceneId === 'lucy' ? 'Lucy' : (activeSceneId || '未知壁纸')}` :
+                (wpState === 'starting' ? '壁纸启动中...' :
+                (wpState === 'stopping' || cleanupPending ? '壁纸停止/清理中...' :
+                (wpState === 'cleanup-failed' ? '源窗口清理未确认，请重试停止' : '未开始播放')))
+              ),
+              isMismatch ? h('div', {
+                key: 'mismatch-alert',
+                id: 'whale-docked-mismatch-banner',
+                style: {
+                  fontSize: '11px',
+                  color: '#e3a85d',
+                  background: 'rgba(227, 168, 93, 0.12)',
+                  border: '1px solid rgba(227, 168, 93, 0.3)',
+                  padding: '4px 6px',
+                  borderRadius: '4px',
+                  lineHeight: '1.35',
+                },
+              }, activeSceneId ? `当前正在播放「${activeSceneId === 'lucy' ? 'Lucy' : activeSceneId}」。请先停止当前播放，再开始所选项。` : `当前活动壁纸身份未确认，请先停止播放。`) : null,
+              h('div', { key: 'playback-options', className: 'wm-playback-options', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+                h('label', { key: 'mode-label', htmlFor: 'whale-docked-we-mode', style: { fontSize: '11px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)' } }, '播放模式'),
+                h('select', {
+                  key: 'we-mode',
+                  id: 'whale-docked-we-mode',
+                  'data-wm-setting': 'weMode',
+                  disabled: isDetached || !isStartableState,
+                  value: settings.weMode === 'daily' ? 'daily' : 'preview',
+                  onChange: (event) => {
+                    const el = event && event.currentTarget;
+                    if (isDetached || !isStartableState) return;
+                    if (!el || el.disabled) return;
+                    const next = el.value;
+                    if (next !== 'daily' && next !== 'preview') return;
+                    controller.set('weMode', next);
+                  },
+                }, [
+                  h('option', { key: 'daily', value: 'daily' }, '日常（持续播放）'),
+                  h('option', { key: 'preview', value: 'preview' }, '预览（限时）'),
+                ]),
+                h('label', { key: 'autostart-label', htmlFor: 'whale-docked-we-autostart', style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)' } }, [
+                  h('input', {
+                    key: 'we-autostart',
+                    id: 'whale-docked-we-autostart',
+                    type: 'checkbox',
+                    'data-wm-setting': 'weAutoStart',
+                    disabled: isDetached || !isStartableState,
+                    checked: settings.weAutoStart === true,
+                    onChange: (event) => {
+                      const el = event && event.currentTarget;
+                      if (isDetached || !isStartableState) return;
+                      if (!el || el.disabled) return;
+                      if (el.checked !== true && el.checked !== false) return;
+                      controller.set('weAutoStart', el.checked === true);
+                    },
+                  }),
+                  '随 DSH 启动自动播放',
+                ]),
+                h('div', { key: 'lucy-hint', style: { fontSize: '10px', lineHeight: '1.35', color: 'var(--dsw-alias-text-secondary, #9cb0d1)' } }, '仅 Lucy 具备自动播放资格。修改播放模式或自动播放不会开始当前播放。'),
+              ]),
+              h('div', { key: 'actions-row', style: { display: 'flex', gap: '6px', marginTop: '2px' } }, [
+                h('button', {
+                  key: 'start-btn',
+                  id: 'whale-docked-btn-start',
+                  type: 'button',
+                  disabled: !canStartWp,
+                  style: {
+                    flex: 1,
+                    padding: '5px 8px',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    background: canStartWp ? '#8c72f2' : 'rgba(255, 255, 255, 0.08)',
+                    color: canStartWp ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: canStartWp ? 'pointer' : 'not-allowed',
+                  },
+                  onClick: async () => {
+                    setActionError('');
+                    try {
+                      const mode = settings.weMode || 'daily';
+                      const res = await controller.wallpaper.start(selectedSceneId, mode);
+                      if (res && (res.ok === false || res.state === 'error' || res.state === 'cleanup-failed')) {
+                        setActionError(res.error || '启动壁纸失败');
+                      }
+                    } catch (err) {
+                      setActionError(err.message || '启动异常');
+                    }
+                  },
+                }, '开始播放'),
+                h('button', {
+                  key: 'stop-btn',
+                  id: 'whale-docked-btn-stop',
+                  type: 'button',
+                  disabled: !canStopWp,
+                  style: {
+                    flex: 1,
+                    padding: '5px 8px',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    color: canStopWp ? 'var(--dsw-alias-text-primary, #e6edf8)' : 'rgba(255, 255, 255, 0.3)',
+                    border: '1px solid rgba(140, 165, 210, 0.2)',
+                    borderRadius: '4px',
+                    cursor: canStopWp ? 'pointer' : 'not-allowed',
+                  },
+                  onClick: async () => {
+                    setActionError('');
+                    try {
+                      const res = await controller.wallpaper.stop('user');
+                      if (res && (res.ok === false || res.state === 'cleanup-failed' || res.state === 'error')) {
+                        setActionError(res.error || '停止壁纸失败');
+                      }
+                    } catch (err) {
+                      setActionError(err.message || '停止异常');
+                    }
+                  },
+                }, '停止播放'),
+              ]),
+            ]),
+          ]),
+
+          // Group 1: 画面调节 (Visual)
+          h('div', { key: 'group-visual', style: cardStyle }, [
+            h('div', { key: 'gh', style: groupHeaderStyle }, [
+              h('span', { key: 'gt', style: groupTitleStyle }, '壁纸画面效果'),
+              h('span', { key: 'gs', style: groupSubtitleStyle }, 'DSH 背景渲染'),
+            ]),
+            h('div', {
+              key: 'visual-notice',
+              id: 'whale-docked-visual-notice',
+              style: {
+                ...hintStyle,
+                background: 'rgba(255, 255, 255, 0.04)',
+                padding: '4px 6px',
+                borderRadius: '4px',
+                border: '1px solid rgba(140, 165, 210, 0.12)',
+              },
+            }, isCurrentlyPlaying ? `调节对当前播放的壁纸「${activeSceneId === 'lucy' ? 'Lucy' : (activeSceneId || '当前壁纸')}」生效` : '当前未播放壁纸；四项调节属于 DSH 背景渲染全局效果'),
+            renderSliderRow('brightness', '背景亮度', brightnessVal, 20, 120, '%', 'whale-docked-brightness-slider', 'whale-docked-brightness-val', '100%保留原亮度，可继续提亮；最终效果还受遮罩和界面底色影响'),
+            renderSliderRow('mask', '遮罩', maskVal, 0, 90, '%', 'whale-docked-mask-slider', 'whale-docked-mask-val', '叠加主题底色；数值越大覆盖越强，0%关闭'),
+            renderSliderRow('blur', '模糊', blurVal, 0, 24, 'px', 'whale-docked-blur-slider', 'whale-docked-blur-val', '柔化壁纸细节，视频较大时会增加显卡负担'),
+            renderSliderRow('surface', '界面不透明度', surfaceVal, 40, 100, '%', 'whale-docked-surface-slider', 'whale-docked-surface-val', '侧栏与卡片；菜单和输入卡片保持不透明'),
+          ]),
+
+          // Group 2: 界面定制 (Interface)
+          h('div', { key: 'group-interface', style: cardStyle }, [
+            h('div', { key: 'gh', style: groupHeaderStyle }, [
+              h('span', { key: 'gt', style: groupTitleStyle }, '界面定制'),
+              h('span', { key: 'gs', style: groupSubtitleStyle }, '主题与配色'),
+            ]),
+            // Theme
+            h('div', { key: 'theme-row', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+              h('span', { key: 'lbl', style: rowLabelStyle }, '主题'),
+              h('div', { key: 'seg', id: 'whale-docked-theme-segment', style: segmentGroupStyle }, [
+                segmentBtn(themeVal === 'mist', 'Mist (浅色)', () => controller.set('theme', 'mist'), 'whale-docked-theme-mist'),
+                segmentBtn(themeVal === 'abyss', 'Abyss (深色)', () => controller.set('theme', 'abyss'), 'whale-docked-theme-abyss'),
+              ]),
+            ]),
+            // Palette
+            h('div', { key: 'palette-row', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+              h('div', { key: 'hdr', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }, [
+                h('span', { key: 'lbl', style: rowLabelStyle }, '深色配色'),
+                h('span', { key: 'tag', style: { fontSize: '10px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)' } }, '仅深色生效'),
+              ]),
+              h('div', { key: 'seg', id: 'whale-docked-palette-segment', style: segmentGroupStyle }, [
+                segmentBtn(paletteVal === 'ocean', 'Ocean', () => controller.set('palette', 'ocean'), 'whale-docked-palette-ocean'),
+                segmentBtn(paletteVal === 'graphite', 'Graphite', () => controller.set('palette', 'graphite'), 'whale-docked-palette-graphite'),
+                segmentBtn(paletteVal === 'violet', 'Violet', () => controller.set('palette', 'violet'), 'whale-docked-palette-violet'),
+                segmentBtn(paletteVal === 'jade', 'Jade', () => controller.set('palette', 'jade'), 'whale-docked-palette-jade'),
+              ]),
+            ]),
+            // Text Contrast
+            h('div', { key: 'contrast-row', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+              h('span', { key: 'lbl', style: rowLabelStyle }, '文字可读性'),
+              h('div', { key: 'seg', id: 'whale-docked-contrast-segment', style: segmentGroupStyle }, [
+                segmentBtn(contrastVal === 'standard', '标准', () => controller.set('textContrast', 'standard'), 'whale-docked-contrast-standard'),
+                segmentBtn(contrastVal === 'enhanced', '增强', () => controller.set('textContrast', 'enhanced'), 'whale-docked-contrast-enhanced'),
+              ]),
+            ]),
+            // Chat Backdrop
+            renderSliderRow('chatBackdrop', '聊天区底色', chatBackdropVal, 0, 100, '%', 'whale-docked-chatbackdrop-slider', 'whale-docked-chatbackdrop-val', '0%保留壁纸透光，100%完全不透明'),
+            // Accent Mode & Color
+            h('div', { key: 'accent-row', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+              h('span', { key: 'lbl', style: rowLabelStyle }, '强调色'),
+              h('div', { key: 'seg', id: 'whale-docked-accent-segment', style: segmentGroupStyle }, [
+                segmentBtn(accentModeVal === 'theme', '跟随主题', () => controller.set('accentMode', 'theme'), 'whale-docked-accent-theme'),
+                segmentBtn(accentModeVal === 'custom', '自定义', () => controller.set('accentMode', 'custom'), 'whale-docked-accent-custom'),
+              ]),
+              accentModeVal === 'custom' ? h('div', {
+                key: 'picker-wrap',
+                style: {
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'rgba(10, 16, 28, 0.4)',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  marginTop: '4px',
+                },
+              }, [
+                h('span', { key: 'lbl', style: { fontSize: '11px', color: 'var(--dsw-alias-text-secondary, #9cb0d1)' } }, '自定义色值'),
+                h('div', { key: 'row', style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [
+                  h('input', {
+                    key: 'color-input',
+                    id: 'whale-docked-accent-color-picker',
+                    type: 'color',
+                    value: accentColorVal,
+                    disabled: isDetached,
+                    style: { width: '24px', height: '22px', border: 'none', background: 'transparent', cursor: 'pointer' },
+                    onChange: (e) => controller.set('accentColor', e.target.value),
+                  }),
+                  h('span', { key: 'hex', id: 'whale-docked-accent-hex', style: rowValStyle }, accentColorVal.toLowerCase()),
+                ]),
+              ]) : null,
+            ]),
+          ]),
+
+          // Group 3: 壁纸外观预设 (Presets)
+          h('div', { key: 'group-presets', style: cardStyle }, [
+            h('div', { key: 'gh', style: groupHeaderStyle }, [
+              h('span', { key: 'gt', style: groupTitleStyle }, '壁纸外观预设'),
+              h('span', { key: 'gs', style: groupSubtitleStyle }, '仅限四项画面参数'),
+            ]),
+            h('div', {
+              key: 'target-line',
+              style: { fontSize: '12px', fontWeight: '500', color: 'var(--dsw-alias-text-primary, #e6edf8)' },
+            }, targetLine),
+            h('p', { key: 'preset-hint', style: hintStyle }, '每张壁纸保存一份亮度、遮罩、模糊与不透明度；手动应用到当前外观，全局恢复默认不删除预设'),
+            h('div', { key: 'actions', style: { display: 'flex', gap: '6px', marginTop: '4px' } }, [
+              h('button', {
+                key: 'save',
+                id: 'whale-docked-preset-save',
+                type: 'button',
+                disabled: !canSave,
+                style: {
+                  flex: 1,
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: canSave ? '#fff' : 'rgba(255, 255, 255, 0.3)',
+                  border: '1px solid rgba(140, 165, 210, 0.2)',
+                  borderRadius: '4px',
+                  cursor: canSave ? 'pointer' : 'not-allowed',
+                },
+                onClick: () => {
+                  setActionError('');
+                  const res = controller.presets.save();
+                  if (!res.ok) {
+                    setActionError(res.error || '保存预设失败');
+                  } else {
+                    setActionError('');
+                  }
+                },
+              }, '保存当前外观'),
+              h('button', {
+                key: 'apply',
+                id: 'whale-docked-preset-apply',
+                type: 'button',
+                disabled: !canApply,
+                style: {
+                  flex: 1,
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: canApply ? '#fff' : 'rgba(255, 255, 255, 0.3)',
+                  border: '1px solid rgba(140, 165, 210, 0.2)',
+                  borderRadius: '4px',
+                  cursor: canApply ? 'pointer' : 'not-allowed',
+                },
+                onClick: () => {
+                  setActionError('');
+                  const res = controller.presets.apply();
+                  if (!res.ok) {
+                    setActionError(res.error || '应用预设失败');
+                  } else {
+                    setActionError('');
+                  }
+                },
+              }, '应用已保存外观'),
+              h('button', {
+                key: 'delete',
+                id: 'whale-docked-preset-delete',
+                type: 'button',
+                disabled: !canDelete,
+                style: {
+                  flex: 1,
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  background: 'rgba(255, 113, 133, 0.1)',
+                  color: canDelete ? '#ff7185' : 'rgba(255, 113, 133, 0.3)',
+                  border: '1px solid rgba(255, 113, 133, 0.25)',
+                  borderRadius: '4px',
+                  cursor: canDelete ? 'pointer' : 'not-allowed',
+                },
+                onClick: () => {
+                  setActionError('');
+                  const res = controller.presets.remove();
+                  if (!res.ok) {
+                    setActionError(res.error || '删除预设失败');
+                  } else {
+                    setActionError('');
+                  }
+                },
+              }, '删除预设'),
+            ]),
+          ]),
+        ]),
+
+        // 5. Footer actions
+        h('div', {
+          key: 'footer',
+          style: {
+            display: 'flex',
+            gap: '8px',
+            paddingTop: '8px',
+            borderTop: '1px solid var(--dsw-alias-border-subtle, rgba(140, 165, 210, 0.15))',
+            flexShrink: 0,
+          },
+        }, [
+          !isDetached ? h('button', {
+            key: 'detach-btn',
+            type: 'button',
+            id: 'whale-docked-btn-detach',
+            disabled: inFlightDetach || isDetaching || unconfirmedCleanup,
+            style: {
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'var(--dsw-alias-brand-primary, #8c72f2)',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: (inFlightDetach || isDetaching || unconfirmedCleanup) ? 'not-allowed' : 'pointer',
+              opacity: (inFlightDetach || isDetaching || unconfirmedCleanup) ? '0.5' : '1',
+            },
+            onClick: async () => {
+              setInFlightDetach(true);
+              setActionError('');
+              try {
+                const res = await appearanceBridge.requestDetach();
+                if (!res.ok) {
+                  setActionError(res.error || '弹出失败');
+                } else {
+                  setActionError('');
+                }
+              } catch (err) {
+                setActionError(err.message || '弹出异常');
+              } finally {
+                setInFlightDetach(false);
+              }
+            },
+          }, isDetaching ? '弹出中...' : '弹出独立窗口') : null,
+
+          h('button', {
+            key: 'close-btn-bottom',
+            type: 'button',
+            id: 'whale-docked-btn-close',
+            style: {
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid var(--dsw-alias-border-subtle, rgba(140, 165, 210, 0.2))',
+              background: 'rgba(255, 255, 255, 0.06)',
+              color: 'var(--dsw-alias-text-secondary, #9cb0d1)',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: 'pointer',
+            },
+            onClick: () => appearanceBridge.closePanel(),
+          }, '关闭'),
+        ]),
+      ]);
+    }
 
     const inject = ["theme", "slots"];
 
@@ -3890,6 +6410,101 @@ window.__ModuleLoader__.load({
       const HOST_STATUS_READ_MS = Number.isFinite(wallpaperTimeouts.hostStatusTimeoutMs) && wallpaperTimeouts.hostStatusTimeoutMs > 0
         ? wallpaperTimeouts.hostStatusTimeoutMs
         : 4000;
+
+      let presets = readPresets();
+      const presetListeners = new Set();
+      const notifyPresetListeners = () => {
+        for (const listener of presetListeners) {
+          try { listener(); } catch {}
+        }
+      };
+
+      let settingsSnapshot = Object.freeze({ ...settings });
+      const settingsListeners = new Set();
+      const notifySettingsListeners = () => {
+        settingsSnapshot = Object.freeze({ ...settings });
+        for (const listener of settingsListeners) {
+          try { listener(settingsSnapshot); } catch {}
+        }
+      };
+
+      const checkSceneAvailability = (sceneId) => {
+        if (!sceneId || !isSceneId(sceneId)) return { ok: false, error: "invalid-scene" };
+        const wp = (typeof controller?.wallpaper?.getStatus === "function") ? controller.wallpaper : wallpaper;
+        const status = wp.getStatus();
+        const snapshot = typeof wp.getLibrarySnapshot === "function" ? wp.getLibrarySnapshot() : null;
+
+        if (sceneId === "lucy") {
+          if (Array.isArray(status?.host?.scenes)) {
+            const lucyHost = status.host.scenes.find(s => s?.id === "lucy");
+            if (lucyHost && lucyHost.available === false) {
+              return { ok: false, error: "scene-unavailable", sceneId: "lucy" };
+            }
+          }
+          if (snapshot && Array.isArray(snapshot.items)) {
+            const lucyLib = snapshot.items.find(s => s?.id === "lucy");
+            if (lucyLib && lucyLib.available === false) {
+              return { ok: false, error: "scene-unavailable", sceneId: "lucy" };
+            }
+          }
+          if (status?.host && status.host.available === false && status.host.unavailableReason === "scene") {
+            return { ok: false, error: "scene-unavailable", sceneId: "lucy" };
+          }
+          return { ok: true, targetId: "lucy" };
+        }
+
+        if (!snapshot || !snapshot.loaded || snapshot.state !== "ready") {
+          return { ok: false, error: "scene-unconfirmed", sceneId };
+        }
+        const item = Array.isArray(snapshot.items) ? snapshot.items.find(s => s?.id === sceneId) : null;
+        if (!item || item.available !== true) {
+          return { ok: false, error: "scene-unavailable", sceneId };
+        }
+        return { ok: true, targetId: sceneId };
+      };
+
+      const resolvePresetTarget = () => {
+        if (disposed) return { ok: false, error: "disposed" };
+        const wp = (typeof controller?.wallpaper?.getStatus === "function") ? controller.wallpaper : wallpaper;
+        const status = wp.getStatus();
+        if (status.cleanupPending || (typeof wp.hasPendingCleanup === "function" && wp.hasPendingCleanup())) {
+          return { ok: false, error: "transition", state: "stopping" };
+        }
+        if (["starting", "connecting", "waiting"].includes(status.state)) {
+          return { ok: false, error: "transition", state: status.state };
+        }
+        if (status.state === "cleanup-failed") {
+          return { ok: false, error: "cleanup-failed" };
+        }
+        if (status.state === "error") {
+          return { ok: false, error: "error" };
+        }
+        if (status.state === "playing") {
+          const activeId = status.host?.activeSceneId;
+          if (!activeId || !isSceneId(activeId)) return { ok: false, error: "unknown-scene" };
+          if (activeId !== settings.weScene) return { ok: false, error: "mismatch", activeId, selectedId: settings.weScene };
+          const avail = checkSceneAvailability(activeId);
+          if (!avail.ok) return avail;
+          return { ok: true, targetId: activeId, isPlaying: true };
+        }
+        if (["idle", "stopped"].includes(status.state)) {
+          if (!isSceneId(settings.weScene)) return { ok: false, error: "invalid-scene" };
+          const avail = checkSceneAvailability(settings.weScene);
+          if (!avail.ok) return avail;
+          return { ok: true, targetId: settings.weScene, isPlaying: false };
+        }
+        return { ok: false, error: "state-disallowed", state: status.state };
+      };
+
+      const checkPresetTarget = (expectedSceneId) => {
+        const target = resolvePresetTarget();
+        if (!target.ok) return target;
+        if (expectedSceneId && expectedSceneId !== target.targetId) {
+          return { ok: false, error: "target-mismatch", expected: expectedSceneId, actual: target.targetId };
+        }
+        return target;
+      };
+
       const controller = {
         media: backdrop,
         wallpaper: {
@@ -3909,17 +6524,101 @@ window.__ModuleLoader__.load({
             return wallpaper.stop(reason);
           },
         },
+        presets: {
+          getSnapshot: () => presets,
+          subscribe: (listener) => {
+            presetListeners.add(listener);
+            return () => presetListeners.delete(listener);
+          },
+          get: (sceneId) => {
+            if (!sceneId || !isSceneId(sceneId)) return null;
+            const entry = presets.entries[sceneId];
+            return entry ? { ...entry } : null;
+          },
+          getAll: () => {
+            const result = {};
+            for (const [k, v] of Object.entries(presets.entries)) {
+              result[k] = { ...v };
+            }
+            return result;
+          },
+          resolveTarget: resolvePresetTarget,
+          save: (sceneId) => {
+            const target = checkPresetTarget(sceneId);
+            if (!target.ok) return target;
+            const entry = {
+              brightness: clampRange("brightness", settings.brightness),
+              mask: clampRange("mask", settings.mask),
+              blur: clampRange("blur", settings.blur),
+              surface: clampRange("surface", settings.surface),
+            };
+            const nextEntries = { ...presets.entries, [target.targetId]: Object.freeze(entry) };
+            const nextPresets = Object.freeze({ version: 1, entries: Object.freeze(nextEntries) });
+            if (!persistPresets(nextPresets)) {
+              return { ok: false, error: "storage-failed" };
+            }
+            presets = nextPresets;
+            notifyPresetListeners();
+            return { ok: true, targetId: target.targetId, preset: entry };
+          },
+          apply: (sceneId) => {
+            const target = checkPresetTarget(sceneId);
+            if (!target.ok) return target;
+            const entry = presets.entries[target.targetId];
+            if (!entry) return { ok: false, error: "preset-missing" };
+            const nextSettings = normalizeSettings({
+              ...settings,
+              brightness: entry.brightness,
+              mask: entry.mask,
+              blur: entry.blur,
+              surface: entry.surface,
+            });
+            const hasChanges = Object.keys(nextSettings).some((k) => nextSettings[k] !== settings[k]);
+            settings = nextSettings;
+            persistSettings(settings);
+            projectSettings(settings);
+            backdrop.update(settings, themeSignal.getSnapshot());
+            if (hasChanges) {
+              notifySettingsListeners();
+            }
+            return { ok: true, targetId: target.targetId, preset: entry, settings: { ...settings } };
+          },
+          remove: (sceneId) => {
+            const target = checkPresetTarget(sceneId);
+            if (!target.ok) return target;
+            if (!presets.entries[target.targetId]) return { ok: false, error: "preset-missing" };
+            const nextEntries = { ...presets.entries };
+            delete nextEntries[target.targetId];
+            const nextPresets = Object.freeze({ version: 1, entries: Object.freeze(nextEntries) });
+            if (!persistPresets(nextPresets)) {
+              return { ok: false, error: "storage-failed" };
+            }
+            presets = nextPresets;
+            notifyPresetListeners();
+            return { ok: true, targetId: target.targetId };
+          },
+        },
         read: () => ({ ...settings }),
+        getSettingsSnapshot: () => settingsSnapshot,
+        subscribeSettings: (listener) => {
+          settingsListeners.add(listener);
+          return () => settingsListeners.delete(listener);
+        },
         set: (key, value) => {
           if (disposed || !isValidSetting(key, value)) return { ...settings };
           // Picking the next scene is manual intent; a late automatic-start answer must not apply it.
           if (key === "weScene") userActionRevision++;
           if (key === "background") selectionRevision++;
-          settings = normalizeSettings({ ...settings, [key]: value });
-          persistSettings(settings);
-          projectSettings(settings);
-          if (key === "theme") ctx.theme.setTheme(selectedThemeId(settings));
-          backdrop.update(settings, themeSignal.getSnapshot());
+          let patch = { [key]: value };
+          if (key === "opaqueChat") {
+            patch = { opaqueChat: value, chatBackdrop: value ? 100 : 0 };
+          } else if (key === "chatBackdrop") {
+            const clamped = clampRange("chatBackdrop", value);
+            patch = { chatBackdrop: clamped, opaqueChat: clamped === 100 };
+          }
+          const nextSettings = normalizeSettings({ ...settings, ...patch });
+          const hasChanges = Object.keys(nextSettings).some((k) => nextSettings[k] !== settings[k]);
+
           // A mode change cancels any automatic start that is still waiting for the host; it
           // does not restart the run that is already active (that keeps its own mode).
           if (key === "weMode") playbackModeRevision++;
@@ -3929,6 +6628,17 @@ window.__ModuleLoader__.load({
             userActionRevision++;
             if (value !== "wallpaper") wallpaper.stop("background-changed").catch(() => {});
           }
+
+          if (!hasChanges) {
+            return { ...settings };
+          }
+
+          settings = nextSettings;
+          persistSettings(settings);
+          projectSettings(settings);
+          if (key === "theme") ctx.theme.setTheme(selectedThemeId(settings));
+          backdrop.update(settings, themeSignal.getSnapshot());
+          notifySettingsListeners();
           return { ...settings };
         },
         reset: () => {
@@ -3941,6 +6651,7 @@ window.__ModuleLoader__.load({
           projectSettings(settings);
           ctx.theme.setTheme(selectedThemeId(settings));
           backdrop.update(settings, themeSignal.getSnapshot());
+          notifySettingsListeners();
           return { ...settings };
         },
         async importMedia(kind, file) {
@@ -3959,7 +6670,7 @@ window.__ModuleLoader__.load({
         backdrop.update(settings, themeSignal.getSnapshot());
       };
 
-      ctx.effect(() => () => { disposed = true; selectionRevision++; }, "whale: controller lifetime");
+      ctx.effect(() => () => { disposed = true; selectionRevision++; presetListeners.clear(); settingsListeners.clear(); }, "whale: controller lifetime");
 
       // Auto playback: the persisted choice is only a statement about the NEXT DSH start.
       // This effect fires at most once per page lifetime, only when the source and the theme
@@ -4122,6 +6833,140 @@ window.__ModuleLoader__.load({
         return () => wallpaper.dispose();
       }, "whale: wallpaper engine preview lifetime");
 
+      // Detachable Appearance Seam & Bridge State
+      const bridgeListeners = new Set();
+      let bridgeClientInstance = null;
+      const bridgeState = {
+        mode: DETACHABLE_MODES.DOCKED,
+        isOpen: false,
+        unconfirmedCleanup: false,
+        lastError: null,
+      };
+      let cachedBridgeSnapshot = Object.freeze({ ...bridgeState });
+
+      const notifyBridge = () => {
+        cachedBridgeSnapshot = Object.freeze({ ...bridgeState });
+        for (const l of bridgeListeners) {
+          try { l(cachedBridgeSnapshot); } catch {}
+        }
+      };
+
+      let catalogReadRequest = null;
+      const cancelCatalogRead = () => {
+        const req = catalogReadRequest;
+        if (!req) return;
+        catalogReadRequest = null;
+        clearTimeout(req.timer);
+        req.abort.abort();
+      };
+      const ensureCatalogRead = () => {
+        if (disposed || bridgeState.mode !== DETACHABLE_MODES.DOCKED || typeof controller.wallpaper?.readLibrary !== "function" || catalogReadRequest) return;
+        const cache = controller.wallpaper.getLibrarySnapshot?.();
+        if (cache?.loading === true || (cache?.state === "ready" && cache?.loaded === true)) return;
+        const req = { abort: new AbortController(), timer: null };
+        catalogReadRequest = req;
+        req.timer = setTimeout(() => {
+          if (catalogReadRequest === req) cancelCatalogRead();
+        }, 4000);
+        try {
+          Promise.resolve(controller.wallpaper.readLibrary({ ensure: true, signal: req.abort.signal })).catch(() => {}).finally(() => {
+            clearTimeout(req.timer);
+            if (catalogReadRequest === req) catalogReadRequest = null;
+          });
+        } catch {
+          clearTimeout(req.timer);
+          if (catalogReadRequest === req) catalogReadRequest = null;
+        }
+      };
+      ctx.effect(() => () => cancelCatalogRead());
+      const appearanceBridge = {
+        getSnapshot: () => cachedBridgeSnapshot,
+        subscribe: (listener) => {
+          bridgeListeners.add(listener);
+          return () => bridgeListeners.delete(listener);
+        },
+        togglePanel: () => {
+          bridgeState.isOpen = !bridgeState.isOpen;
+          if (bridgeState.isOpen) ensureCatalogRead();
+          else cancelCatalogRead();
+          notifyBridge();
+        },
+        openPanel: () => {
+          if (!bridgeState.isOpen) {
+            bridgeState.isOpen = true;
+            ensureCatalogRead();
+            notifyBridge();
+          }
+        },
+        closePanel: () => {
+          cancelCatalogRead();
+          if (bridgeState.isOpen) {
+            bridgeState.isOpen = false;
+            notifyBridge();
+          }
+        },
+        requestDetach: async () => {
+          if (!bridgeClientInstance) return { ok: false, error: 'bridge-not-connected' };
+          return await bridgeClientInstance.requestDetach();
+        },
+        requestDock: async () => {
+          if (!bridgeClientInstance) return { ok: false, error: 'bridge-not-connected' };
+          return await bridgeClientInstance.requestDock();
+        },
+        fetchPreviewBlob: (sceneId, options) => {
+          if (!bridgeClientInstance) return Promise.reject(new Error('bridge-not-connected'));
+          return bridgeClientInstance.fetchPreviewBlob(sceneId, options);
+        },
+        getClient: () => bridgeClientInstance,
+      };
+
+      const initBridge = async () => {
+        let boot = typeof globalThis !== 'undefined' ? globalThis.__WHALE_DETACHABLE_BOOT__ : null;
+        let port = boot?.port;
+        let mainToken = boot?.mainToken;
+
+        if (!mainToken && typeof fetch === 'function') {
+          try {
+            const resp = await fetch('/whale-appearance/bootstrap', { cache: 'no-store' });
+            if (resp.ok) {
+              const data = await resp.json();
+              if (data.ok && data.port && data.mainToken) {
+                port = data.port;
+                mainToken = data.mainToken;
+              }
+            }
+          } catch {}
+        }
+
+        if (port && mainToken && !disposed) {
+          const baseUrl = `http://127.0.0.1:${port}`;
+          const instanceId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `main-${Date.now()}`;
+          bridgeClientInstance = createMainRendererBridgeClient({
+            baseUrl,
+            instanceId,
+            mainToken,
+            controller,
+          });
+
+          bridgeClientInstance.subscribe((state) => {
+            bridgeState.mode = state.mode;
+            bridgeState.unconfirmedCleanup = Boolean(state.unconfirmedCleanup);
+            bridgeState.lastError = state.lastError;
+            notifyBridge();
+          });
+
+          await bridgeClientInstance.connect().catch(() => {});
+        }
+      };
+
+      initBridge().catch(() => {});
+
+      ctx.effect(() => () => {
+        if (bridgeClientInstance) {
+          bridgeClientInstance.dispose().catch(() => {});
+        }
+      }, "whale: detachable bridge lifetime");
+
       ctx.slots.inject("settings.general.item", () => ctx.slots.register({
         name: "settings.general.item",
         id: "whale-mist",
@@ -4135,12 +6980,39 @@ window.__ModuleLoader__.load({
         order: -5,
         inject: () => ({ statusController: { theme: themeSignal, qaEnabled } })
       }, WhaleSessionStatus));
+
+      ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
+        name: "conversation.session.header.actions",
+        id: "whale-appearance-trigger",
+        order: -4,
+        inject: () => ({ appearanceBridge })
+      }, WhaleHeaderAppearanceTrigger));
+
+      ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+        name: "shell.overlay",
+        id: "whale-docked-appearance-panel",
+        order: 100,
+        inject: () => ({ appearanceBridge, controller })
+      }, WhaleDockedAppearancePanel));
     }
 
     exports.createWallpaperEngine = createWallpaperEngine;
     exports.createBackdrop = createBackdrop;
     exports.inject = inject;
     exports.apply = apply;
+    exports.deriveAccentValues = deriveAccentValues;
+    exports.deriveButtonForeground = deriveButtonForeground;
+    exports.deriveButtonHover = deriveButtonHover;
+    exports.deriveInkColor = deriveInkColor;
+    exports.contrastRatio = contrastRatio;
+    exports.relativeLuminance = relativeLuminance;
+    exports.HEX_COLOR_PATTERN = HEX_COLOR_PATTERN;
+    exports.createMainRendererBridgeClient = createMainRendererBridgeClient;
+    exports.executeAuthoritativeAction = executeAuthoritativeAction;
+    exports.buildAppearanceSnapshot = buildAppearanceSnapshot;
+    exports.WhaleHeaderAppearanceTrigger = WhaleHeaderAppearanceTrigger;
+    exports.WhaleDockedAppearancePanel = WhaleDockedAppearancePanel;
+    exports.DETACHABLE_MODES = DETACHABLE_MODES;
     return module.exports;
   }
 });

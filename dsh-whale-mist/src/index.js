@@ -4,6 +4,8 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerWallpaperRoutes, resolveHostResources, describeScenes, probeAvailability } from './wallpaper/session.js';
 import { createWallpaperLibrary } from './wallpaper/library.js';
+import { createDetachableHttpHost } from './detachable-host.js';
+import { createEdgeWindowAdapter } from './detachable-edge-adapter.js';
 
 /**
  * The only library roots this Host will read. They are explicit absolutes configured here, never a
@@ -30,10 +32,19 @@ export function apply(ctx) {
   // the flag keeps the icon helper and any window work out of the check.
   const isolated = process.env.WM_CONTRACT_ISOLATED === '1';
   const executable = process.execPath;
+  // Wallpaper Engine library instance shared across Wallpaper Host and Detachable Host
+  let library = null;
+  try {
+    library = createWallpaperLibrary({ roots: WALLPAPER_LIBRARY_ROOTS });
+  } catch (err) {
+    console.warn('[Whale wallpaper] library initialization degraded:', err.message);
+  }
+
   // Desktop's Host gets ELECTRON_RUN_AS_NODE; DSH_DESKTOP_NODE_EXECUTABLE is
   // only supplied to package-manager children, not to the running Host.
   if (isolated) {
-    registerWallpaper(ctx);
+    registerWallpaper(ctx, { library });
+    registerDetachableHost(ctx, { library });
     return;
   }
   if (process.platform !== 'win32' || process.env.ELECTRON_RUN_AS_NODE !== '1' ||
@@ -83,11 +94,14 @@ export function apply(ctx) {
   // Wallpaper Engine playback. `inject` above guarantees the carrier is composed before
   // this runs; the packaged helper and the local sample can still be missing, and that
   // must only disable the wallpaper, never the appearance or the icon.
-  registerWallpaper(ctx);
+  registerWallpaper(ctx, { library });
+
+  // Detachable appearance companion host and protected bootstrap
+  registerDetachableHost(ctx, { library });
 }
 
 /** Registers the constrained wallpaper routes; failures only disable the wallpaper. */
-function registerWallpaper(ctx) {
+function registerWallpaper(ctx, { library = null } = {}) {
   try {
     const resources = resolveHostResources();
     const availability = probeAvailability({ helper: resources.helper });
@@ -98,9 +112,159 @@ function registerWallpaper(ctx) {
     // The library is built here so the approved roots come from Host configuration and the routes
     // only ever see ids. An unusable root is reported by the list itself, not by throwing: the
     // appearance UI and the verified sample must keep working.
-    const library = createWallpaperLibrary({ roots: WALLPAPER_LIBRARY_ROOTS });
-    registerWallpaperRoutes(ctx, { ...resources, library });
+    const activeLibrary = library || createWallpaperLibrary({ roots: WALLPAPER_LIBRARY_ROOTS });
+    registerWallpaperRoutes(ctx, { ...resources, library: activeLibrary });
   } catch (error) {
     console.warn('[Whale wallpaper] setup failed:', error.message);
+  }
+}
+
+/**
+ * Registers the detachable appearance companion host, index bootstrap injection,
+ * and authenticated bootstrap route. Failures never affect wallpaper or icon helper.
+ */
+function registerDetachableHost(ctx, { library = null } = {}) {
+  try {
+    const isWindows = process.platform === 'win32';
+    const isolated = process.env.WM_CONTRACT_ISOLATED === '1';
+    const windowAdapter = (!isolated && isWindows) ? createEdgeWindowAdapter() : null;
+    const desktopOrigin = (ctx.webServer?.protocol && ctx.webServer?.host)
+      ? `${ctx.webServer.protocol}//${ctx.webServer.host}${ctx.webServer.port ? `:${ctx.webServer.port}` : ''}`
+      : null;
+    const allowedOrigins = ['dsh-app://app', desktopOrigin].filter(Boolean);
+    const host = createDetachableHttpHost({
+      library,
+      windowAdapter,
+      allowedOrigins,
+      mainAllowedOrigins: allowedOrigins,
+    });
+
+    let disposed = false;
+    const startPromise = host.start().catch((err) => {
+      console.warn('[Whale detachable host] start failed:', err.message);
+      return null;
+    });
+
+    ctx.on?.('webserver/index-inject', (table) => {
+      if (disposed) return;
+      const port = host.getPort();
+      if (port) {
+        // Expose only port to index table; credentials must be retrieved via authenticated bootstrap route
+        table.push({
+          kind: 'global',
+          name: '__WHALE_DETACHABLE_BOOT__',
+          value: { port },
+        });
+      }
+    });
+
+    let disposeRoute = null;
+    if (ctx.webServer && typeof ctx.webServer.register === 'function') {
+      try {
+        disposeRoute = ctx.webServer.register({
+          kind: 'exact',
+          path: '/whale-appearance/bootstrap',
+          handler: async (req, res) => {
+            if (disposed) {
+              res.writeHead(503, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: false, error: 'host-disposed' }));
+              return;
+            }
+
+            // Fail-closed authentication using official Cordis HostConnectionService
+            const connection = typeof ctx.get === 'function' ? ctx.get('connection') : null;
+            let authed = false;
+            let rejectStatus = 401;
+
+            if (connection) {
+              if (typeof connection.requestRejection === 'function') {
+                const rej = connection.requestRejection(req);
+                if (rej === undefined) {
+                  authed = true;
+                } else {
+                  rejectStatus = rej;
+                }
+              } else if (typeof connection.admit === 'function') {
+                const adm = connection.admit(req);
+                if (adm && !adm.rejection) {
+                  authed = true;
+                } else if (adm?.rejection) {
+                  rejectStatus = adm.rejection;
+                }
+              } else if (typeof connection.isAuthenticated === 'function') {
+                const secure = ctx.webServer?.protocol === 'https:';
+                if (connection.isAuthenticated(req, secure)) {
+                  authed = true;
+                }
+              }
+            }
+
+            if (!authed) {
+              res.writeHead(rejectStatus, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+              });
+              res.end(JSON.stringify({ ok: false, error: rejectStatus === 403 ? 'forbidden' : 'unauthorized' }));
+              return;
+            }
+
+            const port = host.getPort();
+            const mainToken = host.getMainToken();
+            if (!port || !mainToken) {
+              res.writeHead(503, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: false, error: 'detachable-host-not-ready' }));
+              return;
+            }
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+              'Referrer-Policy': 'no-referrer',
+            });
+            res.end(JSON.stringify({ ok: true, port, mainToken }));
+          },
+        });
+      } catch (err) {
+        console.warn('[Whale detachable host] bootstrap route registration failed:', err.message);
+      }
+    }
+
+    let cleanupPromise = null;
+    const cleanup = () => {
+      if (cleanupPromise) return cleanupPromise;
+      disposed = true;
+      const promise = (async () => {
+        if (typeof disposeRoute === 'function') {
+          try { disposeRoute(); } catch {}
+        }
+        try {
+          await startPromise;
+        } catch {}
+        try {
+          const res = await host.stop();
+          if (res && res.ok === false) {
+            console.warn('[Whale detachable host] stop unconfirmed cleanup:', res.error);
+            cleanupPromise = null; // allow bounded retry on unconfirmed cleanup
+            return res;
+          }
+          return res || { ok: true };
+        } catch (err) {
+          console.warn('[Whale detachable host] stop error:', err.message);
+          cleanupPromise = null; // allow bounded retry on failure
+          throw err;
+        }
+      })();
+      cleanupPromise = promise;
+      return promise;
+    };
+
+    if (typeof ctx.effect === 'function') {
+      ctx.effect(() => () => cleanup());
+    }
+    ctx.on?.('dispose', () => cleanup());
+
+    return host;
+  } catch (error) {
+    console.warn('[Whale detachable host] setup failed:', error.message);
+    return null;
   }
 }

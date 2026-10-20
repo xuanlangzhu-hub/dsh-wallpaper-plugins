@@ -153,7 +153,7 @@ test('--initial-offscreen rides along with the window open request', () => {
   const recognized = spawnSync(probeExe, ['--we-open', 'WhaleWallpaperProbe-self-test-absent', 'C:\\temp\\not-a-project.txt', '1280', '720', '--initial-offscreen'], { windowsHide: true, timeout: 30000, encoding: 'utf8' });
   assert.notEqual(recognized.status, 0);
   assert.doesNotMatch(recognized.stderr ?? '', /Usage: WallpaperProbe/);
-  assert.match(recognized.stderr ?? '', /absolute \.json path/);
+  assert.match(recognized.stderr ?? '', /absolute \.json(?: or \.mp4)? path/);
 });
 
 test('the bounded frame log keeps a long session small', async () => {

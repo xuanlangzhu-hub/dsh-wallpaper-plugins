@@ -20,6 +20,11 @@ const int FrameLogCapacity = 1200;
 var cliJson = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 try
 {
+// Pure parser entry: no desktop access, process launch, window enumeration or capture.
+if (args.Length == 2 && args[0] == "--validate-wallpaper-file") {
+    Console.WriteLine(JsonSerializer.Serialize(new { file = SourceWindowHelper.RequireProjectFile(args[1]) }, cliJson));
+    return;
+}
 Native.EnsureDefaultDesktop();
 if (args.Length >= 1 && args[0] == "--taskbar-worker") { Environment.ExitCode = TaskbarHideRuntime.RunWorkerEntry(args); return; }
 if (args.Length == 1 && args[0] == "--self-test-pipe") { await FramePipe.Write(Console.OpenStandardOutput(), [255, 216, 255, 217], 7, 1700000000123, 1280, 720, CancellationToken.None); return; }

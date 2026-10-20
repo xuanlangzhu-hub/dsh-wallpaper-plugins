@@ -25,7 +25,7 @@ function localParts(value){
   return clean;
 }
 // Reject links at every component, even links that currently resolve inside the project.
-async function boundFile(base,parts){
+export async function boundFile(base,parts){
   let path=base;
   for(let i=0;i<parts.length;i++){
     path=join(path,parts[i]);
@@ -77,7 +77,9 @@ function fileError(error,missing){return error.catalogReason??(error.code==='ENO
 
 async function record(directory,project){
   const data=project.data;const type=['scene','video','web'].includes(data.type)?data.type:'unknown';
-  const result={id:id(project.path),title:title(data.title,parse(directory).base),type,project:project.path,entry:null,preview:null,
+  const rawRating = typeof data.contentrating === 'string' ? data.contentrating : '';
+  const contentRating = ['Everyone', 'Questionable', 'Mature'].includes(rawRating) ? rawRating : 'unknown';
+  const result={id:id(project.path),title:title(data.title,parse(directory).base),type,contentRating,project:project.path,entry:null,preview:null,
     available:false,reason:null,warnings:[],playbackVerified:false,workshopId:typeof data.workshopid==='string'&&/^\d{1,20}$/.test(data.workshopid)?data.workshopid:null};
   let declared;
   try{declared=localParts(data.file);}catch(e){result.reason=e.catalogReason;}
@@ -107,7 +109,7 @@ async function record(directory,project){
   }
   if(!result.preview&&!result.warnings.includes('unsafe_preview'))result.warnings.push('missing_preview');
   if(!result.reason){
-    if(type==='scene')result.available=true;
+    if(type==='scene'||(type==='video'&&parse(result.entry).ext.toLowerCase()==='.mp4'))result.available=true;
     else result.reason=type==='unknown'?'unknown_type':'playback_type_not_supported';
   }
   return result;
@@ -126,7 +128,7 @@ export function isCatalogId(value){
  */
 export async function verifyCatalogEntry(item,{roots}={}){
   if(!item||typeof item!=='object'||!isCatalogId(item.id))throw fail('unknown_wallpaper');
-  if(item.type!=='scene')throw fail(item.type==='unknown'?'unknown_type':'playback_type_not_supported');
+  if(item.type!=='scene'&&item.type!=='video')throw fail(item.type==='unknown'?'unknown_type':'playback_type_not_supported');
   if(typeof item.project!=='string'||typeof item.entry!=='string')throw fail('missing_content');
   if(!Array.isArray(roots)||!roots.length)throw fail('root_unavailable');
   const approved=[];
@@ -158,6 +160,7 @@ export async function verifyCatalogEntry(item,{roots}={}){
   const data=project.data;
   const type=['scene','video','web'].includes(data.type)?data.type:'unknown';
   if(type!==item.type)throw fail('type_changed');
+  if(type==='video'&&parse(entryPath).ext.toLowerCase()!=='.mp4')throw fail('playback_type_not_supported');
   // The scene.pkg fallback exists for published packages whose metadata still says file="scene.json"
   // while only the package ships. It is NOT a way to survive a declaration that is itself unsafe: a
   // traversal, an absolute path, an ADS name or a link is refused here exactly as the scan refuses it,
@@ -171,7 +174,7 @@ export async function verifyCatalogEntry(item,{roots}={}){
     // the shipped package, may resolve to that package again.
     try{physicalEntry=await boundFile(projectDirectory,declared);}
     catch(error){
-      if(error.code!=='ENOENT')throw error;
+      if(type!=='scene'||error.code!=='ENOENT')throw error;
       const fallback=await boundFile(projectDirectory,['scene.pkg']);
       if(identity(fallback.path)!==identity(entryPath))throw fail('entry_changed');
       physicalEntry=fallback;
@@ -183,10 +186,175 @@ export async function verifyCatalogEntry(item,{roots}={}){
   // The declared content must still be the same physical file the snapshot pointed at.
   if(identity(physicalEntry.path)!==identity(entryPath))throw fail('entry_changed');
   if(id(projectPath)!==item.id)throw fail('moved');
-  return {id:item.id,title:item.title,type:'scene',project:projectPath,entry:physicalEntry.path};
+  return {id:item.id,title:item.title,type,project:projectPath,entry:physicalEntry.path};
 }
 
-/** available means eligible for later scene verification, never proven playable. */
+/**
+ * Re-verifies a preview file against approved roots, guards against symlinks/junctions/tampering,
+ * reads the file with double-stat checks, and validates the raster magic bytes.
+ * Returns { buffer, contentType, bytes }.
+ */
+export async function verifyCatalogPreview(item, { roots, maxBytes = 10 * 1024 * 1024, signal = null } = {}) {
+  if (!item || typeof item !== 'object' || typeof item.preview !== 'string' || !item.preview) {
+    throw fail('missing_preview');
+  }
+  if (!Array.isArray(roots) || !roots.length) {
+    throw fail('root_unavailable');
+  }
+
+  const approved = [];
+  for (const root of roots) {
+    try {
+      const info = await lstat(resolve(root));
+      if (info.isSymbolicLink() || !info.isDirectory()) continue;
+      approved.push(await realpath(root));
+    } catch {}
+  }
+  if (!approved.length) throw fail('root_unavailable');
+
+  let previewPath, projectPath;
+  try {
+    // Check logical path components for symlinks or junctions BEFORE realpath
+    // This prevents retargeting via junctions swapped in after the initial scan
+    await noLinks(item.preview);
+    if (item.project) {
+      await noLinks(item.project);
+    }
+    previewPath = await noLinks(await realpath(item.preview));
+    projectPath = item.project ? await noLinks(await realpath(item.project)) : null;
+  } catch (error) {
+    throw fail(error.code === 'ENOENT' ? 'missing_preview' : (error.catalogReason ?? 'unreadable_file'));
+  }
+
+  let verifiedContentRating = 'unknown';
+  if (projectPath) {
+    if (id(projectPath) !== item.id) {
+      throw fail('moved');
+    }
+    const projectDir = dirname(resolve(projectPath));
+    const project = await boundedProject(projectDir, CATALOG_LIMITS.maxJsonBytes);
+    const declaredPreview = typeof project.data?.preview === 'string' && project.data.preview ? project.data.preview : null;
+    const candidates = declaredPreview ? [declaredPreview] : ['preview.gif', 'preview.png', 'preview.jpg', 'preview.jpeg', 'preview.webp'];
+    let matched = false;
+    for (const name of candidates) {
+      try {
+        const parts = localParts(name);
+        const physicalDeclared = await boundFile(projectDir, parts);
+        if (identity(physicalDeclared.path) === identity(previewPath)) {
+          matched = true;
+          break;
+        }
+      } catch {}
+    }
+    if (!matched) {
+      throw fail('preview_changed');
+    }
+    const r = project.data?.contentrating;
+    verifiedContentRating = ['Everyone', 'Questionable', 'Mature'].includes(r) ? r : 'unknown';
+  } else if (item.id === 'lucy') {
+    verifiedContentRating = 'Everyone';
+  }
+
+  if (!approved.some(root => inside(root, previewPath))) {
+    throw fail('unsafe_path');
+  }
+  if (projectPath && !approved.some(root => inside(root, projectPath))) {
+    throw fail('unsafe_path');
+  }
+
+  let previewInfo;
+  try {
+    previewInfo = await lstat(previewPath);
+  } catch (error) {
+    throw fail(error.code === 'ENOENT' ? 'missing_preview' : 'unreadable_file');
+  }
+  if (previewInfo.isSymbolicLink()) throw fail('link_refused');
+  if (!previewInfo.isFile()) throw fail('not_regular_file');
+  if (!previewInfo.size) throw fail('empty_preview');
+  if (previewInfo.size > maxBytes) throw fail('preview_too_large');
+
+  if (signal?.aborted) throw fail('preview_aborted');
+
+  const handle = await open(previewPath, 'r');
+  try {
+    const before = await handle.stat();
+    if (!before.isFile()) throw fail('not_regular_file');
+    if (before.size > maxBytes) throw fail('preview_too_large');
+    if (
+      previewInfo.ino !== before.ino ||
+      previewInfo.dev !== before.dev ||
+      previewInfo.size !== before.size ||
+      previewInfo.mtimeMs !== before.mtimeMs
+    ) {
+      throw fail('preview_changed');
+    }
+
+    const buffer = Buffer.alloc(before.size);
+    let count = 0;
+    while (count < buffer.length) {
+      if (signal?.aborted) throw fail('preview_aborted');
+      const r = await handle.read(buffer, count, buffer.length - count, null);
+      if (!r.bytesRead) break;
+      count += r.bytesRead;
+    }
+    if (count !== before.size) throw fail('unreadable_file');
+
+    const after = await handle.stat();
+    const current = await lstat(previewPath);
+    if (
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      before.ino !== current.ino ||
+      before.dev !== current.dev ||
+      after.size !== current.size ||
+      after.mtimeMs !== current.mtimeMs
+    ) {
+      throw fail('preview_changed');
+    }
+
+    let contentType = null;
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (
+      buffer.length >= 8 &&
+      buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47 &&
+      buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a
+    ) {
+      contentType = 'image/png';
+    }
+    // JPEG: FF D8 FF
+    else if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      contentType = 'image/jpeg';
+    }
+    // WebP: RIFF ... WEBP
+    else if (
+      buffer.length >= 12 &&
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+    ) {
+      contentType = 'image/webp';
+    }
+    // GIF: GIF87a or GIF89a
+    else if (
+      buffer.length >= 6 &&
+      buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38 &&
+      (buffer[4] === 0x37 || buffer[4] === 0x39) && buffer[5] === 0x61
+    ) {
+      contentType = 'image/gif';
+    }
+    // BMP: BM (42 4D)
+    else if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
+      contentType = 'image/bmp';
+    } else {
+      throw fail('unsupported_image_format');
+    }
+
+    return { buffer, contentType, bytes: buffer.length, contentRating: verifiedContentRating };
+  } finally {
+    await handle.close();
+  }
+}
+
+/** available means eligible for later scene/MP4 verification, never proven playable. */
 export async function scanWallpaperCatalog({roots,limits={}}={}){
   if(!Array.isArray(roots)||!roots.length||roots.length>8)throw new TypeError('Provide 1..8 explicitly approved absolute roots');
   const budget={...CATALOG_LIMITS};
@@ -221,7 +389,7 @@ export async function scanWallpaperCatalog({roots,limits={}}={}){
       }catch(error){
         const reason=fileError(error,'missing_project');
         if(current.depth>0||reason!=='missing_project')add({id:id(join(current.path,'project.json')),title:parse(current.path).base,type:'unknown',
-          project:null,entry:null,preview:null,available:false,reason,warnings:[],playbackVerified:false,workshopId:null});
+          contentRating:'unknown',project:null,entry:null,preview:null,available:false,reason,warnings:[],playbackVerified:false,workshopId:null});
         if(reason!=='missing_project')continue;
       }
       if(current.depth>=budget.maxDepth)continue;
@@ -243,8 +411,57 @@ export async function scanWallpaperCatalog({roots,limits={}}={}){
   result.items.sort((a,b)=>a.id.localeCompare(b.id));return result;
 }
 
+/** Re-verifies on-disk project.json content rating without reading preview image bytes. */
+export async function verifyCatalogItemRating(item, { roots, signal = null } = {}) {
+  if (signal?.aborted) return 'unknown';
+  if (!item || typeof item !== 'object') return 'unknown';
+  if (item.id === 'lucy') {
+    if (item.project) {
+      try {
+        await noLinks(item.project);
+        if (signal?.aborted) return 'unknown';
+        const pPath = await noLinks(await realpath(item.project));
+        const projectDir = dirname(resolve(pPath));
+        const project = await boundedProject(projectDir, CATALOG_LIMITS.maxJsonBytes);
+        const r = project.data?.contentrating;
+        return ['Everyone', 'Questionable', 'Mature'].includes(r) ? r : 'Everyone';
+      } catch {
+        return 'Everyone';
+      }
+    }
+    return 'Everyone';
+  }
+  if (!item.project) return item.contentRating || 'unknown';
+  try {
+    await noLinks(item.project);
+    if (signal?.aborted) return 'unknown';
+    const projectPath = await noLinks(await realpath(item.project));
+    if (Array.isArray(roots) && roots.length) {
+      const approved = [];
+      for (const root of roots) {
+        try {
+          const info = await lstat(resolve(root));
+          if (!info.isSymbolicLink() && info.isDirectory()) {
+            approved.push(await realpath(root));
+          }
+        } catch {}
+      }
+      if (approved.length && !approved.some(root => inside(root, projectPath))) {
+        return 'unknown';
+      }
+    }
+    if (signal?.aborted) return 'unknown';
+    const projectDir = dirname(resolve(projectPath));
+    const project = await boundedProject(projectDir, CATALOG_LIMITS.maxJsonBytes);
+    const r = project.data?.contentrating;
+    return ['Everyone', 'Questionable', 'Mature'].includes(r) ? r : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** Browser-safe metadata for a future UI; deliberately no paths, HTML or general properties. */
 export function publicCatalogItem(item){
-  return {id:item.id,title:item.title,type:item.type,available:item.available,reason:item.reason,warnings:[...item.warnings],
+  return {id:item.id,title:item.title,type:item.type,contentRating:item.contentRating||'unknown',available:item.available,reason:item.reason,warnings:[...item.warnings],
     playbackVerified:false,previewRef:item.preview?{wallpaperId:item.id,kind:'preview'}:null};
 }

@@ -282,14 +282,17 @@ public static class SourceWindowHelper
         return value;
     }
 
-    /// <summary>Only the workshop project.json of the supervised sample is accepted.</summary>
+    /// <summary>Only absolute JSON project or MP4 media paths are accepted; Host verifies library ownership.</summary>
     public static string RequireProjectFile(string? file)
     {
-        var value = (file ?? "").Trim().Trim('"');
-        if (value.Length == 0 || value.Length > 400 || !value.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Wallpaper project file must be an absolute .json path.");
+        var value = (file ?? "").Trim();
+        if (value.Length == 0 || value.Length > 400 || !Path.IsPathFullyQualified(value)
+            || !(value.EndsWith(".json", StringComparison.OrdinalIgnoreCase) || value.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("Wallpaper project file must be an absolute .json or .mp4 path.");
+        if (value.StartsWith(@"\\?\") || value.StartsWith(@"\\.\") || value.Substring(2).Contains(':'))
+            throw new ArgumentException("Wallpaper project file contains unsupported characters.");
         foreach (char c in value)
-            if (c < 0x20 || c == '"' || c == ';') throw new ArgumentException("Wallpaper project file contains unsupported characters.");
+            if (c < 0x20 || "\";<>|?*".Contains(c)) throw new ArgumentException("Wallpaper project file contains unsupported characters.");
         return Path.GetFullPath(value);
     }
 

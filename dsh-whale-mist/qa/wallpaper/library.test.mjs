@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, writeFile, symlink, rename, readFile, rm } from 'node:f
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createMediaBridge } from '../../src/wallpaper/media-bridge.js';
 import { createWallpaperLibrary, VERIFIED_SCENES } from '../../src/wallpaper/library.js';
 import { scanWallpaperCatalog, publicCatalogItem, verifyCatalogEntry, isCatalogId } from '../../src/wallpaper/catalog.js';
 import { registerWallpaperRoutes, createPreviewSession, sceneSelection, isSceneId } from '../../src/wallpaper/session.js';
@@ -54,6 +55,7 @@ function harness({ roots, scan, verify, exists = path => path === HELPER || path
     exists,
     onWarn: () => {},
     library,
+    mediaBridge: createMediaBridge({ env: { LOCALAPPDATA: base }, checkPaths:async()=>true,checkRoot: async () => true }),
     sessionFactory: options => {
       const session = fakeSession(options);
       sessions.push(session);
@@ -65,14 +67,15 @@ function harness({ roots, scan, verify, exists = path => path === HELPER || path
 
 function fakeSession() {
   let cleanup = null;
+  let mediaLease = null;
   const session = {
     calls: [],
     hub: { latest: null, closed: false },
     closed: false,
     created: false,
     scene: null,
-    async create(options) { session.calls.push('create'); session.created = true; session.scene = options.scene; },
-    async stop() { session.calls.push('stop'); session.hub.closed = true; cleanup = { outcome: 'closed', closed: true }; session.closed = true; return cleanup; },
+    async create(options) { mediaLease = options.mediaLease; session.calls.push('create'); session.created = true; session.scene = options.scene; },
+    async stop() { session.calls.push('stop'); session.hub.closed = true; cleanup = { outcome: 'closed', closed: true }; if (mediaLease) { await mediaLease.release({ closed: true, workersExited: true }); mediaLease = null; } session.closed = true; return cleanup; },
     isClosed: () => session.closed,
     report: () => ({ window: { location: 'WhaleWallpaperProbe-library-test', created: session.created } }),
     state: () => ({ cleanup, config: session.scene ? { mode: session.scene.mode, sceneId: session.scene.sceneId } : null }),
@@ -116,8 +119,9 @@ await checked('The list loads on demand, and a status poll never scans', async (
   assert.equal(byTitle.Alpha.available, true);
   assert.equal(byTitle.Alpha.type, 'scene');
   assert.equal(byTitle.Alpha.playbackVerified, false, 'a scene is not verified just because its files are complete');
-  assert.equal(byTitle.Beta.available, false);
-  assert.equal(byTitle.Beta.reason, 'playback_type_not_supported');
+  assert.equal(byTitle.Beta.available, true);
+  assert.equal(byTitle.Beta.reason, null);
+  assert.equal(byTitle.Beta.playbackVerified, false);
   assert.equal(Object.hasOwn(byTitle.Alpha, 'project'), false, 'the public entry carries no path');
   assert.equal(JSON.stringify(refreshed.body).includes(root), false, 'no fixture root may leak into the payload');
 });
@@ -607,6 +611,7 @@ function realSessionHarness({ roots, exists, verify } = {}) {
     exists,
     onWarn: () => {},
     library,
+    mediaBridge: createMediaBridge({ env: { LOCALAPPDATA: base }, checkPaths:async()=>true,checkRoot: async () => true }),
     // The real session, with only its process boundaries replaced.
     sessionFactory: options => createPreviewSession({
       ...options,
@@ -701,6 +706,31 @@ await checked('R3: a normal restart still verifies once and reuses that result',
   const after = openCalls(helperCalls).slice(opened).map(entry => entry[2]);
   assert.equal(after.every(value => String(value).includes('next')), true, `the restarted run opens the approved project: ${JSON.stringify(after)}`);
   assert.notEqual(restarted.status, 0, 'the route answers');
+});
+
+
+await checked('MP4 route: Host resolves media, ignores body paths, stops and switches using same lifecycle', async () => {
+ const root=await fixtureRoot();const dir=await project(root,'video',{type:'video',title:'Synthetic video',file:'clip.mp4'},['clip.mp4']);
+ const {route,sessions}=harness({roots:[root]});
+ const list=await call(route,'GET','/whale-wallpaper/library?ensure=1');const id=list.body.items.find(x=>x.type==='video').id;
+ const start=await call(route,'POST','/whale-wallpaper/start',{scene:id,mode:'daily',project:'C:\\evil.mp4',type:'scene'});
+ assert.equal(start.status,200);assert.notEqual(sessions[0].scene.project,join(dir,'clip.mp4'));assert.match(sessions[0].scene.project,/^[\x20-\x7e]+$/);assert.equal(await readFile(sessions[0].scene.project,'utf8'),'fixture content');
+ const restart=await call(route,'POST','/whale-wallpaper/restart',{scene:'lucy',mode:'daily'});
+ assert.equal(restart.status,200);assert.deepEqual(sessions[0].calls,['create','stop']);assert.equal(sessions[1].scene.sceneId,'lucy');
+ const stop=await call(route,'POST','/whale-wallpaper/stop',{});assert.equal(stop.status,200);assert.deepEqual(sessions[1].calls,['create','stop']);
+ await writeFile(join(dir,'project.json'),JSON.stringify({type:'video',file:'missing.mp4'}));
+ const refused=await call(route,'POST','/whale-wallpaper/start',{scene:id,mode:'daily'});
+ assert.equal(refused.status,409);assert.equal(sessions.length,2,'no new session from stale video metadata');
+});
+
+await checked('MP4 real session: trusted media path reaches actual --we-open builder, no media pipeline bypass', async () => {
+ const root=await fixtureRoot();const dir=await project(root,'video',{type:'video',title:'Synthetic',file:'clip.mp4'},['clip.mp4']);
+ const {route,helperCalls}=realSessionHarness({roots:[root],exists:()=>true});
+ const list=await call(route,'GET','/whale-wallpaper/library?ensure=1');const id=list.body.items.find(x=>x.type==='video').id;
+ await call(route,'POST','/whale-wallpaper/start',{scene:id,mode:'daily',project:'C:\\evil.mp4'});
+ assert.equal(openCalls(helperCalls).length,1);assert.notEqual(openCalls(helperCalls)[0][2],join(dir,'clip.mp4'));assert.match(openCalls(helperCalls)[0][2],/^[\x20-\x7e]+$/);assert.equal(await readFile(openCalls(helperCalls)[0][2],'utf8'),'fixture content');
+ assert.equal(JSON.stringify(helperCalls).includes('evil'),false);
+ // Fake native discovery deliberately lacks valid identity, so this proves argv construction only.
 });
 
 after(async () => {

@@ -1,8 +1,8 @@
 // Local, machine-checked validation for the supervised managed-window mode.
 // The Host creates and closes the wallpaper window itself, so every value that
 // reaches a helper command line is validated here first: the location must be
-// this round's unique window name, and the sample must be an absolute .json
-// project path. Nothing in this file reads the network or the environment.
+// this round's unique window name, and the sample must be an absolute .json or .mp4
+// playback path. Nothing in this file reads the network or the environment.
 
 export const LOCATION_PREFIX = 'WhaleWallpaperProbe-';
 const MAX_LOCATION = 120;
@@ -28,8 +28,9 @@ export function validateProjectFile(value) {
   if (!file) throw new Error('wallpaper project file is required');
   if (file.length > MAX_FILE) throw new Error(`wallpaper project file must be at most ${MAX_FILE} characters`);
   if (!/^[a-zA-Z]:[\\/]/.test(file) && !file.startsWith('\\\\')) throw new Error('wallpaper project file must be an absolute path');
-  if (!file.toLowerCase().endsWith('.json')) throw new Error('wallpaper project file must be a .json path');
-  if (/[";]/.test(file)) throw new Error('wallpaper project file contains unsupported characters');
+  if (file.startsWith('\\\\') && !/^\\\\[^\\/:]+\\[^\\/:]+\\/.test(file)) throw new Error('wallpaper project file must be an absolute path');
+  if (!/\.(json|mp4)$/i.test(file)) throw new Error('wallpaper project file must be a .json or .mp4 path');
+  if (file.startsWith('\\\\.\\') || /[\x00-\x1f";<>|?*]/.test(file) || file.slice(2).includes(':')) throw new Error('wallpaper project file contains unsupported characters');
   return file;
 }
 
@@ -107,6 +108,15 @@ export function normalizeWindow(window) {
   const pid = window.pid ?? window.Pid;
   const title = window.title ?? window.Title;
   if (!Number.isInteger(hwnd) || hwnd <= 0) throw new Error(`window record has no usable handle: ${JSON.stringify(window)}`);
-  return { hwnd, pid: typeof pid === 'number' ? pid : null, title,
-    visible: window.visible ?? window.Visible ?? null, left: window.left ?? window.Left ?? null, top: window.top ?? window.Top ?? null };
+  const rawStartUtc = window.startUtc ?? window.StartUtc ?? null;
+  const startUtc = typeof rawStartUtc === 'string' && rawStartUtc.trim() ? rawStartUtc.trim() : null;
+  return {
+    hwnd,
+    pid: typeof pid === 'number' ? pid : null,
+    title,
+    visible: window.visible ?? window.Visible ?? null,
+    left: window.left ?? window.Left ?? null,
+    top: window.top ?? window.Top ?? null,
+    startUtc,
+  };
 }
