@@ -1,13 +1,21 @@
+> 2026-10-20 当前接续：[rc.40日常试用交接完成](docs/RC40_DAILY_TRIAL_20261020.md)：用户授权保留rc.40，本轮新备份5个Profile/9项关闭存储、37安装文件核验通过；正常重开后原外观布局正常、播放停止、采集0、原WE保持。当前日常DSH0.2.1-rc.2/外观rc.40/Git Bash0.1.1，不自动恢复rc.38；rc.38回退包与本轮备份保留，日后回退先保护届时新增数据。MP4/Lucy前轮短验通过，本轮未重复试播。下文rc.38日常/待候选与短验为阶段历史。
+
 # 插件工作区
 
 主要开发目录为 `dsh-whale-mist`。先读根README、[当前状态](docs/PROJECT_STATUS.md)、插件README及本次相关交付/复审报告。原Tauri壳、WSL迁移不属于本仓库当前开发范围。
 
-## 当前基线（2026-10-16）
+## 当前基线（2026-10-17）
 
-- 日常rc.28；P4实现/候选及Lucy常规短验已收尾，rc.31是可选日常试用候选，不自动切换。见[Lucy结果](docs/RC31_LUCY_ORDINARY_SHORT_TEST_20261016.md)。
-- 工作区manifest/生产assets仍为rc.30冻结基线，源码包含已复审的后续P4和Motion Cadence Trace。使用已审计独立归档，不直接安装工作区或仅改版本号发布。
-- 三体源端速度突变未定位，用户决定暂不推进；同源及无采集证据保留。小G当前无新性能编码任务，不自动恢复专项。
-- 用户已明确授权本轮提交、推送和工作区缓存清理。此授权不包含安装/重启应用或改日常版本；以后仍依当前用户指示执行。
+- 10月17日宿主升级历史：已按[升级记录](docs/DSH_021_RC2_UPGRADE_TRIAL_20261017.md)新备份、安装并核验DSH0.2.1-rc.2、外观rc.35与Git Bash0.1.1，保留新版本。用户确认正常重开、原外观布局及Lucy画面/操作正常；停止后实时Host清理通过、采集进程退出、测试源窗口为空，原WE保持。仅此短验范围通过，Git Bash实际命令、桌宠/推理档位全部动作与长期效果未覆盖。
+- 最新[九审补修](docs/DETACHABLE_APPEARANCE_P1A_NINTH_REPAIR_DELIVERY_20261018.md)经[十审离线通过](docs/DETACHABLE_APPEARANCE_P1A_TENTH_REVIEW_20261018.md)：一秒CreationDate容差撤回，5项身份变化负例拒绝且保留，合法一致正例正常；旧4/3/8项门禁、P0/P1A/历史专项/双Tab及实际SDK保持。161项输入/59资产归档保持，无真实PowerShell/taskkill或日常操作。P1A源码离线范围收尾，真实独立窗/候选仍未验收；此前先B再A的顺序已被用户10月18日新排期替代：A低优先级，按下文当前入口推进P1B-1，仍不安装。
+- 当前接续：[rc.38日常试用交接完成](docs/RC38_DAILY_TRIAL_20261020.md)：用户确认“重开正常，外观布局正常，播放停止”，本轮新备份、35安装文件核验及原外观/布局保持已闭合。当前日常DSH0.2.1-rc.2/外观rc.38/Git Bash0.1.1，保留rc.38，不自动恢复rc.35；本轮5个Profile/9项关闭存储备份及rc.35回退包保留，日后回退先保护届时新增数据。前轮独立窗/吸附及Lucy短验通过，长期表现由日常积累，不重复采样。用户已将壁纸类型扩展排在作者参数前；[本地MP4源码离线接入完成](docs/WALLPAPER_VIDEO_MP4_OFFLINE_DELIVERY_20261020.md)，真实播放尚未验收。[rc.39视频候选已独立构建并核包通过](docs/RC39_VIDEO_MP4_CANDIDATE_REVIEW_20261020.md)，[本轮临时短验已授权并完成新备份、安装rc.39与35项核验](docs/RC39_VIDEO_MP4_SHORT_TEST_20261020.md)，[本轮视频失败并已恢复rc.38，用户确认正常重开/原外观布局/播放停止](docs/RC39_VIDEO_LIVE_FINDINGS_REPAIR_TASK_20261020.md)。[Grok补修经独立复审，null身份与新面板模式/自动播放控件R1/R2源码离线通过](docs/RC39_PLAYBACK_UI_GROK_REPAIR_REVIEW_20261020.md)：209项相关测试及语法/CSS检查通过，设置回退反例已补；未打包或实机验证。[R3路径/容器/准确候选启动链与保留日志离线核验完成](docs/RC39_VIDEO_R3_OFFLINE_INVESTIGATION_20261020.md)：批准MP4为4K/30fps/约12秒，未见明确路径错配；1200条保留记录时间戳递增而hash相同，前台/非前台均出现，根因未定。[有界source-only运行器准备完成](docs/RC39_VIDEO_R3_SOURCE_ONLY_PREPARATION_20261020.md)，33项离线检查通过，含真实Python挂起/异常/缺报告的父监督收束，窗口IO均替身；未实机。[原中文路径MP4可见无采集源观察完成](docs/RC39_VIDEO_R3_SOURCE_ONLY_RESULT_20261020.md)：用户确认黑屏，20.004秒正常关闭、原WE/设置保持并已正常重开DSH。WE日志两轮打开失败80070002且文件名恰好呈GBK误解为UTF-8的损坏，路径编码为强线索未定案。[ASCII相同字节副本无采集源观察完成](docs/RC39_VIDEO_R3_ASCII_SOURCE_RESULT_20261020.md)：用户确认正常播放，13.019秒因用户窗口操作触发可见性门禁提前正常收尾，并已正常重开DSH。中文原路径黑屏/日志损坏与ASCII成功支持路径兼容问题，具体转码边界未定，DSH/WGC视频仍未验收；[受控ASCII桥接实现与离线复核完成](docs/RC39_VIDEO_ASCII_BRIDGE_OFFLINE_REVIEW_20261020.md)：38项桥接、相关Host/UI/独立窗分组回归及1项真实只读Windows ACL/重解析IO通过，6项源码/QA经214项输入保护核对后提升。副本排他发布、两倍配额预留、停止代次及同轮退出证明已接实际链；损坏/迟到/未知关闭保留。合并回归的两项bad port失败及Grok失败尝试均保留，单项有界复核通过，不扩称一次全绿或实机播放通过。[rc.40路径兼容候选已最小整合并核包](docs/RC40_VIDEO_ASCII_BRIDGE_CANDIDATE_REVIEW_20261020.md)：37文件，8项既有文件变化/2新增，原生12文件等同固定rc.39且无Trace；实际tgz解包225项主检查及24项销毁检查、17个JS/CSS/18导入闭包通过。补上重复create不能覆盖活动lease及异步副本释放期间不能提前解锁两项，开发共享QA现40项。新包已单独归档，旧包不变；未安装或操作日常DSH/WE。下一步取得当时方便/正常退出确认，再新备份临时短验，默认恢复rc.38与本轮设置。日常rc.38保持，不改codec/GPU/系统代码页。web、应用类可行性及作者参数后排。源码manifest/assets仍rc.30，定时PAUSED，A/三体/GPU暂缓。
+- [rc.34日常交接](docs/RC34_DAILY_TRIAL_20261017.md)是升级前历史。原0.2.0-rc.2安装器、rc.34/Git Bash0.1.0与本轮完整新备份保留；不自动回退。未来操作需确认届时方便，不能复用本次退出状态。
+- rc.34从不可变rc.31原包独立整合亮度20–120（默认70）、四字段手动预设、文字可读性/聊天底色、独立强调色。仅README/manifest/client三文件变化，12原生运行文件及Host保持rc.31，无Motion Cadence Trace。见[候选审计](docs/RC34_APPEARANCE_FEATURES_CANDIDATE_20261017.md)及[此前短验/恢复](docs/RC34_APPEARANCE_FEATURES_SHORT_TEST_20261017.md)。旧rc.33过曝反馈及归档保持，不为120%单独再测。
+- 预设R1/R2、可读性QA1、强调色A1/A2闭合，实际候选570/566、场景选择、强调色41/144及预设17项补充通过；实机覆盖当前主题/颜色及Lucy，不扩称全部组合/长期稳定。四字段预设不含主题、不自动应用。
+- 用户要真正独立系统窗口、可吸附DSH侧边；[P0七审](docs/DETACHABLE_APPEARANCE_P0_SEVENTH_REVIEW_20261017.md)是骨架历史，当前[P1A十审](docs/DETACHABLE_APPEARANCE_P1A_TENTH_REVIEW_20261018.md)源码离线通过，正式Host路由/静态页与隔离生产页面链路已有证据。真实Edge App窗口与吸附体验、独立候选整合/发布仍未验收，不混入日常rc.35，不将离线通过等同实机通过。由用户转交，不跨会话消息。
+- 工作区manifest/生产assets仍rc.30冻结，源码含后续P4/Trace；当前日常来自已核验的固定rc.38归档（整合来源见rc.38候选复审及本轮日常记录），不直接打整个工作区或仅改版本号发布。
+- rc.35沿用rc.34/rc.31原生P4改善；三体变速根因未定、用户暂缓，不自动恢复三体/性能/GPU专项。rc.34为本轮升级前版本，rc.31/rc.28为更早回退，原包/备份/原始证据保留。
+- 历史推送/清理已完成，本轮未提交推送或清理。后续应用操作确认当时方便/无任务，不复用旧PID/HWND或退出状态；日后回退要先备份当时新数据，不能直接覆盖本轮之后新增设置。
 
 ## 工作与现场保护
 
@@ -23,6 +31,8 @@
 
 ## 检查与交付
 
+- 用户2026-10-18明确要求：禁止无返回、无限重试或依靠用户提醒才停止的QA脚本。启动前设总截止时间与阶段期限；CDP连接/请求、fetch、子进程退出及server.close均须有界，open前close/error/timeout和断连须一次性落定全部Promise。只加process.exit闹钟不算干净清理；事件循环失控须有外层watchdog。先纯替身负例再正常短测，不盲跑旧挂起任务。
+- 本轮自有子进程按句柄/PID/启动时间确认归属，检查exitCode及signalCode；退出未确认则保留profile/证据、非零报告阶段/路径，不能盲删或吞错报成功。交付前核对后台命令结果及遗留记录；UI任务计数不等于活进程。不得全局结束node/Edge或触碰DSH/WE。具体验收见[P1B-1二审C4](docs/DETACHABLE_APPEARANCE_P1B1_SECOND_REVIEW_20261018.md)。
 - `npm run check`、`npm run test:wallpaper-host`及P2/P3/Motion Cadence离线检查可用于相关代码收尾；历史QA有本机路径，先检查输入与独立输出边界。
 - 未改实现时优先核对源码/包，不机械重复测试。改变资源归属或清理流程时按影响补充检查。
 - 编译与代码检查不代替用户实机验收；记录真实后端、包指纹、依赖与实际覆盖范围，不把短验扩成长期稳定。

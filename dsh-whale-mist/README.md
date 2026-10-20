@@ -1,3 +1,5 @@
+> 2026-10-20 当前接续：[rc.40日常试用交接完成](../docs/RC40_DAILY_TRIAL_20261020.md)：用户授权保留rc.40，本轮新备份5个Profile/9项关闭存储、37安装文件核验通过；正常重开后原外观布局正常、播放停止、采集0、原WE保持。当前日常DSH0.2.1-rc.2/外观rc.40/Git Bash0.1.1，不自动恢复rc.38；rc.38回退包与本轮备份保留，日后回退先保护届时新增数据。MP4/Lucy前轮短验通过，本轮未重复试播。下文rc.38日常/待候选与短验为阶段历史。
+
 # Whale Appearance / 鲸系外观
 
 DeepSeek Harness Web UI 的一组可安装主题，包含浅色 `Whale Mist / 鲸雾` 与
@@ -8,11 +10,19 @@ DeepSeek Harness Web UI 的一组可安装主题，包含浅色 `Whale Mist / �
 本插件继续维护。原 Whale Tauri 桌面壳已冻结，Windows 的当前使用入口为官方
 DeepSeek Harness Desktop；后续主题和其他插件按需求独立迭代。
 
-## 当前状态（2026-10-16）
+## 当前状态（2026-10-17）
 
-日常仍为rc.28；rc.31完成P4及Lucy常规短验，作为可选试用候选保留。rc.32是诊断候选，三体专项暂缓。
-工作区manifest/生产assets仍冻结在rc.30，源码包含后续P4/Trace；请使用已审计的独立归档，不直接将工作区打包当作rc.31/rc.32安装。
-当前结论见[项目状态](../docs/PROJECT_STATUS.md)及[Lucy短验](../docs/RC31_LUCY_ORDINARY_SHORT_TEST_20261016.md)；以下版本段落保留对应历史边界。
+当前接续：[rc.38日常试用交接完成](../docs/RC38_DAILY_TRIAL_20261020.md)：用户确认“重开正常，外观布局正常，播放停止”，本轮新备份、35安装文件核验及原外观/布局保持已闭合。当前日常DSH0.2.1-rc.2/外观rc.38/Git Bash0.1.1，保留rc.38，不自动恢复rc.35；本轮5个Profile/9项关闭存储备份及rc.35回退包保留，日后回退先保护届时新增数据。前轮独立窗/吸附及Lucy短验通过，长期表现由日常积累，不重复采样。用户已将壁纸类型扩展排在作者参数前；[本地MP4源码离线接入完成](../docs/WALLPAPER_VIDEO_MP4_OFFLINE_DELIVERY_20261020.md)，真实播放尚未验收。[rc.39视频候选已独立构建并核包通过](../docs/RC39_VIDEO_MP4_CANDIDATE_REVIEW_20261020.md)，[本轮临时短验已授权并完成新备份、安装rc.39与35项核验](../docs/RC39_VIDEO_MP4_SHORT_TEST_20261020.md)，[本轮视频失败并已恢复rc.38，用户确认正常重开/原外观布局/播放停止](../docs/RC39_VIDEO_LIVE_FINDINGS_REPAIR_TASK_20261020.md)。[Grok补修经独立复审，null身份与新面板模式/自动播放控件R1/R2源码离线通过](../docs/RC39_PLAYBACK_UI_GROK_REPAIR_REVIEW_20261020.md)：209项相关测试及语法/CSS检查通过，设置回退反例已补；未打包或实机验证。[R3路径/容器/准确候选启动链与保留日志离线核验完成](../docs/RC39_VIDEO_R3_OFFLINE_INVESTIGATION_20261020.md)：批准MP4为4K/30fps/约12秒，未见明确路径错配；1200条保留记录时间戳递增而hash相同，前台/非前台均出现，根因未定。[有界source-only运行器准备完成](../docs/RC39_VIDEO_R3_SOURCE_ONLY_PREPARATION_20261020.md)，33项离线检查通过，含真实Python挂起/异常/缺报告的父监督收束，窗口IO均替身；未实机。[原中文路径MP4可见无采集源观察完成](../docs/RC39_VIDEO_R3_SOURCE_ONLY_RESULT_20261020.md)：用户确认黑屏，20.004秒正常关闭、原WE/设置保持并已正常重开DSH。WE日志两轮打开失败80070002且文件名恰好呈GBK误解为UTF-8的损坏，路径编码为强线索未定案。[ASCII相同字节副本无采集源观察完成](../docs/RC39_VIDEO_R3_ASCII_SOURCE_RESULT_20261020.md)：用户确认正常播放，13.019秒因用户窗口操作触发可见性门禁提前正常收尾，并已正常重开DSH。中文原路径黑屏/日志损坏与ASCII成功支持路径兼容问题，具体转码边界未定，DSH/WGC视频仍未验收；[受控ASCII桥接实现与离线复核完成](../docs/RC39_VIDEO_ASCII_BRIDGE_OFFLINE_REVIEW_20261020.md)：38项桥接、相关Host/UI/独立窗分组回归及1项真实只读Windows ACL/重解析IO通过，6项源码/QA经214项输入保护核对后提升。副本排他发布、两倍配额预留、停止代次及同轮退出证明已接实际链；损坏/迟到/未知关闭保留。合并回归的两项bad port失败及Grok失败尝试均保留，单项有界复核通过，不扩称一次全绿或实机播放通过。[rc.40路径兼容候选已最小整合并核包](../docs/RC40_VIDEO_ASCII_BRIDGE_CANDIDATE_REVIEW_20261020.md)：37文件，8项既有文件变化/2新增，原生12文件等同固定rc.39且无Trace；实际tgz解包225项主检查及24项销毁检查、17个JS/CSS/18导入闭包通过。补上重复create不能覆盖活动lease及异步副本释放期间不能提前解锁两项，开发共享QA现40项。新包已单独归档，旧包不变；未安装或操作日常DSH/WE。下一步取得当时方便/正常退出确认，再新备份临时短验，默认恢复rc.38与本轮设置。日常rc.38保持，不改codec/GPU/系统代码页。web、应用类可行性及作者参数后排。源码manifest/assets仍rc.30，定时PAUSED，A/三体/GPU暂缓。
+
+最新日常：**DSH0.2.1-rc.2、外观rc.35、Git Bash0.1.1**。[升级记录](../docs/DSH_021_RC2_UPGRADE_TRIAL_20261017.md)已完成新备份、安装核验、用户正常重开及Lucy画面/操作短验，停止清理、采集进程退出及测试源窗口为空核对通过，原WE保持。保留新版本，不扩称全部插件动作或长期稳定已验证。rc.35仅在rc.34上调整兼容元数据，无Trace/P0。
+
+[P0七审](../docs/DETACHABLE_APPEARANCE_P0_SEVENTH_REVIEW_20261017.md)H1/H2闭合；[P1A十审源码离线通过](../docs/DETACHABLE_APPEARANCE_P1A_TENTH_REVIEW_20261018.md)，创建身份及原余项闭合，真实窗口/吸附交互和候选整合仍未验收。下一步先日常壁纸清理锁B，再滚动A，不自动安装或进P1B。下列旧版本/补修结论为历史，以项目状态及升级记录为准。
+
+日常安装现为rc.34试用，用户明确选择并完成[本轮新备份、安装与重开交接](../docs/RC34_DAILY_TRIAL_20261017.md)；28文件一致、原外观布局保持、播放停止，rc.31与本轮新备份作回退。[rc.34外观功能候选](../docs/RC34_APPEARANCE_FEATURES_CANDIDATE_20261017.md)已独立构建审计并完成[本机功能短验及恢复](../docs/RC34_APPEARANCE_FEATURES_SHORT_TEST_20261017.md)：亮度20–120、四字段手动预设、文字可读性/聊天底色、独立强调色。候选保留rc.31原生运行时及Host，无Trace；实际候选570/566及补充检查通过。
+
+实机覆盖当前主题/颜色和Lucy，底色及预设保存/应用/删除通过，停止清理通过；rc.31和本轮原设置已恢复，28安装文件、5Profile、11关闭存储一致，接续由Codex核对重开布局正常、播放停止。DSH保持打开，原WE保持。上述是此前临时短验的恢复结果；随后用户已明确选择并完成rc.34日常交接，当前保留rc.34。用户进一步澄清为真正独立系统窗口且可吸附DSH侧边，[可分离/吸附P0任务](../docs/GEMINI_NEXT_DETACHABLE_APPEARANCE_P0_20261017.md)已提交[四审补修](../docs/DETACHABLE_APPEARANCE_P0_FOURTH_REPAIR_DELIVERY_20261017.md)，[Codex五审](../docs/DETACHABLE_APPEARANCE_P0_FIFTH_REVIEW_20261017.md)暂不通过；13/13与真实双Tab 11项主流程通过，保留统一执行器/窗口所有者，只补G1主注册代次/并发、G2权威模式及G3窗口动作schema，再审P0，不扩完整P1；当前日常不动、不自动回退。
+
+工作区manifest/生产assets仍rc.30冻结，源码含后续P4/Trace，不直接打整个工作区。四字段预设不含主题字段且不自动应用；语义状态色保持。rc.28回退和旧归档/实测/备份保留。以下版本段落为历史边界，当前状态以[项目状态](../docs/PROJECT_STATUS.md)为准。
 
 ## 0.6.0-rc.30 原生采集节奏观测（测量候选）
 
