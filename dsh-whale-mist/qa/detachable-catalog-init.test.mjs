@@ -19,7 +19,7 @@ await run('non-docked mode cannot launch metadata read',{},async f=>{f.setMode('
 await run('external refresh retains its own cancellation',{fetchMode:'pending-abort'},async f=>{const abort=new AbortController();const external=f.externalRead({refresh:true,signal:abort.signal});f.open();assert.equal(f.readCalls,1);assert.equal(f.timers.size,0);f.close();await f.dispose();assert.equal(abort.signal.aborted,false);const rejected=assert.rejects(external,/fixture aborted/);abort.abort();await rejected;});
 
 const videoId='we-'+ 'a'.repeat(24);
-for(const [type,available,disabled] of [['video',true,false],['video',false,true],['web',true,true],['unknown',true,true]]){
+for(const [type,available,disabled] of [['video',true,false],['video',false,true],['web',true,false],['unknown',true,true]]){
  await run(`MP4 actual docked component gate ${type}/${available}`,{sceneId:videoId,items:[{id:videoId,title:'Synthetic',type,available,playbackVerified:false,contentRating:'Everyone'}]},async f=>{
   f.open();await f.flush();f.render();assert.equal(f.observation().startDisabled,disabled);
   f.setStatus({state:'cleanup-failed',cleanupPending:true});f.render();assert.equal(f.observation().startDisabled,true);

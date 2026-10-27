@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerWallpaperRoutes, resolveHostResources, describeScenes, probeAvailability } from './wallpaper/session.js';
+import {createAuthorApplyAdapter} from './wallpaper/author-properties-apply.js';
 import { createWallpaperLibrary } from './wallpaper/library.js';
 import { createDetachableHttpHost } from './detachable-host.js';
 import { createEdgeWindowAdapter } from './detachable-edge-adapter.js';
@@ -43,8 +44,8 @@ export function apply(ctx) {
   // Desktop's Host gets ELECTRON_RUN_AS_NODE; DSH_DESKTOP_NODE_EXECUTABLE is
   // only supplied to package-manager children, not to the running Host.
   if (isolated) {
-    registerWallpaper(ctx, { library });
-    registerDetachableHost(ctx, { library });
+    const wallpaper = registerWallpaper(ctx, { library });
+    registerDetachableHost(ctx, { library, wallpaper });
     return;
   }
   if (process.platform !== 'win32' || process.env.ELECTRON_RUN_AS_NODE !== '1' ||
@@ -94,10 +95,10 @@ export function apply(ctx) {
   // Wallpaper Engine playback. `inject` above guarantees the carrier is composed before
   // this runs; the packaged helper and the local sample can still be missing, and that
   // must only disable the wallpaper, never the appearance or the icon.
-  registerWallpaper(ctx, { library });
+  const wallpaper = registerWallpaper(ctx, { library });
 
   // Detachable appearance companion host and protected bootstrap
-  registerDetachableHost(ctx, { library });
+  registerDetachableHost(ctx, { library, wallpaper });
 }
 
 /** Registers the constrained wallpaper routes; failures only disable the wallpaper. */
@@ -113,7 +114,7 @@ function registerWallpaper(ctx, { library = null } = {}) {
     // only ever see ids. An unusable root is reported by the list itself, not by throwing: the
     // appearance UI and the verified sample must keep working.
     const activeLibrary = library || createWallpaperLibrary({ roots: WALLPAPER_LIBRARY_ROOTS });
-    registerWallpaperRoutes(ctx, { ...resources, library: activeLibrary });
+    return registerWallpaperRoutes(ctx, { ...resources, library: activeLibrary });
   } catch (error) {
     console.warn('[Whale wallpaper] setup failed:', error.message);
   }
@@ -123,7 +124,7 @@ function registerWallpaper(ctx, { library = null } = {}) {
  * Registers the detachable appearance companion host, index bootstrap injection,
  * and authenticated bootstrap route. Failures never affect wallpaper or icon helper.
  */
-function registerDetachableHost(ctx, { library = null } = {}) {
+function registerDetachableHost(ctx, { library = null, wallpaper = null } = {}) {
   try {
     const isWindows = process.platform === 'win32';
     const isolated = process.env.WM_CONTRACT_ISOLATED === '1';
@@ -134,6 +135,20 @@ function registerDetachableHost(ctx, { library = null } = {}) {
     const allowedOrigins = ['dsh-app://app', desktopOrigin].filter(Boolean);
     const host = createDetachableHttpHost({
       library,
+      authorApplyAdapter: wallpaper && !isolated ? createAuthorApplyAdapter({readTarget:()=>{
+        const state=wallpaper.currentSession()?.state?.();
+        if(!state||wallpaper.ownership())return null;
+        return {wallpaperId:state.config?.sceneId,generation:wallpaper.generation(),location:state.location,
+          hwnd:state.config?.window,pid:state.windowPid,startUtc:state.windowStartUtc,helper:state.config?.helper,
+          stopping:state.stopRequested,captureStarted:state.captureStarted};
+      }}) : null,
+      readWallpaperLifecycle: wallpaper ? () => {
+        const state=wallpaper.currentSession()?.state?.();
+        const status=wallpaper.statusPayload();
+        return {generation:wallpaper.generation(),activeSceneId:status.activeSceneId??null,
+          location:state?.location??null,busy:Boolean(wallpaper.ownership()),
+          cleanupPending:Boolean(state?.stopRequested || status.failed)};
+      } : null,
       windowAdapter,
       allowedOrigins,
       mainAllowedOrigins: allowedOrigins,

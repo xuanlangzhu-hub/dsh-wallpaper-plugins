@@ -66,16 +66,16 @@ try {
   const controller={read:()=>settings,wallpaper:{getStatus:()=>state,getLibrarySnapshot:()=>({state:'ready',loaded:true,items:[item]}),start:async()=>{calls++;return{ok:true};}}};
   const action={type:DETACHABLE_ACTIONS.START_WALLPAPER,sceneId:id,mode:'daily',clientActionId:'mp4-action',expectedRevision:1};
   assert.equal((await executeAuthoritativeAction({controller,action})).ok,true);assert.equal(calls,1);
-  for(const patch of [{type:'web',available:true},{type:'video',available:false}]){item={id,...patch};assert.equal((await executeAuthoritativeAction({controller,action})).ok,false);}
+  for(const patch of [{type:'application',available:true},{type:'video',available:false}]){item={id,...patch};assert.equal((await executeAuthoritativeAction({controller,action})).ok,false);}
   item={id,type:'video',available:true};
   for(const patch of [{state:'cleanup-failed',cleanupPending:true},{state:'running',activeSceneId:id},{state:'idle',cleanupPending:true}]){state=patch;assert.equal((await executeAuthoritativeAction({controller,action})).ok,false);}
   assert.equal(calls,1);
  });
- await test('MP4: companion actual type expression accepts video and refuses web/application',async()=>{
+ await test('MP4: companion actual type expression accepts video/web and refuses application',async()=>{
   const src=await readFile(new URL('../../src/companion/companion.js',import.meta.url),'utf8');
   const match=src.match(/const isStartableType = ([^;]+);/);assert.ok(match);
   const allowed=new Function('item','return ('+match[1]+')');
-  for(const type of ['scene','video'])assert.equal(allowed({type}),true);
-  for(const type of ['web','application','unknown'])assert.equal(allowed({type}),false);
+  for(const type of ['scene','video','web'])assert.equal(allowed({type}),true);
+  for(const type of ['application','unknown'])assert.equal(allowed({type}),false);
  });
 } finally {await rm(root,{recursive:true,force:true});}

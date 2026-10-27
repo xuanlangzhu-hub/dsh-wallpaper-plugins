@@ -23,6 +23,8 @@ import {
   isSceneId,
 } from '../detachable-contract.js';
 
+import {createAuthorPanel} from '../wallpaper/author-properties-panel.js';
+
 export function createCompanionApp({
   windowObj = (typeof window !== 'undefined' ? window : null),
   documentObj = (typeof document !== 'undefined' ? document : null),
@@ -119,6 +121,8 @@ export function createCompanionApp({
   const btnClose = documentObj.getElementById('btn-close');
 
   let client = null;
+  const authorRoot=documentObj.getElementById('author-properties-panel');
+  const authorPanel=authorRoot ? createAuthorPanel({root:authorRoot,documentObj,request:(...args)=>client.requestAuthor(...args)}) : null;
   let isConnected = false;
   let currentSnapshot = null;
   let targetSceneId = 'lucy';
@@ -588,6 +592,7 @@ export function createCompanionApp({
 
   function disposeBlobUrls() {
     isDisposed = true;
+    authorPanel?.dispose();
     cleanupBlobsOnDisconnect();
   }
 
@@ -959,7 +964,7 @@ export function createCompanionApp({
     const isMismatch = isCurrentlyPlaying && activeSceneId !== selectedSceneId;
     const isLucy = selectedSceneId === 'lucy';
     const catalogReady = cat.state === 'ready' && cat.loaded === true;
-    const isStartableType = ['scene', 'video'].includes(item.type);
+    const isStartableType = ['scene', 'video', 'web'].includes(item.type);
     const STARTABLE_STATES = ['idle', 'stopped', 'error'];
     const isStartableState = STARTABLE_STATES.includes(wpState) && !cleanupPending && wpState !== 'cleanup-failed' && activeSceneId == null;
     const canStart = isConnected && !isBusy && isStartableState && !isSelectedHidden && catalogReady && (isLucy ? item.available !== false : (item.available === true && isStartableType)) && !isMismatch;
@@ -1153,6 +1158,11 @@ export function createCompanionApp({
     // 4. Wallpaper Gallery & Details views
     updateGalleryView(snap);
     updateDetailsView(snap);
+    const authorId=snap.settings?.weScene||'lucy';
+    const authorItem=(snap.catalog?.items??[]).find(item=>item.id===authorId);
+    authorPanel?.update({wallpaperId:authorId,connected:isConnected,
+      allowed:authorItem?.available===true&&['scene','web'].includes(authorItem.type)&&allowedRatings.includes(authorItem.contentRating),
+      contextKey:JSON.stringify([s.weAgeRatings,snap.wallpaper?.state,snap.wallpaper?.activeSceneId,snap.wallpaper?.cleanupPending,snap.catalog?.scannedAt])});
 
     // 4. Presets view
     updatePresetsView(snap);
@@ -1969,6 +1979,7 @@ export function createCompanionApp({
         }
       } else {
         isConnected = false;
+        authorPanel?.update({connected:false});
         cleanupBlobsOnDisconnect();
         setStatus('disconnected', '已断开连接');
         setControlsEnabled(false);

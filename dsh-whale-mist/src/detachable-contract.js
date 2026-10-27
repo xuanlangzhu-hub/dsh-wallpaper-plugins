@@ -438,6 +438,7 @@ export function createCompanionClient({ token, instanceId, transport }) {
   }
 
   return {
+    requestAuthor: (route,payload,options) => connected && typeof transport.requestAuthor==='function' ? transport.requestAuthor(route,payload,options) : Promise.reject(new Error('author-disconnected')),
     async connect() {
       const epoch = ++connectionEpoch;
       try {
@@ -676,6 +677,15 @@ export function createHttpCompanionTransport({ baseUrl, token, instanceId }) {
         }
         return { ok: false, error: `http-action-failed: ${err.message}` };
       }
+    },
+
+    async requestAuthor(route,payload,{signal}={}) {
+      if(closed || !activeLeaseId || !['schema','draft','apply'].includes(route))throw new Error('author-disconnected');
+      const res=await fetch(`${baseUrl}/api/author-properties/${route}${route==='schema'?`?wallpaperId=${encodeURIComponent(payload.wallpaperId)}`:''}`,{
+        method:route==='schema'?'GET':'POST',headers:{'Content-Type':'application/json',
+          'X-Whale-Lease':activeLeaseId,'X-Whale-Generation':String(activeGeneration)},
+        ...(route!=='schema'?{body:JSON.stringify(payload)}:{}),signal});
+      return await res.json();
     },
 
     async fetchPreviewBlob(wallpaperId, { signal } = {}) {
@@ -918,7 +928,7 @@ export async function executeAuthoritativeAction({
 
           if (isLucy && !lucyAvailable) {
             executionResult = { ok: false, error: 'scene-unavailable', sceneId: 'lucy', reason: 'sample_unavailable' };
-          } else if (!isLucy && (!catalogItem || catalogItem.available !== true || !['scene', 'video'].includes(catalogItem.type))) {
+          } else if (!isLucy && (!catalogItem || catalogItem.available !== true || !['scene', 'video', 'web'].includes(catalogItem.type))) {
             executionResult = {
               ok: false,
               error: 'scene-unavailable',

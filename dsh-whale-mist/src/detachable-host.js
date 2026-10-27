@@ -37,6 +37,7 @@ import {
   isSceneId,
   parseAgeRatings,
 } from './detachable-contract.js';
+import { createAuthorPropertiesHost } from './wallpaper/author-properties-host.js';
 import { createEdgeWindowAdapter } from './detachable-edge-adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +48,9 @@ export const STATIC_MANIFEST = Object.freeze({
   '/index.html': Object.freeze({ file: join(__dirname, 'companion/index.html'), contentType: 'text/html; charset=utf-8' }),
   '/companion.js': Object.freeze({ file: join(__dirname, 'companion/companion.js'), contentType: 'application/javascript; charset=utf-8' }),
   '/companion.css': Object.freeze({ file: join(__dirname, 'companion/companion.css'), contentType: 'text/css; charset=utf-8' }),
+  '/wallpaper/author-properties-panel.js': Object.freeze({file:join(__dirname,'wallpaper/author-properties-panel.js'),contentType:'application/javascript; charset=utf-8'}),
+  '/wallpaper/author-properties-contract.js': Object.freeze({file:join(__dirname,'wallpaper/author-properties-contract.js'),contentType:'application/javascript; charset=utf-8'}),
+  '/wallpaper/managed-window.js': Object.freeze({file:join(__dirname,'wallpaper/managed-window.js'),contentType:'application/javascript; charset=utf-8'}),
   '/detachable-contract.js': Object.freeze({ file: join(__dirname, 'detachable-contract.js'), contentType: 'application/javascript; charset=utf-8' }),
 });
 
@@ -96,6 +100,8 @@ function sendJson(res, statusCode, payload, extraHeaders = {}) {
 
 export function createDetachableHttpHost({
   library = null,
+  readWallpaperLifecycle = null,
+  authorApplyAdapter = null,
   bridge = null,
   port = 0,
   allowedOrigins = [],
@@ -139,6 +145,31 @@ export function createDetachableHttpHost({
   let mainSession = null; // Main Renderer session
   let lastTerminatedLeaseId = null;
   let lastTerminatedMainGen = null;
+
+  // Shares the authenticated main controller's selection/policy and Host-owned playback state.
+  // Both views share one owner; companion credentials never become settings or target data.
+  const authorOwner = () => mainSession ? `main:${mainSession.generation}` : null;
+  const strictGeneration = value => typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null;
+  const authorHost = typeof library?.getAuthorMetadata === 'function' && typeof readWallpaperLifecycle === 'function'
+    ? createAuthorPropertiesHost({library,applyAdapter:authorApplyAdapter,root:'/api/author-properties',readContext(req){
+        if (!mainSession) return null;
+        const headers=req.headers, gen=strictGeneration(headers['x-whale-generation']);
+        const isMain=headers['x-whale-main-token'] === resolvedMainToken
+          && headers['x-whale-instance-id'] === mainSession.instanceId && gen === mainSession.generation;
+        const isCompanion=!headers['x-whale-main-token'] && activeSession
+          && headers['x-whale-lease'] === activeSession.leaseId && gen === activeSession.mainGeneration
+          && activeSession.mainGeneration === mainSession.generation;
+        if (!isMain && !isCompanion) return null;
+        // Credential-specific origin rules: a companion origin cannot impersonate main.
+        const origin=headers.origin;
+        if (origin && (isMain
+          ? !(origin==='dsh-app://app'||resolvedMainOrigins.includes(origin))
+          : !(origin===`http://127.0.0.1:${activePort}`||origin===`http://localhost:${activePort}`||resolvedCompanionOrigins.includes(origin)))) return null;
+        const snapshot=mainSession.snapshot;
+        return {authorized:true,owner:authorOwner(),revision:snapshot?.revision,
+          selectedId:snapshot?.settings?.weScene,allowedRatings:parseAgeRatings(snapshot?.settings?.weAgeRatings),
+          lifecycle:readWallpaperLifecycle()};
+      }}) : null;
 
   const notifyMainRendererWindowState = () => {
     if (mainSession?.actionsSseRes && !mainSession.actionsSseRes.writableEnded) {
@@ -243,6 +274,7 @@ export function createDetachableHttpHost({
   const terminateMainSession = (reason = 'main-instance-disconnected') => {
     if (mainSession) {
       const sess = mainSession;
+      authorHost?.clearOwner(authorOwner());
       mainSession = null;
       if (sess.actionsSseRes && !sess.actionsSseRes.writableEnded) {
         try {
@@ -272,11 +304,11 @@ export function createDetachableHttpHost({
         if (!orig || typeof orig !== 'string') return false;
         if (orig === 'null') return false; // Reject null unconditionally
 
-        if (pathname.startsWith('/api/main/') || pathname === '/api/wallpaper-preview' || pathname === '/api/wallpaper/preview') {
+        if (pathname.startsWith('/api/main/') || pathname === '/api/wallpaper-preview' || pathname === '/api/wallpaper/preview' || pathname.startsWith('/api/author-properties/')) {
           // Main renderer endpoint or wallpaper preview: official Desktop app origin or configured main allowed origins
           if (orig === 'dsh-app://app') return true;
           if (resolvedMainOrigins.includes(orig)) return true;
-          if (pathname === '/api/wallpaper-preview' || pathname === '/api/wallpaper/preview') {
+          if (pathname === '/api/wallpaper-preview' || pathname === '/api/wallpaper/preview' || pathname.startsWith('/api/author-properties/')) {
             const myOrigin = activePort ? `http://127.0.0.1:${activePort}` : null;
             const myLocalhost = activePort ? `http://localhost:${activePort}` : null;
             if (myOrigin && orig === myOrigin) return true;
@@ -371,6 +403,13 @@ export function createDetachableHttpHost({
       // -------------------------------------------------------------
       // Main Renderer Remote Bridge Endpoints (/api/main/*)
       // -------------------------------------------------------------
+      if (pathname.startsWith('/api/author-properties/')) {
+        // Only typed author routes; plan and private Host modules stay inaccessible.
+        if (!authorHost || pathname==='/api/author-properties/apply'&&!authorApplyAdapter || !['/api/author-properties/schema','/api/author-properties/draft','/api/author-properties/apply'].includes(pathname)) {
+          sendJson(res,404,{ok:false,error:'author_route_unknown'});return;
+        }
+        await authorHost.handler(req,res);return;
+      }
       if (pathname.startsWith('/api/main/')) {
         const suppliedMainToken =
           req.headers['x-whale-main-token'] || parsedUrl.searchParams.get('mainToken');
@@ -1515,6 +1554,7 @@ export function createDetachableHttpHost({
     hasUnconfirmedCleanup: () => unconfirmedCleanup,
     getWindowAdapter: () => resolvedWindowAdapter,
     async stop() {
+      const authorCleanup=authorHost?.dispose();
       terminateCompanionSession('disconnect');
       terminateMainSession('host-stopped');
 
@@ -1539,6 +1579,8 @@ export function createDetachableHttpHost({
         server = null;
       }
 
+      const authorResult=await authorCleanup;
+      if(authorResult?.ok===false)return authorResult;
       if (cleanupRes && cleanupRes.ok === false) return cleanupRes;
       if (disposeRes && disposeRes.ok === false) return disposeRes;
       if (activeOwnedHandle != null || unconfirmedCleanup) {

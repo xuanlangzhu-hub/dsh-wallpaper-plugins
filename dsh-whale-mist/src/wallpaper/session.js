@@ -3,11 +3,13 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { FrameHub, streamFrames } from './frame-hub.js';
 import { CadenceTraceCollector } from './cadence-trace.js';
 import { ProbeJournal } from './probe-log.js';
 import { runHelper, waitForWindow, validateLocation, newLocation } from './managed-window.js';
 import { createMediaBridge } from './media-bridge.js';
+import { createCloseFence, readCloseFenceBody } from './close-fence.js';
 import { SCENES, PREVIEW_SECONDS, PLAYBACK_MODES, DEFAULT_PLAYBACK_MODE, WINDOW_SIZE, resolveSceneRequest, describeScenes, sceneSelection, isSceneId } from './scenes.js';
 
 /**
@@ -1283,7 +1285,7 @@ export function createPreviewSession(options = {}) {
       stderrListeners: child?.stderr ? child.stderr.listenerCount('data') : 0,
       cleanup: cleanupResult,
     }),
-    state: () => ({ config, location, windowCreated, windowPid, captureStarted, stopRequested, cleanup: cleanupResult }),
+    state: () => ({ config, location, windowCreated, windowPid, windowStartUtc, captureStarted, stopRequested, cleanup: cleanupResult }),
     setClientStatus: value => { clientStatus = value; },
     cadenceTrace: { host: hostTrace, client: clientTrace },
     issuedConnections,
@@ -1323,14 +1325,76 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
   let lastCleanup = null;        // last close outcome, kept for the UI and for retrying
   let lastError = '';
 
+  // Read-only observations of operations that have reached this Host. This is not
+  // a lease: an old request that has not arrived yet cannot be fenced by a GET.
+  const hostInstanceId = randomUUID();
+  const pendingOperations = new Set();
+  let operationSequence = 0;
+  let closeRevision = 0;
+  let closeSnapshot = null;
+  let closeSignature = '';
+  let hostDisposed = false;
+  let retiredClosed = false;
+  let unverifiedRetirement = false;
+  const touchCloseState = () => { closeRevision += 1; closeSnapshot = null; };
+  const recordRetirement = (cleanup, current) => {
+    let closed = false;
+    try { closed = current?.isClosed?.() === true; } catch {}
+    if (cleanup?.closed === true && closed) retiredClosed = true;
+    else unverifiedRetirement = true;
+    touchCloseState();
+  };
+  const readCloseState = () => {
+    let sessionView = 'absent';
+    if (session) {
+      try {
+        const cleanup = session.state?.().cleanup;
+        const closed = session.isClosed?.();
+        sessionView = cleanup?.closed === true ? (closed === true ? 'closed' : 'unconfirmed')
+          : cleanup?.closed === false ? 'unconfirmed'
+          : cleanup == null && closed === false ? 'active' : 'unknown';
+      } catch { sessionView = 'unknown'; }
+    }
+    const pending = [];
+    for (const token of pendingOperations) {
+      if (pending.length === 16) break;
+      pending.push(Object.freeze({ id: token.closeId, kind: token.kind, generation: token.generation }));
+    }
+    const uncertain = unverifiedRetirement || sessionView === 'unknown';
+    const busy = pendingOperations.size > 0 || ownership !== null;
+    const quiescent = !hostDisposed && !busy && !uncertain && ['absent', 'closed'].includes(sessionView);
+    const state = hostDisposed ? 'disposed' : busy ? 'pending' : uncertain ? 'unknown'
+      : sessionView === 'absent' ? (retiredClosed ? 'closed' : 'absent') : sessionView;
+    const data = { generation, cancelGeneration, lifecycle: hostDisposed ? 'disposed' : 'active',
+      state, session: sessionView, pendingCount: pendingOperations.size,
+      pending: Object.freeze(pending), pendingTruncated: pendingOperations.size > pending.length,
+      ownership: ownership?.kind ?? null, uncertain, quiescent };
+    const signature = JSON.stringify(data);
+    // Native session cleanup may finish on its own. Refresh the observation revision
+    // without archiving the session, probing a process or changing its ownership.
+    if (closeSnapshot && signature !== closeSignature) closeRevision += 1;
+    if (!closeSnapshot || signature !== closeSignature) {
+      closeSignature = signature;
+      closeSnapshot = Object.freeze({ version: 1, hostInstanceId, revision: closeRevision,
+        ...data, scope: 'arrived-operations', canCommit: false });
+    }
+    return closeSnapshot;
+  };
+
   const claim = kind => {
     // The cancellation marker is captured with the token: an external stop or an unload during this
     // operation makes the token stale even though the operation itself keeps owning the lock.
-    const token = { kind, generation, cancelGeneration, promise: null };
+    const token = { kind, generation, cancelGeneration, promise: null, closeId: ++operationSequence };
     ownership = token;
+    pendingOperations.add(token);
+    touchCloseState();
     return token;
   };
-  const release = token => { if (ownership === token) ownership = null; };
+  const release = token => {
+    if (ownership === token) ownership = null;
+    pendingOperations.delete(token);
+    touchCloseState();
+  };
   const isCurrent = token => generation === token.generation && cancelGeneration === token.cancelGeneration;
 
   /** What the UI may know about the list: counts, health and the verified sample, never a path. */
@@ -1470,36 +1534,48 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     // unproven, keeps it: its window may still exist.
     if (state.cleanup?.closed !== true) return false;
     lastCleanup = state.cleanup;
+    recordRetirement(state.cleanup, session);
     session = null;
     return true;
   };
 
   const closeSession = async () => {
-    const current = session;
-    if (!current) return { outcome: 'absent', closed: true };
-    if (current.isClosed?.() === true) {
-      // Already proven closed by the run itself: archive and release without a new close.
-      const cleanup = current.state?.().cleanup ?? { outcome: 'closed', closed: true };
-      lastCleanup = cleanup;
-      session = null;
-      lastError = '';
-      return cleanup;
-    }
-    if (!current.hasInternalCadenceDrain && current.cadenceTrace?.client?.enabled) {
-      try { current.hub?.close?.(); } catch {}
-      await current.cadenceTrace.client.waitForClientFinalize?.(100, current.issuedConnections);
-    }
-    const result = await current.stop().catch(error => ({ outcome: 'error', closed: false, error: error.message }));
-    lastCleanup = result ?? null;
-    if (result?.closed === true) {
-      session = null;
-      lastError = '';
-    } else {
-      // Keep the failed run: its window may still exist, and the user needs a retry path.
-      lastError = `Window cleanup incomplete (${result?.outcome ?? 'unknown'}): ${result?.error ?? 'no result'}`;
-      onWarn(`[Whale wallpaper] ${lastError}`);
-    }
-    return result;
+    const observation = { kind: 'close', generation, closeId: ++operationSequence };
+    pendingOperations.add(observation);
+    touchCloseState();
+    try {
+      const current = session;
+      if (!current) return { outcome: 'absent', closed: true };
+      if (current.isClosed?.() === true) {
+        // Already proven closed by the run itself: archive and release without a new close.
+        const actualCleanup = current.state?.().cleanup;
+        const cleanup = actualCleanup ?? { outcome: 'closed', closed: true };
+        lastCleanup = cleanup;
+        recordRetirement(actualCleanup, current);
+        session = null;
+        lastError = '';
+        return cleanup;
+      }
+      if (!current.hasInternalCadenceDrain && current.cadenceTrace?.client?.enabled) {
+        try { current.hub?.close?.(); } catch {}
+        await current.cadenceTrace.client.waitForClientFinalize?.(100, current.issuedConnections);
+      }
+      const result = await current.stop().catch(error => ({ outcome: 'error', closed: false, error: error.message }));
+      lastCleanup = result ?? null;
+      if (result?.closed === true) {
+        recordRetirement(result, current);
+        session = null;
+        lastError = '';
+      } else {
+        // Keep the failed run: its window may still exist, and the user needs a retry path.
+        // A concurrent close may already have archived this same run. Its older, late
+        // unconfirmed result must not disappear into an apparently trustworthy absence.
+        if (session !== current) { unverifiedRetirement = true; touchCloseState(); }
+        lastError = `Window cleanup incomplete (${result?.outcome ?? 'unknown'}): ${result?.error ?? 'no result'}`;
+        onWarn(`[Whale wallpaper] ${lastError}`);
+      }
+      return result;
+    } finally { release(observation); }
   };
 
   /**
@@ -1547,15 +1623,17 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       const next = buildSession({ cadenceTrace });
       session = next;
       token.started = true;
+      touchCloseState();
       try {
         const preparedMedia = token.mediaLease ?? null;
         token.mediaLease = null; // ownership transfers even when create throws; session.stop proves release
         await next.create({ helper, output, scene: { sceneId: selection.sceneId, project: selection.project, mode: selection.mode, ...(selection.seconds !== undefined ? { seconds: selection.seconds } : {}) }, offscreenStart, mediaLease: preparedMedia });
       } catch (error) {
         await next.stop().catch(() => {});
-        const result = next.state().cleanup ?? { outcome: 'absent', closed: true };
+        const actualCleanup = next.state().cleanup;
+        const result = actualCleanup ?? { outcome: 'absent', closed: true };
         lastCleanup = result;
-        if (result.closed === true) session = null;
+        if (result.closed === true) { recordRetirement(actualCleanup, next); session = null; }
         throw error;
       }
       if (!isCurrent(token)) {
@@ -1611,6 +1689,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     generation += 1;
     // An external stop is a cancellation for anything that is still verifying a selection.
     cancelGeneration += 1;
+    touchCloseState();
     const pending = ownership;
     const inFlight = pending?.kind === 'start' && (pending.started || pending.preparing) ? pending.promise.catch(() => {}) : null;
     if (!session) {
@@ -1630,6 +1709,8 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     return { ok: outcome.ok, payload: statusPayload({ stopped, cleanup: outcome.payload?.cleanup ?? null }) };
   };
 
+  const closeFence = createCloseFence({ hostInstanceId, readCloseState, stopNow, touchCloseState });
+
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix', path: '/whale-wallpaper',
     async handler(req, res) {
@@ -1641,6 +1722,18 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       };
 
       if (req.method === 'GET' && path === '/whale-wallpaper/status') { send(200, statusPayload()); return; }
+      if (req.method === 'GET' && path === '/whale-wallpaper/close-state') { send(200, readCloseState()); return; }
+
+      if (req.method === 'POST' && path.startsWith('/whale-wallpaper/close-fence/')) {
+        const action = path.slice('/whale-wallpaper/close-fence/'.length);
+        if (!['prepare', 'inspect', 'retry', 'activate'].includes(action)) { send(404, { error: 'close-fence-route' }); return; }
+        let body;
+        try { body = await readCloseFenceBody(req); }
+        catch { if (!res.destroyed) send(400, { ok: false, error: 'close-fence-body' }); return; }
+        const result = closeFence[action](body);
+        send(result.ok ? 200 : 409, result);
+        return;
+      }
 
       // The bounded library list. `ensure=1` means "I need a list, not just a cache peek": the Host
       // performs the first bounded scan here, so opening the settings area once really loads the
@@ -1690,6 +1783,11 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       }
 
       if (req.method === 'POST' && (path === '/whale-wallpaper/start' || path === '/whale-wallpaper/restart')) {
+        // This check happens BEFORE reading a body or claiming ownership. Preparation also
+        // cancels tokens already admitted, so neither delayed headers nor delayed bodies
+        // can restart a source after a close fence was installed.
+        const admissionError = closeFence.admissionError(req.headers?.['x-whale-wallpaper-admission']);
+        if (admissionError) { send(409, { error: admissionError }); return; }
         // The ownership token is created BEFORE the body is read, and it covers the whole
         // "read body -> prepare -> create" sequence. A second request that arrives while
         // the first body is still pending is refused immediately; a stop or unload during
@@ -1759,6 +1857,10 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
       }
 
       if (req.method === 'POST' && path === '/whale-wallpaper/stop') {
+        // A late compensating stop from a retired writer may help while sealed, but
+        // must not tear down a new run after explicit reactivation changed admission.
+        const admissionError = closeFence.admissionError(req.headers?.['x-whale-wallpaper-admission'], { stop: true });
+        if (admissionError) { send(409, { error: admissionError }); return; }
         // A stop answers immediately even while a start is preparing; the queued close
         // still runs once that start has settled. A close that could not be proven is
         // reported as a failure, never as a successful stop.
@@ -1912,6 +2014,8 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
 
   // Cordis awaits a disposer's returned promise, so unloading waits for the real close.
   ctx.effect(() => () => {
+    hostDisposed = true;
+    touchCloseState();
     generation += 1;                     // invalidate a start that is still preparing
     cancelGeneration += 1;               // and any restart that is still verifying its selection
     const pending = ownership;
@@ -1924,7 +2028,7 @@ export function registerWallpaperRoutes(ctx, { scenes = SCENES, helper, logRoot,
     })();
   }, 'whale-mist: wallpaper preview lifetime');
 
-  return { statusPayload, stopNow, closeSession, releaseFinishedSession, currentSession: () => session, ownership: () => ownership, generation: () => generation };
+  return { statusPayload, readCloseState, stopNow, closeSession, releaseFinishedSession, currentSession: () => session, ownership: () => ownership, generation: () => generation };
 }
 
 async function readJsonBody(req, limit) {

@@ -12,6 +12,12 @@ const id=path=>'we-'+createHash('sha256').update(identity(path)).digest('hex').s
 const title=(value,fallback)=>typeof value==='string'&&value.trim()?value.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,200):fallback;
 const fail=reason=>Object.assign(new Error(reason),{catalogReason:reason});
 
+// Project type spelling is case-insensitive; accept only known strings, without trimming/coercion.
+function catalogType(value){
+  const type=typeof value==='string'?value.toLowerCase():'';
+  return ['scene','video','web'].includes(type)?type:'unknown';
+}
+
 function inside(root,target){
   const r=relative(identity(root),identity(target));
   return r===''||(!isAbsolute(r)&&r!=='..'&&!r.startsWith('..'+sep));
@@ -76,7 +82,7 @@ async function boundedProject(directory,limit){
 function fileError(error,missing){return error.catalogReason??(error.code==='ENOENT'?missing:'unreadable_file');}
 
 async function record(directory,project){
-  const data=project.data;const type=['scene','video','web'].includes(data.type)?data.type:'unknown';
+  const data=project.data;const type=catalogType(data.type);
   const rawRating = typeof data.contentrating === 'string' ? data.contentrating : '';
   const contentRating = ['Everyone', 'Questionable', 'Mature'].includes(rawRating) ? rawRating : 'unknown';
   const result={id:id(project.path),title:title(data.title,parse(directory).base),type,contentRating,project:project.path,entry:null,preview:null,
@@ -109,7 +115,7 @@ async function record(directory,project){
   }
   if(!result.preview&&!result.warnings.includes('unsafe_preview'))result.warnings.push('missing_preview');
   if(!result.reason){
-    if(type==='scene'||(type==='video'&&parse(result.entry).ext.toLowerCase()==='.mp4'))result.available=true;
+    if(type==='scene'||(type==='video'&&parse(result.entry).ext.toLowerCase()==='.mp4')||(type==='web'&&['.html','.htm'].includes(parse(result.entry).ext.toLowerCase())))result.available=true;
     else result.reason=type==='unknown'?'unknown_type':'playback_type_not_supported';
   }
   return result;
@@ -126,9 +132,9 @@ export function isCatalogId(value){
  * file, a changed type, a junction swapped in after the scan or a project outside the approved roots must
  * all be refused here instead of being trusted because they were true once.
  */
-export async function verifyCatalogEntry(item,{roots}={}){
+async function verifyCatalogProject(item,{roots}={}){
   if(!item||typeof item!=='object'||!isCatalogId(item.id))throw fail('unknown_wallpaper');
-  if(item.type!=='scene'&&item.type!=='video')throw fail(item.type==='unknown'?'unknown_type':'playback_type_not_supported');
+  if(item.type!=='scene'&&item.type!=='video'&&item.type!=='web')throw fail(item.type==='unknown'?'unknown_type':'playback_type_not_supported');
   if(typeof item.project!=='string'||typeof item.entry!=='string')throw fail('missing_content');
   if(!Array.isArray(roots)||!roots.length)throw fail('root_unavailable');
   const approved=[];
@@ -158,9 +164,10 @@ export async function verifyCatalogEntry(item,{roots}={}){
   const projectDirectory=dirname(resolve(projectPath));
   const project=await boundedProject(projectDirectory,CATALOG_LIMITS.maxJsonBytes);
   const data=project.data;
-  const type=['scene','video','web'].includes(data.type)?data.type:'unknown';
+  const type=catalogType(data.type);
   if(type!==item.type)throw fail('type_changed');
   if(type==='video'&&parse(entryPath).ext.toLowerCase()!=='.mp4')throw fail('playback_type_not_supported');
+  if(type==='web'&&!['.html','.htm'].includes(parse(entryPath).ext.toLowerCase()))throw fail('playback_type_not_supported');
   // The scene.pkg fallback exists for published packages whose metadata still says file="scene.json"
   // while only the package ships. It is NOT a way to survive a declaration that is itself unsafe: a
   // traversal, an absolute path, an ADS name or a link is refused here exactly as the scan refuses it,
@@ -186,7 +193,24 @@ export async function verifyCatalogEntry(item,{roots}={}){
   // The declared content must still be the same physical file the snapshot pointed at.
   if(identity(physicalEntry.path)!==identity(entryPath))throw fail('entry_changed');
   if(id(projectPath)!==item.id)throw fail('moved');
-  return {id:item.id,title:item.title,type,project:projectPath,entry:physicalEntry.path};
+  return {id:item.id,title:item.title,type,project:projectPath,entry:physicalEntry.path,metadata:data};
+}
+
+export async function verifyCatalogEntry(item,options={}){
+  const {metadata,...verified}=await verifyCatalogProject(item,options);
+  return verified;
+}
+
+/** Host-private author metadata from the same bounded read that passed entry verification. */
+export async function readCatalogAuthorMetadata(item,{roots,allowedRatings=['Everyone'],signal}={}){
+  if(signal?.aborted)throw fail('author_cancelled');
+  if(!Array.isArray(allowedRatings)||!allowedRatings.length||!allowedRatings.every(r=>['Everyone','Questionable','Mature'].includes(r)))throw fail('author_rating_denied');
+  const verified=await verifyCatalogProject(item,{roots});
+  if(signal?.aborted)throw fail('author_cancelled');
+  const data=verified.metadata,rating=data.contentrating;
+  if(!allowedRatings.includes(rating))throw fail('author_rating_denied');
+  if(!['scene','web'].includes(verified.type))throw fail('author_type_unsupported');
+  return {wallpaperId:verified.id,type:verified.type,contentRating:rating,properties:data.general?.properties??null,localization:data.general?.localization??null};
 }
 
 /**
@@ -354,7 +378,7 @@ export async function verifyCatalogPreview(item, { roots, maxBytes = 10 * 1024 *
   }
 }
 
-/** available means eligible for later scene/MP4 verification, never proven playable. */
+/** available means eligible for later scene/MP4/local-HTML verification, never proven playable. */
 export async function scanWallpaperCatalog({roots,limits={}}={}){
   if(!Array.isArray(roots)||!roots.length||roots.length>8)throw new TypeError('Provide 1..8 explicitly approved absolute roots');
   const budget={...CATALOG_LIMITS};

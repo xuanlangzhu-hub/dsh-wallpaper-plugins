@@ -149,10 +149,11 @@ await checked('R2: the sample and a confirmed entry stay usable while the list i
   // closing brace sits at the same indentation as the declaration.
   const usableSource = source.match(/const selectionUsable = (\(\) => [^\n]*?);\r?\n/)[1];
   const stateStart = source.indexOf('const selectionState = () => {');
-  const stateEnd = source.indexOf('\r\n      };', stateStart);
+  const stateClosing = source.slice(stateStart).match(/\r?\n      };/);
+  const stateEnd = stateClosing ? stateStart + stateClosing.index : -1;
   assert.notEqual(stateStart, -1, 'the selection state must exist');
   assert.notEqual(stateEnd, -1, 'the selection state must have an end at its own indentation');
-  const stateSource = source.slice(stateStart + 'const selectionState = '.length, stateEnd + '\r\n      }'.length);
+  const stateSource = source.slice(stateStart + 'const selectionState = '.length, stateEnd + stateClosing[0].length - 1);
   const withState = (settings, item, libraryState) => {
     const fn = evaluate(usableSource, {
       library: libraryState,

@@ -7,7 +7,7 @@
 import { statSync, existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { scanWallpaperCatalog, publicCatalogItem, verifyCatalogEntry, verifyCatalogPreview, verifyCatalogItemRating, boundFile, isCatalogId } from './catalog.js';
+import { scanWallpaperCatalog, publicCatalogItem, verifyCatalogEntry, verifyCatalogPreview, verifyCatalogItemRating, readCatalogAuthorMetadata, boundFile, isCatalogId } from './catalog.js';
 import { SCENES, isSceneId } from './scenes.js';
 
 /** The one scene with a supervised real-window acceptance behind it. */
@@ -181,6 +181,21 @@ export function createWallpaperLibrary({ roots = [], scan = scanWallpaperCatalog
     return { sceneId, type: record.type, project: record.type === 'video' ? record.entry : record.project, sourceProject: record.project, entry: record.entry };
   }
 
+  /** Author declarations are read on demand, with approved-root and fresh rating checks. */
+  async function getAuthorMetadata(sceneId,options={}) {
+    if(!isSceneId(sceneId)||!snapshot)throw Object.assign(new Error('author_library_unavailable'),{authorReason:'author_library_unavailable'});
+    const item=sceneId==='lucy'
+      ? snapshot.items.find(item=>item.project&&resolve(item.project)===resolve(VERIFIED_SCENES.lucy.project))
+      : snapshot.byId.get(sceneId);
+    if(!item)throw Object.assign(new Error('author_wallpaper_unavailable'),{authorReason:'author_wallpaper_unavailable'});
+    const allowed=options.allowedRatings??['Everyone'];
+    if(!Array.isArray(allowed)||!allowed.length||!allowed.every(r=>['Everyone','Questionable','Mature'].includes(r))||!allowed.includes(item.contentRating))throw Object.assign(new Error('author_rating_denied'),{authorReason:'author_rating_denied'});
+    if(item.available!==true)throw Object.assign(new Error('author_wallpaper_unavailable'),{authorReason:'author_wallpaper_unavailable'});
+    if(!['scene','web'].includes(item.type))throw Object.assign(new Error('author_type_unsupported'),{authorReason:'author_type_unsupported'});
+    const metadata=await readCatalogAuthorMetadata(item,{...options,roots:[...approvedRoots]});
+    return {...metadata,wallpaperId:sceneId};
+  }
+
   /**
    * Resolves the preview record for a scene id, ensuring it belongs to approved roots.
    */
@@ -247,6 +262,7 @@ export function createWallpaperLibrary({ roots = [], scan = scanWallpaperCatalog
     resolveProject,
     resolveSelection,
     resolveForPlayback,
+    getAuthorMetadata,
     resolvePreviewItem,
     resolvePreviewRating,
     getPreview,

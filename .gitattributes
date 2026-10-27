@@ -1,1 +1,4 @@
 *.sh text eol=lf
+
+# Preserve the audited package payload byte-for-byte across Windows checkouts.
+/release-sources/rc52/package/** -text whitespace=cr-at-eol,-blank-at-eof

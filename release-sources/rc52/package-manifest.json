@@ -1,0 +1,267 @@
+{
+  "version": "0.6.0-rc.52",
+  "archiveSha256": "93553C4C6E4DD8DCB4C433D9066DBF0814C21341BF7D519B9DE24A0EB14362C4",
+  "archiveBytes": 7260813,
+  "files": [
+    {
+      "file": "README.md",
+      "sha256": "E6856EF61579FD40FA0760B8480342F46AC2B0795B4D5B024C6E758C71340548",
+      "bytes": 3933,
+      "sourceInGit": true
+    },
+    {
+      "file": "assets/DeepSeek-Harness.ico",
+      "sha256": "B57A303C586154AD1741EB5D478BB80EAE8231495BD08995854BE7E711EEE5B8",
+      "bytes": 28881,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/Microsoft.Windows.SDK.NET.dll",
+      "sha256": "0EC371D93798852E36461C8ADDDBEADCE0F963A04752F0B64E54FE19C1C834A7",
+      "bytes": 24877600,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.COM.dll",
+      "sha256": "35282958014C210BFDE28399C9FA3841B6D51F81FF1DA23AD0EDAD985DFA5B0C",
+      "bytes": 168960,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.dll",
+      "sha256": "0DC12AB829852555CCC9D8193E4422CD4CA389741DE0A54A189DE8A1C9B6BF4A",
+      "bytes": 79872,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DXGI.dll",
+      "sha256": "6E381EAAB77257EE63C20A654A2AC51875BD38F24C5A7D44DD2E4B8E122E8623",
+      "bytes": 91648,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Direct3D11.dll",
+      "sha256": "EAD89D0F9C475527ABCB373C10B1D04C2BFA727070F126105430040B525AE2BC",
+      "bytes": 352768,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DirectX.dll",
+      "sha256": "100B3A02EA5FD5BB8DB39C24DD58DEAD5669FA5A46D1EBCD61D4A9D82F812C12",
+      "bytes": 365056,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Mathematics.dll",
+      "sha256": "A553C1C90D2D8BDE2D7613306B994B585ACF22284BE009F4151381F7308476CB",
+      "bytes": 125952,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.deps.json",
+      "sha256": "8356139AA4F13D3C11051CEB2DF5C22B1AC7F9A0E87CDAE003095960698EEB95",
+      "bytes": 4947,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.dll",
+      "sha256": "E359130534CA0E585557B5B4FDAA8309056A3DC0409E07B476E46C86201889B1",
+      "bytes": 294912,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.exe",
+      "sha256": "C2727F2BAD7CA64F97059BE781F4E2DE5214440BD94B704D58993FD0A1C12731",
+      "bytes": 162304,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.runtimeconfig.json",
+      "sha256": "3E965CD7CFD553C2FF4E842D8D8019AAAE2DA0A21D92FF85A87573DD8D1B95C6",
+      "bytes": 399,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/wallpaper/WinRT.Runtime.dll",
+      "sha256": "BCF3A14E8712A90837FC5C0D8C8A24696AF2BD7F74E9767597EC81EDEDFB23DB",
+      "bytes": 528944,
+      "sourceInGit": false
+    },
+    {
+      "file": "assets/whale-icon-helper.exe",
+      "sha256": "77C9BDCD3E7179A46C21782FA9D6036A3AB766EDB35EEBECB57E822307C30906",
+      "bytes": 13312,
+      "sourceInGit": false
+    },
+    {
+      "file": "cordis.patch.yml",
+      "sha256": "E37C9096465EAB2DB253E3B3EF7D6A60FA7DB89899B4C9D96AAF51AF64621A07",
+      "bytes": 200,
+      "sourceInGit": true
+    },
+    {
+      "file": "package.json",
+      "sha256": "E153B201044D165975F557502DBC038D1065B921C25B42CB80A8A9342904A9C8",
+      "bytes": 3987,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/client.js",
+      "sha256": "62F95BCBAF8DDE48F7C8467D1E6EF7AB772CFCC3C57216F6BE973219E65E71B8",
+      "bytes": 602588,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/companion/companion.css",
+      "sha256": "B0F7D80620F21A42B3862FA6AF3C934CBF889A31B13205DB3D42C910C6F6DCF4",
+      "bytes": 18415,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/companion/companion.js",
+      "sha256": "DA7A2FE52572DEEA4E290B51AFE30F8B333FF0F5FEAC0892821F83AAC04C0280",
+      "bytes": 79827,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/companion/index.html",
+      "sha256": "CC7F4DAF01734AD8AF16B75BB5E007B70F8462D290009BA249B364D6CE3B66C6",
+      "bytes": 16977,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/detachable-bridge.js",
+      "sha256": "18F17C2E82BEFBCC1A9EEECFFB681BFAD83F1704B0945AFA1E6750343669215F",
+      "bytes": 19284,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/detachable-contract.js",
+      "sha256": "90970ED2C31F08369C3B02BAED248BFC0F0967F0C414EF451242531994BE33EA",
+      "bytes": 50097,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/detachable-edge-adapter.js",
+      "sha256": "BA8B4C708E06FF5877FD323E0D3266BFC473E4C75042FAB355C185AB01C8E5E7",
+      "bytes": 43766,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/detachable-host.js",
+      "sha256": "190F2F9BBE52DD3690F8E1FF37C13C68FD636ED400247F213C110D85B60229DF",
+      "bytes": 61084,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/index.js",
+      "sha256": "82BE5602DC1B3215176CC3F40C080EB0E82F3E0E29C485B8FDB6716BD1E399C6",
+      "bytes": 12516,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/author-properties-apply.js",
+      "sha256": "0DE2CF9949C471781AFBC3CD4651414D1C792EA4A2FAC697AA963CD865278154",
+      "bytes": 15680,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/author-properties-contract.js",
+      "sha256": "3A5410A20E04C2B1B097107C1FF9B6FC7F0BF7414B08876C40D95F1E170AFB48",
+      "bytes": 8829,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/author-properties-host.js",
+      "sha256": "926693DF1AF8A61D6A422F135F53592AF4979B63AAFFA27BED431FF2C058E68F",
+      "bytes": 21715,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/author-properties-panel.js",
+      "sha256": "806F65C03F8872784022A62A711E43909480D94FFA9EB4B58F8BC3FA787AAD27",
+      "bytes": 12289,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/author-properties-schema.js",
+      "sha256": "D2D5417FBF5CFF9EF2D74277EA2E21959FF5AE520E93D4D9AF4C1164567F0EF9",
+      "bytes": 4395,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/catalog.js",
+      "sha256": "C5F67B2EDE128DD11B42DE93D40A4AD6F134ABAAC89A9317ABAB70B77B7C7843",
+      "bytes": 24805,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/close-fence.js",
+      "sha256": "2977C6500FDF09508E43836008E9F9CC442AB1920E7767F91F60F79FC6A7B4C9",
+      "bytes": 7118,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/frame-hub.js",
+      "sha256": "93386920898555DE5362176E505E107E7651A3895B510FBDF1BCB0A5B113ECE4",
+      "bytes": 2115,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/frame-protocol.js",
+      "sha256": "074AB958CFA6E9D0050067BA8AD5B280605671D9630615194ACB282DCD79DED9",
+      "bytes": 1744,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/library.js",
+      "sha256": "6B6F6FE57CDB8EB7810C2FAA326A90CEBCFDB0A516AC36453AE6E981B46A667C",
+      "bytes": 13691,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/managed-window.js",
+      "sha256": "6CCCBE58DE3F890F374C896B4EB2B253B916711FA9EE620C8728600BE04EBA86",
+      "bytes": 6370,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/media-bridge-permissions.js",
+      "sha256": "ED2F69809FBD1C73DB4CDD9BCE3C36CB8348B8641C33AEF6DE1A805D25912AEC",
+      "bytes": 3604,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/media-bridge.js",
+      "sha256": "0F357447363C431D76AE2BAA47737DE6FE83B1BD76F6F835E8549116FBAC0160",
+      "bytes": 15068,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/probe-log.js",
+      "sha256": "3E49A454180A249AA7C49912C428E524385C8A7C2A532E825147C25819F99C82",
+      "bytes": 5178,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/scenes.js",
+      "sha256": "0BBA53EB4E96A6C04E4EAAC7EBBF73B5DAC9D3B2E46CCCBF657FB2CF9D24FA90",
+      "bytes": 5887,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/wallpaper/session.js",
+      "sha256": "9E6BCD86188C2E2B35A8A826099662A341BD8763BB087701C959ECFF81C8C498",
+      "bytes": 86236,
+      "sourceInGit": true
+    },
+    {
+      "file": "src/windows/WhaleDesktopIcon.cs",
+      "sha256": "F35EEEDDA1F67CA68D3CCA36CD03F3074579A369E9D324753E3091E06D185653",
+      "bytes": 12634,
+      "sourceInGit": true
+    }
+  ],
+  "runtimeSourceFromActualVerifiedArchive": true,
+  "assetsRetainedInLocalArchiveAndInstalledPackage": true
+}
