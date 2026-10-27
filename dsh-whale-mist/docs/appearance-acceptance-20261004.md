@@ -28,7 +28,7 @@
 
 ## 保留给下一轮的材料
 
-- 候选安装包：[dsh-whale-mist-0.6.0-rc.1.tgz](../../release/plugins/dsh-whale-mist-0.6.0-rc.1.tgz)
+- 候选安装包：dsh-whale-mist-0.6.0-rc.1.tgz（原工作区／本机历史引用：`../../release/plugins/dsh-whale-mist-0.6.0-rc.1.tgz`，本仓库不含该文件）
 - 候选 SHA256：`1FE677232C3EC8A710F97F3BD62F119E69BF5F42A3550CD64520B82542A02E80`
 - 本轮临时媒体与验收记录：`F:\deepseekharness\.tmp\appearance-acceptance-20261004`
 - 现有正式 0.5.2 包未覆盖；官方 EXE 和 `app.asar` 未修改。

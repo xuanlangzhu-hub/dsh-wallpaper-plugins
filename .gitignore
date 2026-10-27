@@ -50,3 +50,6 @@ Thumbs.db
 /dsh-whale-mist/qa/**/obj/
 **/__pycache__/
 *.py[cod]
+
+# Real desktop captures contain private conversations; keep them local.
+/docs/screenshots/

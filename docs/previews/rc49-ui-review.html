@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Whale 侧栏改版预览</title>
+<style>
+  :root{color-scheme:light dark;font:16px/1.65 system-ui,sans-serif}
+  body{max-width:1220px;margin:40px auto;padding:0 24px;background:Canvas;color:CanvasText}
+  h1{font-size:24px;line-height:1.35;margin:0 0 12px}p{max-width:65ch;margin:0 0 30px}
+  main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:28px;align-items:start}
+  figure{margin:0}figcaption{font-weight:600;margin-bottom:12px}img{display:block;width:100%;max-width:360px;height:auto;border:1px solid GrayText;border-radius:6px}
+  small{display:block;margin-top:28px}a{color:LinkText}
+</style>
+<h1>Whale 侧栏改版预览</h1>
+<p>按 Astra 方案整理的第一版：固定播放主控，常用设置直接可见，低频项收拢，下拉外框与展开列表统一。以下为隔离测试画面，壁纸缩略图是占位；日常 DSH 仍保留 rc.48。</p>
+<main>
+  <figure><figcaption>壁纸详情</figcaption><img src="rc49-wallpaper-detail.png" alt="壁纸详情：顶部播放主控与更换入口，下方作者设置、即时开关、滑块和输入框"></figure>
+  <figure><figcaption>深色界面与选择器</figcaption><img src="rc49-dark-interface.png" alt="深色界面：主题与配色、文字与底色、收起的更多外观，以及统一的下拉列表"></figure>
+  <figure><figcaption>浅色界面与选择器</figcaption><img src="rc49-light-interface.png" alt="浅色界面与展开的主题选择列表，沿用主题和强调色"></figure>
+</main>
+<small>实现与验收边界见 <a href="../WALLPAPER_NATIVE_UI_ASTRA_IMPLEMENTATION_20261025.md">本轮交付记录</a>。真实桌面观感待安装候选后确认。</small>
+</html>

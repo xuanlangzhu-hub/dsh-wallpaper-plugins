@@ -44,8 +44,8 @@ probe confirmed that Git Bash works with approved full access, including
 Chinese paths, Node/Git, background handles and timeouts. Windows' restricted
 token cannot initialize MSYS signal pipes, so confined calls are refused
 without automatic escalation. The default standard preset and session
-permissions stay unchanged. See [preset usage and limits](../dsh-whale-gitbash/README.md)
-and [native acceptance](../dsh-whale-gitbash/qa/ACCEPTANCE.md).
+permissions stay unchanged. See preset usage and limits（原工作区／本机历史引用：`../dsh-whale-gitbash/README.md`，本仓库不含该文件）
+and native acceptance（原工作区／本机历史引用：`../dsh-whale-gitbash/qa/ACCEPTANCE.md`，本仓库不含该文件）.
 
 The archived-sessions plugin is superseded by official archive management.
 The pet compatibility change ([PR #68](https://github.com/PC2005-cloud/dsh-pet/pull/68))

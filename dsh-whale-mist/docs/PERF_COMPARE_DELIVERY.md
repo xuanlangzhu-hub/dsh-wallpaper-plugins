@@ -1,9 +1,9 @@
 # 交付记录：离线阶段对比工具（DS，2026-10-09）
 
-依据 [DS_NEXT_PERF_COMPARE.md](../../../docs/DS_NEXT_PERF_COMPARE.md)、
-[PERF_PHASE_PROTOCOL.md](../../../docs/PERF_PHASE_PROTOCOL.md) 与
-[清单模板](../../../docs/perf-phase-manifest.example.json)。
-第二轮依 [PERF_COMPARE_REVIEW.md](../../../docs/PERF_COMPARE_REVIEW.md) 的 F1–F4 局部修正。
+依据 [DS_NEXT_PERF_COMPARE.md](../../docs/DS_NEXT_PERF_COMPARE.md)、
+[PERF_PHASE_PROTOCOL.md](../../docs/PERF_PHASE_PROTOCOL.md) 与
+[清单模板](../../docs/perf-phase-manifest.example.json)。
+第二轮依 [PERF_COMPARE_REVIEW.md](../../docs/PERF_COMPARE_REVIEW.md) 的 F1–F4 局部修正。
 
 ## 授权范围内改动的文件
 

@@ -6,7 +6,7 @@
 > `selftest9` 不可读 CPU 被旧脚本写成零，不能据此声称缺失值已正确保持 null。
 > `.tmp/perf-rc24` 是仓库根下的历史证据，硬件/速度/权限不代表本轮重新验证。
 
-2026-10-09。依据 [NEXT_SOURCE_PERFORMANCE.md](../../../docs/NEXT_SOURCE_PERFORMANCE.md)（基线 rc.23，日常 rc.1）。
+2026-10-09。依据 [NEXT_SOURCE_PERFORMANCE.md](../../docs/NEXT_SOURCE_PERFORMANCE.md)（基线 rc.23，日常 rc.1）。
 **本轮不启动真实壁纸窗口、不安装插件、不改生产行为。** 只做采样工具与接口调查，交 Codex 审查。
 
 本轮没有改动 `src/client.js`，没有改动任何包，没有触碰 Profile、官方 EXE 或原 WE 进程。

@@ -1,3 +1,9 @@
+> 2026-10-21 最新结论：[类型收束及rc.42候选](WALLPAPER_TYPES_CLOSURE_RC42_REVIEW_20261021.md)完成，application维持不支持、Scene大小写源码与登记重验通过；日常rc.40，候选未安装。后续为[作者设置P0](WALLPAPER_AUTHOR_SETTINGS_P0_TASK_20261021.md)。以下为各阶段历史。
+
+> 最新闭合：[rc.41 批准 web/Lucy 短验及恢复交接](RC41_WEB_SHORT_TEST_20261020.md)完成，日常 rc.40，用户重开正常。下方“当前进度”及表格保留各调查阶段历史；后续仍是 application 可行性、Scene 大小写缺口，再做作者设置。
+
+> 当前进度：[web 源观察通过](WALLPAPER_WEB_SOURCE_ONLY_RESULT_20261020.md)，[本地 web 源码与 rc.41 候选离线核验通过](WALLPAPER_WEB_OFFLINE_DELIVERY_20261020.md)。日常仍 rc.40；DSH 内 web 采集/显示待重新确认方便、新备份后临时短验。下文表格是调查起点，application 可行性与作者参数顺序保持。
+
 # 剩余壁纸类型可行性：先 web，再 application
 
 2026-10-20，用户确认：“清理推送，然后还是先把壁纸可行做完再做设置”。本轮维护完成后继续此排期，作者公开参数后排。当前日常为[rc.40](RC40_DAILY_TRIAL_20261020.md)，不会因为可行性调查直接升级安装或启用未知壁纸。
