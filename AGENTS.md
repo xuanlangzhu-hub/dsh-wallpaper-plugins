@@ -4,7 +4,7 @@
 
 ## 当前基线（2026-10-28）
 
-- 最新：发行材料83260ab已提交推送，[首个GitHub预发行草稿](docs/RC53_GITHUB_PRERELEASE_DRAFT_20261028.md)已创建并下载核对两附件；draft=true／prerelease=true、未公开、无正式tag，等待用户最终公开安排，npm不在本次范围。d轮ZIP SHA256 AFF40FFEA48298066403F6FE7EDF9E67888FC90CE2706549EB90B63678F99C24；原rc.53 tgz保持。公开图标署名简洁，回忆细节只留审查记录。日常rc.53保持，不操作应用／Profile、清理或重跑短验。
+- 最新：用户已明确同意公开，[首个GitHub预发行rc.53](docs/RC53_FIRST_GITHUB_RELEASE_PUBLISHED_20261028.md)已发布，draft=false／prerelease=true；tag dsh-whale-mist-v0.6.0-rc.53固定指向83260ab。两个附件匿名下载逐字节一致；ZIP SHA256 AFF40FFEA48298066403F6FE7EDF9E67888FC90CE2706549EB90B63678F99C24，原tgz保持。npm未发布，日常rc.53保持，无应用／Profile／WE操作或清理。本轮发布授权不自动扩展到未来版本发布或安装。
 
 - 当前日常DSH0.2.1-rc.3／Whale0.6.0-rc.53／GitBash0.1.2，43文件与固定原包一致，重开正常、目录ready、停止／capture0。rc.52回退原包、本轮5Profile／10外观存储／9媒体及布局新备份保留。
 - 用户10月28日先核包短验并恢复rc.52，再另行明确授权、正常退出后新备份换作rc.53日常。随后授权当前成果提交推送；这不自动授权未来再安装、清理、发Release或npm。

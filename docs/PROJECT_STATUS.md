@@ -1,6 +1,10 @@
 # 项目状态与接续
 
-更新：2026-10-28。当前阶段为 **rc.53已保留日常试用，先观察，公开发布暂停**。[图库选择、显式播放和非Lucy作者参数](WALLPAPER_GALLERY_SELECTION_AND_AUTHOR_ID_20261028.md)已完成本轮限定验证。
+更新：2026-10-28。当前阶段为 **rc.53日常试用保持，首个GitHub预发行已公开**。[图库选择、显式播放和非Lucy作者参数](WALLPAPER_GALLERY_SELECTION_AND_AUTHOR_ID_20261028.md)已完成本轮限定验证。
+
+用户已明确同意公开，见[正式发布记录](RC53_FIRST_GITHUB_RELEASE_PUBLISHED_20261028.md)。Release ID426340728已从原草稿发布，
+draft=false／prerelease=true，发布时间06:52:41Z；正式tag指向发行材料83260ab，两附件匿名下载逐字节一致。
+没有npm发布或日常应用／Profile／WE操作。下文草稿、暂停和准备状态保留为过程历史，以本段为当前状态。
 
 最新：用户要求继续，公开图标署名已精简为DeepSeek标志改色／透明处理及无背书说明；
 回忆细节只留审查记录。外层d轮ZIP固定文本换行并已核对，SHA256 `AFF40FFEA48298066403F6FE7EDF9E67888FC90CE2706549EB90B63678F99C24`，

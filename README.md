@@ -1,13 +1,13 @@
 # DSH Wallpaper Plugins
 
-2026-10-28：[图库选择与非Lucy参数](docs/WALLPAPER_GALLERY_SELECTION_AND_AUTHOR_ID_20261028.md)补修及[本机短验](docs/RC53_GALLERY_AUTHOR_SHORT_TEST_20261028.md)通过，已另做新备份并[切换rc.53日常试用](docs/RC53_DAILY_TRIAL_20261028.md)，用户确认重开正常。本轮[整理源码与交接](docs/WORKSPACE_PUSH_20261028.md)，准备[首个GitHub预发行](docs/FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)，尚未公开发布。
-
-[本地发行附件与许可核对](docs/RC53_FIRST_RELEASE_BUNDLE_20261028.md)已完成归档检查；图标已按用户回忆记为DeepSeek标志的改色／透明处理衍生图，原图及工具未知的限制保留，等待公开发布安排。项目源码按[MIT](LICENSE)提供，随包组件见[第三方声明](THIRD_PARTY_NOTICES.md)。
-
-[首个预发行草稿](docs/RC53_GITHUB_PRERELEASE_DRAFT_20261028.md)和两个附件已就位并下载核对，目前未公开；
-待公开后再提供正式下载入口。GitHub自动Source code.zip不是插件安装包。
-
 Whale Appearance / 鲸系外观，为官方 DeepSeek Harness Windows Desktop 提供主题、背景和 Wallpaper Engine 集成。
+
+**[下载 0.6.0-rc.53 预发行版](https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.0-rc.53)** · Windows x64 · 已验宿主 DSH 0.2.1-rc.3。
+
+下载发布页中的 `dsh-whale-mist-0.6.0-rc.53-windows-x64.zip` 与 `.zip.sha256`，核对校验值后解压，
+按其中 INSTALL.md 安装。先正常退出DSH并备份当前设置；GitHub自动Source code.zip不是插件安装包。
+项目源码按[MIT](LICENSE)提供，随包组件见[第三方声明](THIRD_PARTY_NOTICES.md)。
+2026-10-28首个预发行已公开，两附件已匿名下载核对，见[发布记录](docs/RC53_FIRST_GITHUB_RELEASE_PUBLISHED_20261028.md)。
 
 当前日常：**DSH 0.2.1-rc.3 · Whale 0.6.0-rc.53 · Git Bash 0.1.2**。用户确认重开正常，助手已核对侧栏目录及停止状态。[rc.53日常交接](docs/RC53_DAILY_TRIAL_20261028.md)记录了本轮新备份、固定包与验收范围，rc.52回退来源保留。
 
@@ -42,7 +42,9 @@ Whale Appearance / 鲸系外观，为官方 DeepSeek Harness Windows Desktop 提
 | `release/`、`.tmp/` | 本机归档、审查证据及备份工具，保留但不推送 |
 | `docs/screenshots/` | 含会话内容的真实截图，仅本机保留 |
 
-**不要直接对共享开发树执行 npm pack/publish。** 当前提交保存开发成果和固定发行源码；Git提交、日常安装均不等同于公开发布。GitHub Release和npm发布分别安排，附件先核对版本、内容白名单及许可声明；本轮按用户要求提交推送，未创建Release／tag、发布npm或清理现场。
+**不要直接对共享开发树执行 npm pack/publish。** 当前提交保存开发成果和固定发行源码；
+已公开的rc.53预发行附件来自固定已验tgz及独立核对的外层资料，tag固定指向83260ab。
+GitHub Release和npm发布分别安排，本次没有npm发布或清理现场。
 
 ## 检查
 
