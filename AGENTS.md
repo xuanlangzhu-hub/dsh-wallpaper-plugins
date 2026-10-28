@@ -4,7 +4,7 @@
 
 ## 当前基线（2026-10-28）
 
-- 最新：用户已另授权本轮提交推送当前成果，[源码与交接整理](docs/WORKSPACE_PUSH_20261028.md)保存固定rc.53文本快照；[首个Release准备](docs/FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)仍待许可／附件核对，没有创建Release／tag或npm发布。日常rc.53保持，不为推送操作应用／Profile、清理或重跑短验。
+- 最新：当前成果已推送至b8554cb；用户随后要求继续[首个Release准备](docs/FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)。[本地发行ZIP d轮](docs/RC53_FIRST_RELEASE_BUNDLE_20261028.md)已核对，原tgz保持，SDK许可与8DLL来源已核对；公开图标声明已精简，具体回忆留内部记录，外层文本LF固定、RTF原文binary保护。正在提交发行资料并准备GitHub预发行草稿，公开发布仍留最后处理，npm不在本次范围。日常rc.53保持，不操作应用／Profile、清理或重跑短验。
 
 - 当前日常DSH0.2.1-rc.3／Whale0.6.0-rc.53／GitBash0.1.2，43文件与固定原包一致，重开正常、目录ready、停止／capture0。rc.52回退原包、本轮5Profile／10外观存储／9媒体及布局新备份保留。
 - 用户10月28日先核包短验并恢复rc.52，再另行明确授权、正常退出后新备份换作rc.53日常。随后授权当前成果提交推送；这不自动授权未来再安装、清理、发Release或npm。

@@ -1,0 +1,33 @@
+{
+  "retrievedOn": "2026-10-28",
+  "sources": [
+    {
+      "file": "licenses/Vortice.Windows-MIT.txt",
+      "url": "https://raw.githubusercontent.com/amerkoleci/Vortice.Windows/9e609cb9439c9872aa1b339f177e40ec96f77239/LICENSE"
+    },
+    {
+      "file": "licenses/Vortice.Mathematics-MIT.txt",
+      "url": "https://raw.githubusercontent.com/amerkoleci/Vortice.Mathematics/fa05ec6dcba48f3f7331791da6dc7f3d866b2ad6/LICENSE"
+    },
+    {
+      "file": "licenses/SharpGenTools-MIT.txt",
+      "url": "https://raw.githubusercontent.com/SharpGenTools/SharpGenTools/6990bcafe124a4c22515ad19cee5a081da8db67b/LICENSE.txt"
+    },
+    {
+      "file": "licenses/DeepSeek-Harness-MIT.txt",
+      "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/1f81c047fc48fa190a683e469daa699857e9afe8/LICENSE"
+    },
+    {
+      "file": "licenses/Windows-SDK-license.rtf",
+      "url": "https://download.microsoft.com/download/0/F/F/0FF2B061-47DD-4F55-89B6-FD1D8C44F14D/sdk_license.rtf"
+    }
+  ],
+  "microsoftRedist": "https://learn.microsoft.com/en-us/legal/windows-sdk/redist",
+  "icon": {
+    "sha256": "B57A303C586154AD1741EB5D478BB80EAE8231495BD08995854BE7E711EEE5B8",
+    "localHistory": "dsh-desktop commit 32d1ec928690919c7faffae87ea3b304c6f2c48f; imported into this repo by c640c22fb64d1e0e47684faf9e30f80703990563",
+    "description": "Adapted from the DeepSeek whale mark for application identification.",
+    "modifications": ["Recolored white", "Transparent eye cut-out", "Transparent belly cut-out", "ICO conversion"],
+    "upstreamLicenseScope": "DeepSeek Harness MIT text is included for the upstream project. The project MIT license does not grant trademark rights."
+  }
+}

@@ -2,7 +2,11 @@
 
 更新：2026-10-28。当前阶段为 **rc.53已保留日常试用，先观察，公开发布暂停**。[图库选择、显式播放和非Lucy作者参数](WALLPAPER_GALLERY_SELECTION_AND_AUTHOR_ID_20261028.md)已完成本轮限定验证。
 
-用户随后授权先提交推送当前成果，并准备首个GitHub Release。[本轮源码与交接整理](WORKSPACE_PUSH_20261028.md)和[首个预发行准备](FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)已记录；固定rc.53源码快照纳入Git，尚未建tag／Release或发布npm。公开附件仍需补齐许可材料，日常rc.53不变。
+最新：用户要求继续，公开图标署名已精简为DeepSeek标志改色／透明处理及无背书说明；
+回忆细节只留审查记录。外层d轮ZIP固定文本换行并已核对，SHA256 `AFF40FFEA48298066403F6FE7EDF9E67888FC90CE2706549EB90B63678F99C24`，
+原tgz不变。正在提交资料、准备GitHub预发行草稿，尚未公开；不发布npm、不操作日常应用。
+
+当前成果已推送至b8554cb。用户随后要求继续[首个预发行准备](FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)，[本地下载ZIP及许可核对](RC53_FIRST_RELEASE_BUNDLE_20261028.md)完成：43文件原包不变，8DLL均匹配原NuGet条目，13校验条目及确定性重建通过。用户补记ICO为DeepSeek蓝鲸／Harness黑鲸标志改白、眼睛和腹部镂空的衍生图，原图／工具未知；已如实署名并重建外层b轮ZIP，保留旧a轮。材料已备，publicReleaseReady=false等待本次公开安排；本轮新增资料尚未提交推送，尚未建tag／Release或发布npm。日常rc.53不变。
 
 用户随后决定保留rc.53日常试用，已另获本次正常退出确认、新备份并[完成日常切换](RC53_DAILY_TRIAL_20261028.md)。固定43文件一致，原设置／布局保持，重开目录正常，原自动播放正常停止后capture0，用户确认重开正常，本轮closed-out。公开发布继续暂停。
 

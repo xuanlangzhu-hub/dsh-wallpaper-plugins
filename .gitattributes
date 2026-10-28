@@ -4,3 +4,12 @@
 /release-sources/rc52/package/** -text whitespace=cr-at-eol,-blank-at-eof
 /release-sources/rc53/package/** -text whitespace=cr-at-eol,-blank-at-eof
 /release-sources/rc53/build-inputs/** -text whitespace=cr-at-eol,-blank-at-eof
+
+# Keep redistributed license files and release recipe stable across checkouts.
+/licenses/*.txt text eol=lf
+/licenses/*.md text eol=lf
+/licenses/*.rtf binary
+/release-sources/rc53/build-release-bundle.py text eol=lf
+/release-sources/rc53/INSTALL.md text eol=lf
+/release-sources/rc53/license-sources.json text eol=lf
+/release-sources/rc53/third-party-inventory.json text eol=lf

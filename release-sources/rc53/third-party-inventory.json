@@ -1,0 +1,138 @@
+{
+  "version": "0.6.0-rc.53",
+  "verifiedOn": "2026-10-28",
+  "method": "Exact SHA256 comparison against original NuGet ZIP entries; no DLL executed.",
+  "files": [
+    {
+      "file": "assets/wallpaper/Vortice.Direct3D11.dll",
+      "package": "vortice.direct3d11",
+      "version": "3.8.3",
+      "sha256": "EAD89D0F9C475527ABCB373C10B1D04C2BFA727070F126105430040B525AE2BC",
+      "bytes": 352768,
+      "nugetEntry": "lib/net10.0/Vortice.Direct3D11.dll",
+      "nugetArchiveSha256": "1DF046BDCF739B9FD368F0046F82645B777EBC5E6EF67B9F47EB661CB0001064",
+      "unmodified": true,
+      "license": "MIT",
+      "copyright": "Copyright (c) Amer Koleci and Contributors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/amerkoleci/Vortice.Windows",
+        "commit": "9e609cb9439c9872aa1b339f177e40ec96f77239"
+      }
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DXGI.dll",
+      "package": "vortice.dxgi",
+      "version": "3.8.3",
+      "sha256": "6E381EAAB77257EE63C20A654A2AC51875BD38F24C5A7D44DD2E4B8E122E8623",
+      "bytes": 91648,
+      "nugetEntry": "lib/net10.0/Vortice.DXGI.dll",
+      "nugetArchiveSha256": "334B3EAE1C9B2DFAF609D58C2938D41240658044E14CF5FC030FF5F190F3903C",
+      "unmodified": true,
+      "license": "MIT",
+      "copyright": "Copyright (c) Amer Koleci and Contributors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/amerkoleci/Vortice.Windows",
+        "commit": "9e609cb9439c9872aa1b339f177e40ec96f77239"
+      }
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DirectX.dll",
+      "package": "vortice.directx",
+      "version": "3.8.3",
+      "sha256": "100B3A02EA5FD5BB8DB39C24DD58DEAD5669FA5A46D1EBCD61D4A9D82F812C12",
+      "bytes": 365056,
+      "nugetEntry": "lib/net10.0/Vortice.DirectX.dll",
+      "nugetArchiveSha256": "D9D67D3BE6226411FBA29F7DD87BAFFE824DBF048F39C1878879ED1CEA9E7C13",
+      "unmodified": true,
+      "license": "MIT",
+      "copyright": "Copyright (c) Amer Koleci and Contributors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/amerkoleci/Vortice.Windows",
+        "commit": "9e609cb9439c9872aa1b339f177e40ec96f77239"
+      }
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Mathematics.dll",
+      "package": "vortice.mathematics",
+      "version": "2.1.0",
+      "sha256": "A553C1C90D2D8BDE2D7613306B994B585ACF22284BE009F4151381F7308476CB",
+      "bytes": 125952,
+      "nugetEntry": "lib/net10.0-windows10.0.19041/Vortice.Mathematics.dll",
+      "nugetArchiveSha256": "15FAEFE786BC5BB8A2E0FE1E73FAE7038F1AA2204FF711C3581944CD77FFADAE",
+      "unmodified": true,
+      "license": "MIT",
+      "copyright": "Copyright (c) Amer Koleci and Contributors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/amerkoleci/Vortice.Mathematics",
+        "branch": "refs/heads/main",
+        "commit": "fa05ec6dcba48f3f7331791da6dc7f3d866b2ad6"
+      }
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.dll",
+      "package": "sharpgen.runtime",
+      "version": "2.4.2-beta",
+      "sha256": "0DC12AB829852555CCC9D8193E4422CD4CA389741DE0A54A189DE8A1C9B6BF4A",
+      "bytes": 79872,
+      "nugetEntry": "lib/net9.0/SharpGen.Runtime.dll",
+      "nugetArchiveSha256": "5BDCEBEE0BDC3C15DC6E9B73F82FAA98575EA749B92D6AE30106FEB44BD23F18",
+      "unmodified": true,
+      "license": "MIT",
+      "copyright": "(c) 2010-2017 Alexandre Mutel, 2017-2023 Jeremy Koritzinsky, 2023-2024 Amer Koleci",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/SharpGenTools/SharpGenTools",
+        "branch": "refs/heads/main",
+        "commit": "6990bcafe124a4c22515ad19cee5a081da8db67b"
+      }
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.COM.dll",
+      "package": "sharpgen.runtime.com",
+      "version": "2.4.2-beta",
+      "sha256": "35282958014C210BFDE28399C9FA3841B6D51F81FF1DA23AD0EDAD985DFA5B0C",
+      "bytes": 168960,
+      "nugetEntry": "lib/net9.0/SharpGen.Runtime.COM.dll",
+      "nugetArchiveSha256": "32A81AEC51F9FFEE3376A29DB7F9A2447E250CF1CCCD352EA02FC4DC49FD046C",
+      "unmodified": true,
+      "license": "MIT",
+      "copyright": "(c) 2010-2017 Alexandre Mutel, 2017-2023 Jeremy Koritzinsky, 2023-2024 Amer Koleci",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/SharpGenTools/SharpGenTools",
+        "branch": "refs/heads/main",
+        "commit": "6990bcafe124a4c22515ad19cee5a081da8db67b"
+      }
+    },
+    {
+      "file": "assets/wallpaper/Microsoft.Windows.SDK.NET.dll",
+      "package": "microsoft.windows.sdk.net.ref",
+      "version": "10.0.19041.57",
+      "sha256": "0EC371D93798852E36461C8ADDDBEADCE0F963A04752F0B64E54FE19C1C834A7",
+      "bytes": 24877600,
+      "nugetEntry": "lib/net8.0/Microsoft.Windows.SDK.NET.dll",
+      "nugetArchiveSha256": "90B18F2CF7D7A23F5B0BFE2B86D8DDA45881481F677CE36ECCAF6E9AB50B6B4B",
+      "unmodified": true,
+      "license": "Microsoft Windows SDK license terms",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": null
+    },
+    {
+      "file": "assets/wallpaper/WinRT.Runtime.dll",
+      "package": "microsoft.windows.sdk.net.ref",
+      "version": "10.0.19041.57",
+      "sha256": "BCF3A14E8712A90837FC5C0D8C8A24696AF2BD7F74E9767597EC81EDEDFB23DB",
+      "bytes": 528944,
+      "nugetEntry": "lib/net8.0/WinRT.Runtime.dll",
+      "nugetArchiveSha256": "90B18F2CF7D7A23F5B0BFE2B86D8DDA45881481F677CE36ECCAF6E9AB50B6B4B",
+      "unmodified": true,
+      "license": "Microsoft Windows SDK license terms",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": null
+    }
+  ]
+}
