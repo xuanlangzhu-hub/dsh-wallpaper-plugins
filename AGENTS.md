@@ -2,11 +2,15 @@
 
 先读根README、[项目状态](docs/PROJECT_STATUS.md)、本机NEXT_TASK.md和当前相关复审。主要开发目录为dsh-whale-mist；日常安装、Profile和原Tauri／WSL项目分开。
 
-## 当前基线（2026-10-27）
+## 当前基线（2026-10-28）
 
-- 当前日常DSH0.2.1-rc.3／Whale0.6.0-rc.52／GitBash0.1.2，用户已确认重开外观／布局／目录正常、播放停止。见[交接](docs/RC52_DAILY_TRIAL_20261027.md)。rc.48回退及本轮新备份保留。
-- 本次用户授权整理工作区、提交推送、清理可重建缓存；不自动发布Release／npm或打标签，不操作日常应用。
-- 共享manifest／生产assets仍rc.30，源码含Trace，不直接整体打包或改版本冒充日常。release-sources/rc52是实际固定包文本快照和全文件指纹，14个assets不重复提交，原归档保留。
+- 最新：用户已另授权本轮提交推送当前成果，[源码与交接整理](docs/WORKSPACE_PUSH_20261028.md)保存固定rc.53文本快照；[首个Release准备](docs/FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)仍待许可／附件核对，没有创建Release／tag或npm发布。日常rc.53保持，不为推送操作应用／Profile、清理或重跑短验。
+
+- 当前日常DSH0.2.1-rc.3／Whale0.6.0-rc.53／GitBash0.1.2，43文件与固定原包一致，重开正常、目录ready、停止／capture0。rc.52回退原包、本轮5Profile／10外观存储／9媒体及布局新备份保留。
+- 用户10月28日先核包短验并恢复rc.52，再另行明确授权、正常退出后新备份换作rc.53日常。随后授权当前成果提交推送；这不自动授权未来再安装、清理、发Release或npm。
+- [固定rc.52隔离整合](docs/RC52_GALLERY_AUTHOR_UNPACKED_INTEGRATION_20261028.md)保留四运行文件就绪修复及三处读取诊断接点。rc.53仅client／版本／README变化，43文件白名单、14资产不变，实际归档15项SDK及语法／Trace／CSS检查通过。仅记录已验收目标，不推断全部参数兼容。
+- [rc.53短验工具](docs/RC53_GALLERY_AUTHOR_TRIAL_PREPARATION_20261028.md)及本轮新备份／测后保留数据均留存；最终清理绑定Float独立播放证明，不复用Lucy／绯雪证明。工具当前已闭合，不能直接重跑旧轮。
+- 共享manifest／生产assets仍rc.30，源码含Trace，不直接整体打包或改版本冒充日常。release-sources/rc52和rc53保存各固定包文本与全文件指纹，rc53另保留含读取诊断接点的实际整合侧栏源；14个assets不重复提交，原归档保留。
 - 三体源端节奏、UI布局／“▶ 播放”、任务栏初始入口及完整隐藏待后续；滚动低优先级，宿主bad port启动事件仍未知完整根因。不要自启三体／GPU／性能或新专项。
 - 整理前接续原文见[历史](docs/history/20261027/README.md)。历史阶段的禁令／下一步按当时范围理解，不能推翻用户后续明确授权，也不能自动授权新的操作。
 
