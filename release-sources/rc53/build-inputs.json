@@ -1,0 +1,6 @@
+{
+  "sidebarSource": "build-inputs/native-appearance-sidebar.js",
+  "sidebarSha256": "CD3FB3388DA1005F9526A16552BCCE83EA1CFBEFD8359BC0232D4F68CACDFDC3",
+  "clientSha256": "9D4914C6E4DA3CB7875C8F321B27613DD1D1B4C79628511CB5E47A6AFBED8F3B",
+  "purpose": "exact integrated source with retained rc52 diagnostic seams; build-only, not packaged"
+}

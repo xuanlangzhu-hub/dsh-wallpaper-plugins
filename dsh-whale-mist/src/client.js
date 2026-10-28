@@ -2584,7 +2584,7 @@ return {createAuthorPanel,validateAuthorValue};
               if (ok) await command("stop", {}, { compensating: true, admission: runAdmission }).catch(() => {});
               return status;
             }
-            if (!ok) throw new Error(payload?.error || "restart-failed");
+            if (!ok || payload?.ok === false || payload?.cleanup?.closed === false) throw new Error(payload?.error || "restart-failed");
             running = true; busy = false;
             startedAt = now(); lastFrameAt = now();
             activeRun = createRunContext(restartGeneration);
@@ -7455,11 +7455,11 @@ const NATIVE_APPEARANCE_CONTROLS_CSS = `
   background: var(--dsw-alias-interactive-bg-active);
 }
 [data-whale-native-sidebar] button[data-whale-playback-action] {
-  display: inline-grid; place-items: center; width: 32px; min-width: 32px; padding: 5px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: auto; min-width: 32px; padding: 5px 8px;
   background: var(--dsw-alias-button-elevated-fill); color: var(--dsw-alias-label-primary);
 }
 [data-whale-native-sidebar] button[data-whale-playback-recovery="true"] { width: auto; }
-[data-whale-native-sidebar] button[data-whale-playback-action="start"] { color: var(--dsw-alias-brand-primary); }
+[data-whale-native-sidebar] button:is([data-whale-playback-action="start"], [data-whale-playback-action="switch"]) { color: var(--dsw-alias-brand-primary); }
 [data-whale-native-sidebar] [data-whale-play-icon] { width: 14px; height: 14px; fill: currentColor; }
 [data-whale-native-sidebar] [data-whale-object-status]::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-inline-end: 5px; background: currentColor; }
 [data-whale-native-sidebar] [data-whale-object-status][data-playing="true"]::before { background: var(--dsw-alias-brand-primary); }
@@ -7467,6 +7467,8 @@ const NATIVE_APPEARANCE_CONTROLS_CSS = `
 [data-whale-native-sidebar][data-whale-settings-page="interface"] [data-whale-playback-header] { padding-block: 5px; }
 [data-whale-native-sidebar] [data-whale-object-row] { display: flex; align-items: center; gap: 6px; min-width: 0; }
 [data-whale-native-sidebar] [data-whale-object-row] > [data-whale-current-object] { flex: 1; }
+[data-whale-native-sidebar] [data-whale-header-actions] { max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }
+@container (max-width: 359px) { [data-whale-native-sidebar] [data-whale-object-row] { flex-wrap: wrap; } }
 @container (max-width: 359px) { [data-whale-native-sidebar] [data-whale-object-row] > [data-whale-current-object] [data-whale-object-preview] { display: none; } }
 
 [data-whale-native-sidebar] [data-whale-change-wallpaper] { margin-inline-end: 6px; }
@@ -7846,7 +7848,7 @@ function nativeAuthorColorFromHex(text){return typeof text==='string'&&/^#[a-f0-
 
 // One UI transaction lane across provider/view replacement. Host still owns the real executor.
 function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}) {
-  const listeners=new Set(),views=new Map();let context=null,epoch=0,active=null,disposed=false,phase='idle',message=null,schema=null,revision=null;
+  const listeners=new Set(),views=new Map();let context=null,wallpaperId=null,epoch=0,active=null,disposed=false,phase='idle',message=null,schema=null,revision=null;
   const initialReadMode=Object.freeze({});let initialReadEpoch=-1;
   let fields=Object.freeze([]),values={},marks={},desired=new Map(),snapshot,recovery=null,owned=null;
   const edits=new Map();
@@ -7866,7 +7868,7 @@ function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}
     const s=result?.schema,d=result?.draft;
     if(result?.ok!==true){const error=Error('request-failed');error.uncertain=result?.sentMayHaveOccurred===true;throw error;}
     if(!allowDirty&&!dirty.length&&Array.isArray(d?.dirtyKeys)&&d.dirtyKeys.length)throw Error('draft-pending');
-    if(s?.wallpaperId!=='lucy'||s.schemaVersion!==1||!/^([a-f0-9]{64})$/.test(s.fingerprint)||fingerprint&&fingerprint!==s.fingerprint||
+    if(s?.wallpaperId!==wallpaperId||s.schemaVersion!==1||!/^([a-f0-9]{64})$/.test(s.fingerprint)||fingerprint&&fingerprint!==s.fingerprint||
       !Array.isArray(s.fields)||s.fields.length>256||!Number.isSafeInteger(d?.revision)||d.revision<0||expected!==null&&d.revision!==expected||d.stale||
       !Array.isArray(d.dirtyKeys)||d.dirtyKeys.length>256||new Set(d.dirtyKeys).size!==d.dirtyKeys.length||
       (allowDirty?d.dirtyKeys.some(key=>typeof key!=='string'||!/^[A-Za-z0-9_]{1,64}$/.test(key)||['__proto__','constructor','prototype'].includes(key.toLowerCase())||!s.fields.some(field=>field.supported===true&&field.key===key)):
@@ -7903,7 +7905,7 @@ function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}
   }
   function run(kind,work){
     if(disposed||active||!context||!visible()||typeof request!=='function')return Promise.resolve({ok:false,error:'unavailable'});
-    const job={context,epoch,abort:new AbortController(),applyPending:false};active=job;if(kind==='read'){initialReadEpoch=epoch;cancelEdits();}phase=kind==='read'?'reading':'writing';message=null;publish();
+    const job={context,wallpaperId,epoch,abort:new AbortController(),applyPending:false};active=job;if(kind==='read'){initialReadEpoch=epoch;cancelEdits();}phase=kind==='read'?'reading':'writing';message=null;publish();
     let timer,onAbort;
     const guard=new Promise((_,reject)=>{onAbort=()=>reject(Error('cancelled'));job.abort.signal.addEventListener('abort',onAbort,{once:true});timer=timers.setTimeout(()=>job.abort.abort(),kind==='write'?12000:4000);});
     const physical=Promise.resolve().then(()=>{check(job);return work(job);});
@@ -7919,14 +7921,17 @@ function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}
     if(result?.ok===false&&['author_schema_changed','author_schema_stale','author_schema_refresh_unsafe'].includes(result.error))throw Object.assign(Error(result.error==='author_schema_refresh_unsafe'?'schema-refresh-blocked':'schema-changed'),{uncertain:result.sentMayHaveOccurred===true});return result;}
   const api={
     read:()=>snapshot,subscribe(fn){if(disposed)return()=>{};listeners.add(fn);return()=>listeners.delete(fn);},
-    setContext(key){if(disposed||key===context)return;cancel();cancelEdits();epoch++;context=typeof key==='string'?key:null;schema=null;revision=null;fields=Object.freeze([]);values={};marks={};desired.clear();recovery=null;owned=null;phase='idle';message=null;publish();},
+    // The optional default preserves existing Lucy-only callers; the production provider
+    // always supplies the selected wallpaper ID explicitly. Identity changes invalidate old IO.
+    setContext(key,id='lucy'){const valid=typeof id==='string'&&/^(?:lucy|we-[a-f0-9]{24})$/.test(id);const next=typeof key==='string'&&valid?key:null,nextId=next?id:null;
+      if(disposed||next===context&&nextId===wallpaperId)return;cancel();cancelEdits();epoch++;context=next;wallpaperId=nextId;schema=null;revision=null;fields=Object.freeze([]);values={};marks={};desired.clear();recovery=null;owned=null;phase='idle';message=null;publish();},
     view(token,isVisible){if(disposed)return;if(views.get(token)===true&&isVisible!==true)invalidateStaleRecovery();views.set(token,isVisible===true);if(isVisible!==true)cancelEdits(token);if(!visible())cancel();publish();},
     remove(token){if(views.get(token)===true)invalidateStaleRecovery();views.delete(token);cancelEdits(token);if(!visible())cancel();publish();},
     ensureLoaded(){
       if(disposed||!context||!visible()||active||phase!=='idle'||schema!==null||recovery||edits.size||desired.size||initialReadEpoch===epoch||typeof request!=='function')return Promise.resolve({ok:false,error:'initial-read-skipped'});
       return api.load(initialReadMode);
     },
-    load(mode){const initial=mode===initialReadMode;return run('read',async job=>{let reply=await call(job,'schema',{wallpaperId:'lucy'});
+    load(mode){const initial=mode===initialReadMode;return run('read',async job=>{let reply=await call(job,'schema',{wallpaperId:job.wallpaperId});
       if(reply?.ok===true&&reply.draft?.stale===true){
         const d=reply.draft;
         if(d.values!==null||!Array.isArray(d.dirtyKeys)||d.dirtyKeys.length||d.delivery?.revision!==d.revision)throw Error('schema-refresh-blocked');
@@ -7945,7 +7950,7 @@ function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}
         }
         if(initial)throw Error('schema-readonly-stale');
         if(reply.application?.busy!==false||reply.application?.targetActive!==true)throw Error('schema-refresh-blocked');
-        const refreshed=await call(job,'draft',{wallpaperId:'lucy',schemaFingerprint:candidate.fingerprint,expectedRevision:candidate.revision,action:'refresh-schema'});
+        const refreshed=await call(job,'draft',{wallpaperId:job.wallpaperId,schemaFingerprint:candidate.fingerprint,expectedRevision:candidate.revision,action:'refresh-schema'});
         const confirmed=accept(refreshed,{fingerprint:candidate.fingerprint,expected:candidate.revision+1});
         if(refreshed.refreshed!==true||refreshed.mutation!=='refresh-schema'||refreshed.currentValuesKnown!==false||refreshed.application?.busy!==false||refreshed.draft?.delivery?.revision!==confirmed.revision||refreshed.draft?.delivery?.state!=='none'||Object.keys(candidate.values).length!==Object.keys(confirmed.values).length||Object.keys(candidate.values).some(key=>candidate.values[key]!==confirmed.values[key]))throw Error('schema-refresh-unconfirmed');
         reply=refreshed;
@@ -7961,13 +7966,13 @@ function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}
     discard({confirm=false,observed=false,expected=null,view=null}={}){
       if(confirm!==true||!snapshot.canDiscard||expected!==recovery||recovery.unknown&&observed!==true||recovery.stale&&views.get(view)!==true)return Promise.resolve({ok:false,error:'confirmation-required'});
       if(expected.stale)return run('discard',async job=>{
-        const reply=await call(job,'draft',{wallpaperId:'lucy',schemaFingerprint:expected.fingerprint,expectedRevision:expected.revision,action:'discard-stale-schema',
+        const reply=await call(job,'draft',{wallpaperId:job.wallpaperId,schemaFingerprint:expected.fingerprint,expectedRevision:expected.revision,action:'discard-stale-schema',
           previousSchemaFingerprint:expected.previousFingerprint,discardKeys:[...expected.keys],expectedDelivery:{revision:expected.revision,state:expected.delivery},confirmDiscard:true,acknowledgeUnknown:expected.unknown&&observed===true});
         const next=accept(reply,{fingerprint:expected.fingerprint,expected:expected.revision+1,requireActive:false}),proof=reply.discardedRecord;
         if(reply.discarded!==true||reply.refreshed!==true||reply.mutation!=='discard-stale-schema'||reply.currentValuesKnown!==false||reply.application?.busy!==false||reply.draft?.delivery?.revision!==next.revision||reply.draft?.delivery?.state!=='none'||proof?.schemaFingerprint!==expected.previousFingerprint||proof.revision!==expected.revision||!Array.isArray(proof.keys)||proof.keys.length!==expected.keys.length||new Set(proof.keys).size!==proof.keys.length||proof.keys.some(key=>!expected.keys.includes(key))||proof.delivery?.revision!==expected.revision||proof.delivery?.state!==expected.delivery||Object.keys(next.values).length!==Object.keys(expected.defaults).length||Object.keys(expected.defaults).some(key=>next.values[key]!==expected.defaults[key]))throw Error('discard-unconfirmed');
         schema=next.fingerprint;revision=next.revision;fields=next.fields;values=next.values;marks={};desired.clear();recovery=null;owned=null;publish();
       });
-      return run('discard',async job=>{const reply=await call(job,'draft',{wallpaperId:'lucy',schemaFingerprint:expected.fingerprint,expectedRevision:expected.revision,action:'discard',discardKeys:[...expected.keys],acknowledgeUnknown:expected.unknown&&observed===true});
+      return run('discard',async job=>{const reply=await call(job,'draft',{wallpaperId:job.wallpaperId,schemaFingerprint:expected.fingerprint,expectedRevision:expected.revision,action:'discard',discardKeys:[...expected.keys],acknowledgeUnknown:expected.unknown&&observed===true});
         const next=accept(reply,{fingerprint:expected.fingerprint,expected:expected.revision+1,requireActive:false});
         if(reply.discarded!==true||reply.mutation!=='discard'||reply.currentValuesKnown!==false||Object.keys(values).some(key=>next.values[key]!==values[key]))throw Error('discard-unconfirmed');
         schema=next.fingerprint;revision=next.revision;fields=next.fields;values=next.values;marks={};desired.clear();recovery=null;owned=null;publish();});
@@ -7990,10 +7995,10 @@ function createNativeAuthorSwitches({request,timers=globalThis,validateValue}={}
         for(let round=0;desired.size;round++){
           if(round>=4)throw Error('burst-limit');check(job);
           const patch=Object.fromEntries(desired),keys=Object.keys(patch),fingerprint=schema;
-          const saved=await call(job,'draft',{wallpaperId:'lucy',schemaFingerprint:fingerprint,expectedRevision:revision,values:patch});
+          const saved=await call(job,'draft',{wallpaperId:job.wallpaperId,schemaFingerprint:fingerprint,expectedRevision:revision,values:patch});
           const next=accept(saved,{fingerprint,expected:revision+1,dirty:keys});
           if(keys.some(key=>next.values[key]!==patch[key]))throw Error('save-mismatch');revision=next.revision;owned={fingerprint,revision,values:{...patch}};
-          job.applyPending=true;const applied=await call(job,'apply',{wallpaperId:'lucy',schemaFingerprint:fingerprint,expectedRevision:revision});
+          job.applyPending=true;const applied=await call(job,'apply',{wallpaperId:job.wallpaperId,schemaFingerprint:fingerprint,expectedRevision:revision});
           if(applied?.ok!==true){const error=Error('apply-failed');error.uncertain=applied?.sentMayHaveOccurred===true;throw error;}
           const confirmed=accept(applied,{fingerprint,expected:revision,requireActive:false});
           if(applied.applySent!==true||applied.currentValuesKnown!==false||keys.some(key=>confirmed.values[key]!==patch[key]))throw Error('apply-unconfirmed');
@@ -8150,7 +8155,11 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
     const labels = {idle:'未播放',stopped:'已停止',playing:'播放中',starting:'启动中',connecting:'连接中',waiting:'等待画面',stopping:'停止中',error:'播放异常','cleanup-failed':'待清理',retrying:'重试中'};
     const safeIdle=['idle','stopped','error'].includes(state)&&!hasActive&&!pendingCleanup;
     const needsStop=!safeIdle||gate.unknown;
-    const action=needsStop?'stop':'start';
+    const canSwitch=needsStop&&!!activeId&&!!selectedId&&activeId!==selectedId&&
+      [status.activeSceneId,status.host?.activeSceneId].every(id=>id==null||id===activeId)&&
+      ['playing','connecting','waiting'].includes(state)&&!pendingCleanup&&!gate.unknown&&
+      Number.isSafeInteger(status.generation)&&status.generation>=0&&typeof controller.wallpaper.restart==='function';
+    const action=canSwitch?'switch':needsStop?'stop':'start';
     const mode=['daily','preview'].includes(settings.weMode)?settings.weMode:null;
     const session=typeof current==='string'&&current.length>0;
     const optionsEditable=session&&typeof controller.set==='function'&&!pendingCleanup&&!gate.busy&&!gate.draining&&!gate.unknown&&
@@ -8158,7 +8167,9 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
     const autoStart=typeof settings.weAutoStart==='boolean'?settings.weAutoStart:null;
     const autoEligible=selectedId==='lucy'&&mode==='daily'&&settings.background==='wallpaper'&&ready&&eligible;
     const externalStarting=state==='starting'&&!gate.draining;
-    const canPlay=!sourceJob&&session&&!gate.busy&&!externalStarting&&(needsStop?gate.canStop&&typeof controller.wallpaper.stop==='function'&&!pendingCleanup:
+    const canStopActive=!sourceJob&&session&&!gate.busy&&!externalStarting&&gate.canStop&&typeof controller.wallpaper.stop==='function'&&!pendingCleanup;
+    const canPlay=!sourceJob&&session&&!gate.busy&&!externalStarting&&(canSwitch?
+      gate.canStart&&settings.background==='wallpaper'&&!!mode&&ready&&eligible&&author?.read?.()?.busy!==true:needsStop?canStopActive:
       gate.canStart&&settings.background==='wallpaper'&&!!mode&&!!selectedId&&ready&&eligible&&typeof controller.wallpaper.start==='function');
     const showEnableWallpaper=settings.background==='none'&&['idle','stopped'].includes(state)&&!needsStop&&!gate.busy&&!gate.draining;
     const sourceTheme=activeTheme(),canEnableWallpaper=!sourceJob&&showEnableWallpaper&&admitted()&&session&&typeof controller.enableBackgroundSource==='function'&&
@@ -8193,7 +8204,7 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
     if(nextVideoKey!==videoKey){videoKey=nextVideoKey;videoEpoch++;}
     const playLabel=gate.busy?(gate.action==='start'?'正在启动…':'正在停止…'):externalStarting?'正在启动…':pendingCleanup?'正在清理…':
       gate.draining&&!gate.unknown?'等待本轮结束':gate.unknown?(gate.action==='stop'?(gate.canStop?'重试清理':'停止结果待确认'):'停止并确认'):
-      needsStop?(state==='cleanup-failed'?'重试清理':'停止播放'):'开始播放';
+      canSwitch?'播放所选壁纸':needsStop?(state==='cleanup-failed'?'重试清理':'停止播放'):'开始播放';
     const playHint=gate.unknown?'操作结果未确认':state==='cleanup-failed'?'上次清理未完成':
       (safeIdle?gate.error:null)??(!showEnableWallpaper&&!needsStop&&!canPlay?(settings.background!=='wallpaper'?'请先选择壁纸背景':!selectedId?'请先选择壁纸':!mode?'播放模式未确认':!ready?'请先在壁纸目录确认所选项':!eligible?'所选壁纸当前不可播放':null):null);
     const presetAllowed=admitted()&&session&&typeof controller.set==='function'&&settings.background==='wallpaper'&&ready&&eligible&&
@@ -8210,7 +8221,7 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
       galleryRows.find(row=>row.id===previewId&&row.selectable&&row.hasPreview)??null:null;
     return Object.freeze({objectPreview,activeId,title,selectedId,state:labels[state] ? state : 'unknown',selectedTitle:selectedId?labelFor(selectedId):'尚未选择壁纸',
       preset,
-      playAction:action,playMode:mode,playGeneration:Number.isSafeInteger(status.generation)?status.generation:null,playLabel,canPlay,playBusy:gate.busy||pendingCleanup||externalStarting,playHint,
+      playAction:action,playMode:mode,playGeneration:Number.isSafeInteger(status.generation)?status.generation:null,playLabel,canPlay,canStopActive,playBusy:gate.busy||pendingCleanup||externalStarting,playHint,
       showEnableWallpaper,canEnableWallpaper,enableWallpaperTicket:canEnableWallpaper?sourceEnableEpoch:null,backgroundEnableError:fieldErrors.background,
       showCloseWallpaper:settings.background==='wallpaper'&&!!closeState,canCloseWallpaper,closeWallpaperTicket:canCloseWallpaper?sourceEnableEpoch:null,
       closeWallpaperAction:closeAction,sourceBusy:!!sourceJob,closeWallpaperLabel:sourceJob?.kind==='close'?'正在关闭…':closeAction==='retry'?'重试关闭':closeAction==='inspect'?'检查关闭':'关闭背景',
@@ -8220,7 +8231,8 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
       galleryOpen,galleryQuery:query,galleryPage:page,galleryCount:matches,galleryPages:Math.max(1,Math.ceil(matches/12)),galleryRows:pageRows,galleryRatings:filter,galleryVersion,selectionError,
       autoStart,autoEligible,canSetMode:optionsEditable,canSetAutoStart:optionsEditable&&autoStart!==null&&(autoStart||autoEligible),
       modeError:fieldErrors.weMode,autoStartError:fieldErrors.weAutoStart,
-      authorContext:author&&(!editorGate||editorGate.getSnapshot().nativeAllowed)&&session&&settings.background==='wallpaper'&&selectedId==='lucy'&&activeId==='lucy'&&ready&&eligible&&
+      authorContext:author&&(!editorGate||editorGate.getSnapshot().nativeAllowed)&&session&&settings.background==='wallpaper'&&!!selectedId&&activeId===selectedId&&
+        (selectedId==='lucy'||['scene','web'].includes(item?.type))&&[status.activeSceneId,status.host?.activeSceneId].every(id=>id==null||id===selectedId)&&ready&&eligible&&
         Number.isSafeInteger(status.generation)&&status.generation>=0&&!gate.busy&&!gate.draining&&!gate.unknown&&!pendingCleanup&&['playing','connecting','waiting'].includes(state)?JSON.stringify([current,selectedId,activeId,status.generation,filter]):null,
       statusLabel:labels[state] ?? '状态未知',brightness:validValue('brightness',settings.brightness) ? settings.brightness : null,
       mask:validValue('mask',settings.mask) ? settings.mask : null,
@@ -8248,7 +8260,7 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
     if (disposed) return;
     if(sourceJob&&!sourceJob.current())sourceJob.abort.abort();
     const next = read();
-    author?.setContext(next.authorContext);
+    author?.setContext(next.authorContext,next.selectedId);
     if (snapshot && Object.keys(next).every(key=>Object.is(next[key],snapshot[key]))) return;
     snapshot = next;
     for (const fn of [...listeners]) fn();
@@ -8290,7 +8302,7 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
     selectWallpaper(id){if(disposed)return {ok:false,error:'disposed'};refresh();
       if(!admitted())return {ok:false,error:'editor-suspended'};
       const row=galleryRows.find(row=>row.id===id);if(!snapshot.canOpen||!galleryOpen||!row?.selectable||typeof controller.set!=='function')return {ok:false,error:'selection-unavailable'};
-      try{controller.set('weScene',id);if(controller.getSettingsSnapshot()?.weScene!==id)throw Error('rejected');galleryOpen=false;selectionError=null;refresh();return {ok:true};}
+      try{controller.set('weScene',id);if(controller.getSettingsSnapshot()?.weScene!==id)throw Error('rejected');selectionError=null;refresh();return {ok:true};}
       catch{selectionError='暂时无法选择这张壁纸';refresh();return {ok:false,error:'selection-failed'};}
     },
     enableWallpaper(expectedTicket,token) {
@@ -8340,10 +8352,18 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
       refresh();
       // Use the rendered action as well as a fresh policy: a stale Start click must never become Stop.
       if(action!==snapshot.playAction||!snapshot.canPlay)return Promise.resolve({ok:false,error:'playback-unavailable'});
-      if(action==='start'&&(expectedScene!==snapshot.selectedId||expectedMode!==snapshot.playMode))return Promise.resolve({ok:false,error:'target-drift'});
-      if(action==='stop'&&(expectedActive!==snapshot.activeId||expectedGeneration!==snapshot.playGeneration))return Promise.resolve({ok:false,error:'target-drift'});
+      if((action==='start'||action==='switch')&&(expectedScene!==snapshot.selectedId||expectedMode!==snapshot.playMode))return Promise.resolve({ok:false,error:'target-drift'});
+      if((action==='stop'||action==='switch')&&(expectedActive!==snapshot.activeId||expectedGeneration!==snapshot.playGeneration))return Promise.resolve({ok:false,error:'target-drift'});
       const target=snapshot.selectedId,mode=snapshot.playMode;
-      return transport.run(action,()=>action==='start'?controller.wallpaper.start(target,mode):controller.wallpaper.stop('user'));
+      return transport.run(action==='switch'?'start':action,()=>action==='switch'?controller.wallpaper.restart(target,mode):action==='start'?controller.wallpaper.start(target,mode):controller.wallpaper.stop('user'));
+    },
+    stopActive(expectedActive,expectedGeneration){
+      if(disposed)return Promise.resolve({ok:false,error:'disposed'});
+      if(!admitted())return Promise.resolve({ok:false,error:'editor-suspended'});
+      refresh();
+      if(!snapshot.canStopActive||snapshot.playAction!=='switch')return Promise.resolve({ok:false,error:'playback-unavailable'});
+      if(expectedActive!==snapshot.activeId||expectedGeneration!==snapshot.playGeneration)return Promise.resolve({ok:false,error:'target-drift'});
+      return transport.run('stop',()=>controller.wallpaper.stop('user'));
     },
     setTheme(value) {
       if(disposed)return {ok:false,error:'disposed'};
@@ -9231,18 +9251,20 @@ function createNativeAppearanceSidebar({ctx, React, controller,playback=null,cat
           view.objectPreview?h(Preview,{row:view.objectPreview,visible,version:view.galleryVersion}):h('span',{'data-whale-preview-placeholder':true})),
         h('div',{'data-whale-object-summary':true},
           h('div',{'data-whale-object-title':true,title:view.activeId?view.title:view.selectedTitle},view.state==='unknown'?'壁纸状态待确认':view.activeId?view.title:view.selectedTitle),
-          h('span',{'data-whale-object-status':true,'data-playing':view.playAction==='stop'&&!view.playBusy?'true':'false','aria-live':'polite'},view.playBusy?view.playLabel:view.showEnableWallpaper?'背景已关闭':view.statusLabel))),
+          h('span',{'data-whale-object-status':true,'data-playing':['stop','switch'].includes(view.playAction)&&!view.playBusy?'true':'false','aria-live':'polite'},view.playBusy?view.playLabel:view.showEnableWallpaper?'背景已关闭':view.statusLabel))),
       h('div',{'data-whale-header-actions':true},
         view.showEnableWallpaper?h('button',{type:'button','data-whale-playback-action':'enable-background','data-whale-enable-wallpaper':true,
           disabled:!view.canEnableWallpaper,'aria-busy':view.sourceBusy,'aria-describedby':view.backgroundEnableError?sourceErrorId:undefined,
           title:'启用后仍需手动开始播放','aria-label':view.sourceBusy?'正在启用…':'启用壁纸背景',onClick:()=>api.enableWallpaper(view.enableWallpaperTicket,viewToken)},h('span',{'aria-hidden':true},'+')):
           h('button',{type:'button','data-whale-playback-action':view.playAction,'data-whale-playback-recovery':view.state==='cleanup-failed'?'true':undefined,disabled:!view.canPlay,'aria-busy':view.playBusy,
             'aria-describedby':view.backgroundEnableError?sourceErrorId:undefined,'aria-label':view.playLabel,title:view.playLabel,
-            onClick:()=>api.play(view.playAction,view.selectedId,view.playMode,view.activeId,view.playGeneration)},view.state==='cleanup-failed'?view.playLabel:h('svg',{'data-whale-play-icon':true,'aria-hidden':true,viewBox:'0 0 16 16'},h('path',{d:view.playAction==='stop'?'M3 3h10v10H3z':'M4 2l10 6-10 6z'}))),
+            onClick:()=>api.play(view.playAction,view.selectedId,view.playMode,view.activeId,view.playGeneration)},view.state==='cleanup-failed'?null:h('svg',{'data-whale-play-icon':true,'aria-hidden':true,viewBox:'0 0 16 16'},h('path',{d:view.playAction==='stop'?'M3 3h10v10H3z':'M4 2l10 6-10 6z'})),view.state==='cleanup-failed'?view.playLabel:view.playBusy?'处理中':view.playAction==='stop'?'停止':'播放'),
+        view.playAction==='switch'?h('button',{type:'button','data-whale-stop-current':true,'data-whale-quiet':true,disabled:!view.canStopActive,
+          'aria-label':'停止当前播放',title:'停止当前播放',onClick:()=>api.stopActive(view.activeId,view.playGeneration)},'停止'):null,
         h('button',{type:'button','data-whale-change-wallpaper':true,'data-whale-quiet':true,'aria-expanded':view.galleryOpen,
           onPointerDown:event=>{if(event.button===0){openedByPointer.current=!view.galleryOpen;if(openedByPointer.current)showGallery();}},onPointerCancel:()=>{openedByPointer.current=false;},
           onClick:event=>{const opened=openedByPointer.current;openedByPointer.current=false;if(event.detail>0&&opened)return;if(view.galleryOpen)hideGallery();else showGallery();},
-          'aria-label':view.galleryOpen?'返回当前壁纸':'更换壁纸',title:view.galleryOpen?'返回当前壁纸':'更换壁纸'},view.galleryOpen?'返回':'更换'),
+          'aria-label':view.galleryOpen?'壁纸参数':'更换壁纸',title:view.galleryOpen?'壁纸参数':'更换壁纸'},view.galleryOpen?'壁纸参数':'更换'),
         view.showCloseWallpaper&&!recoveryClose?h(ActionMenu,{name:'object',label:'壁纸更多操作',scope:view.closeWallpaperTicket,entries:[{key:'close',label:view.closeWallpaperLabel,disabled:!view.canCloseWallpaper,attributes:{'data-whale-close-wallpaper':true,'aria-busy':view.sourceBusy},action:()=>api.closeWallpaper(view.closeWallpaperTicket,viewToken)}]}):null)),
       recoveryClose?h('div',{'data-whale-close-recovery':true},closeButton()):null,
       view.activeId&&view.activeId!==view.selectedId?h('div',{'data-whale-selected-target':true},`所选：${view.selectedTitle}`):null,

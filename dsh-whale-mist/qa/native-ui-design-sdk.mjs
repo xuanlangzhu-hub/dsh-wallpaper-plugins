@@ -97,7 +97,7 @@ export async function assertAstraDesign({page,record,observe,outputRoot}){
    const variant=page.locator('[data-whale-author-key=variant]');await variant.click();const old=await (await list(variant)).locator('[data-value="4"]').elementHandle();
    await page.locator('[data-whale-change-wallpaper]').click();await page.locator('[data-whale-gallery-item="we-000000000000000000000001"]').click();
    const before=await writes();await old.evaluate(n=>n.click());assert.equal(await writes(),before);assert.equal((await observe()).wallpaper.host.activeSceneId,'lucy');
-   await old.dispose();await page.locator('[data-whale-change-wallpaper]').click();await page.locator('[data-whale-gallery-item=lucy]').click();
+   await old.dispose();assert.equal(await page.locator('[data-whale-gallery]').count(),1);await page.locator('[data-whale-gallery-item=lucy]').click();await page.locator('[data-whale-change-wallpaper]').click();
    await page.locator('[data-whale-author-read]').click();await page.locator('[data-whale-author-key=variant]').waitFor();
  });
  await page.locator('[data-whale-native-sidebar]:visible').screenshot({animations:'disabled',path:outputRoot+'/ui-wallpaper-detail.png'});

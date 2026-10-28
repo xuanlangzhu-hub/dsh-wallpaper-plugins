@@ -2,3 +2,5 @@
 
 # Preserve the audited package payload byte-for-byte across Windows checkouts.
 /release-sources/rc52/package/** -text whitespace=cr-at-eol,-blank-at-eof
+/release-sources/rc53/package/** -text whitespace=cr-at-eol,-blank-at-eof
+/release-sources/rc53/build-inputs/** -text whitespace=cr-at-eol,-blank-at-eof

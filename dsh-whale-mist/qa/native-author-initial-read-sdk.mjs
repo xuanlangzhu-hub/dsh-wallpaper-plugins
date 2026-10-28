@@ -28,7 +28,7 @@ export async function assertInitialAuthorRead({page,record,observe,outputRoot,ba
  await record('auto read: selecting another wallpaper exposes no Lucy fields and returning gets one fresh scoped read',async()=>{
    const before=stats();await page.locator('[data-whale-change-wallpaper]').click();await page.locator('[data-whale-gallery-item="we-000000000000000000000001"]').click();
    assert.equal(await author().count(),0);assert.equal(stats().schema,before.schema);assert.equal((await observe()).wallpaper.host.activeSceneId,'lucy');
-   await page.locator('[data-whale-change-wallpaper]').click();await page.locator('[data-whale-gallery-item=lucy]').click();await ready();assert.equal(stats().schema,before.schema+1);assert.equal(stats().posts,before.posts);assert.equal(stats().commands,before.commands);
+   assert.equal(await page.locator('[data-whale-gallery]').count(),1);await page.locator('[data-whale-gallery-item=lucy]').click();await page.locator('[data-whale-change-wallpaper]').click();await ready();assert.equal(stats().schema,before.schema+1);assert.equal(stats().posts,before.posts);assert.equal(stats().commands,before.commands);
  });
  await record('auto read: explicit refresh remains one user-driven GET with no property replay',async()=>{
    const before=stats();await read().click();await ready();assert.equal(stats().schema,before.schema+1);assert.equal(stats().posts,before.posts);assert.equal(stats().commands,before.commands);

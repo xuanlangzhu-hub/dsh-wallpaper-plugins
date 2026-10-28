@@ -19,8 +19,8 @@ export async function assertGalleryPolish({page,record,observe,outputRoot,backen
  const isInPanel=async node=>{const a=await node.boundingBox(),b=await panel().boundingBox();assert.ok(a&&b&&a.y>=b.y-1&&a.y+a.height<=b.y+b.height+1,JSON.stringify({control:a,panel:b}));};
  if(!await root().count()){await page.locator('#whale-appearance-header-btn').click();await root().waitFor();}
  await page.locator('[data-whale-settings-section=wallpaper]').click();
- await record('gallery polish: one pointer gesture opens once, header becomes the only return action, no settings or source mutation',async()=>{
-   const before=await writes(),commands=backend.stats().commands;await open();assert.equal(await header().getAttribute('aria-label'),'返回当前壁纸');assert.equal(await header().textContent(),'返回');
+ await record('gallery polish: one pointer gesture opens once, header opens wallpaper parameters, no settings or source mutation',async()=>{
+   const before=await writes(),commands=backend.stats().commands;await open();assert.equal(await header().getAttribute('aria-label'),'壁纸参数');assert.equal(await header().textContent(),'壁纸参数');
    assert.equal(await gallery().getByRole('button',{name:/当前壁纸/}).count(),0);assert.equal(await gallery().locator('strong').count(),0);
    assert.equal(await grid().locator('[data-whale-gallery-item]').count(),12);assert.equal(await writes(),before);assert.equal(backend.stats().commands,commands);
  });
@@ -65,10 +65,10 @@ export async function assertGalleryPolish({page,record,observe,outputRoot,backen
  await record('gallery polish: selected and playing badges describe different wallpapers; selection never restarts the active source',async()=>{
    await close();await page.locator('[data-whale-playback-action=start]').click();await page.waitForFunction(()=>qa.observation().wallpaper.state==='playing');await open();
    assert.equal(await card('lucy').getAttribute('aria-pressed'),'true');assert.equal(await card('lucy').locator('[data-whale-gallery-playing]').count(),1);
-   const commands=backend.stats().commands;await card(coast).click();assert.equal(await gallery().count(),0);assert.equal((await observe()).settings.weScene,coast);assert.equal((await observe()).wallpaper.host.activeSceneId,'lucy');assert.equal(backend.stats().commands,commands);
+   const commands=backend.stats().commands;await card(coast).click();assert.equal(await gallery().count(),1);assert.equal((await observe()).settings.weScene,coast);assert.equal((await observe()).wallpaper.host.activeSceneId,'lucy');assert.equal(backend.stats().commands,commands);
    await open();assert.equal(await card('lucy').getAttribute('aria-pressed'),'false');assert.equal(await card(coast).getAttribute('aria-pressed'),'true');assert.equal(await card('lucy').locator('[data-whale-gallery-selected]').count(),0);assert.equal(await card(coast).locator('[data-whale-gallery-playing]').count(),0);
    const description=await card('lucy').getAttribute('aria-describedby');assert.match(await page.locator('[id="'+description+'"]').textContent(),/正在播放/);
-   await page.locator('[data-whale-playback-action=stop]').click();await page.waitForFunction(()=>qa.observation().wallpaper.state==='stopped');assert.equal(await page.locator('[data-whale-gallery-playing]').count(),0);assert.equal(await card(coast).getAttribute('aria-pressed'),'true');await card('lucy').click();
+   await page.locator('[data-whale-stop-current]').click();await page.waitForFunction(()=>qa.observation().wallpaper.state==='stopped');assert.equal(await page.locator('[data-whale-gallery-playing]').count(),0);assert.equal(await card(coast).getAttribute('aria-pressed'),'true');await card('lucy').click();await close();
  });
  await record('gallery polish: Enter/Space and cancelled pointer gestures keep the header toggle single-action',async()=>{
    await header().focus();await header().press('Enter');assert.equal(await gallery().count(),1);await header().press('Enter');assert.equal(await gallery().count(),0);
