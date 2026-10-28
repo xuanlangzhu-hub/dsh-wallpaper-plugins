@@ -1,0 +1,296 @@
+{
+  "name": "dsh-whale-mist",
+  "version": "0.6.0-rc.53.npm.1",
+  "distTag": "next",
+  "archive": "dsh-whale-mist-0.6.0-rc.53.npm.1.tgz",
+  "archiveBytes": 7611545,
+  "sha256": "7970984F984530F9E0FBBC5A5665AD7088AF3A7A06E2257499F266092652D7E9",
+  "shasum": "e1fbdb132082e8390c81ae5b41f489ba4741160b",
+  "integrity": "sha512-CRfNVb23ZOt/udmn4YRMB3MR/icJVMiATUclUgC9sM/vHongQLtdNiD9liQFwJ42JMlKsvxtFwwF2gtnh5nV5w==",
+  "baseArchiveSha256": "8AF3F10FC72923E5B4E11D43D2CBAB8749287C8B7A8CF275A1BDC400FC5229EA",
+  "baseFilesUnchanged": 41,
+  "changedBaseFiles": [
+    "README.md",
+    "package.json"
+  ],
+  "addedFiles": [
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "license-sources.json",
+    "licenses/DeepSeek-Harness-MIT.txt",
+    "licenses/Microsoft-components-terms.md",
+    "licenses/SharpGenTools-MIT.txt",
+    "licenses/Vortice.Mathematics-MIT.txt",
+    "licenses/Vortice.Windows-MIT.txt",
+    "licenses/Windows-SDK-license.rtf",
+    "third-party-inventory.json"
+  ],
+  "fileCount": 53,
+  "files": [
+    {
+      "file": "LICENSE",
+      "bytes": 1091,
+      "sha256": "46EFDD68E619EC1EF72C5352EC6FFFFA7FBD81B6CE278624E88760E2FEE355AF"
+    },
+    {
+      "file": "README.md",
+      "bytes": 3073,
+      "sha256": "A6EBFBA9EDD1BB4F543C00850DE675E84A397BB806607176CC350D0113EF88A5"
+    },
+    {
+      "file": "THIRD_PARTY_NOTICES.md",
+      "bytes": 2937,
+      "sha256": "539DFB7BA093B75ED35013072CDFEA5818F3C6ECC470C7D6BA5E3A1A1F70634E"
+    },
+    {
+      "file": "assets/DeepSeek-Harness.ico",
+      "bytes": 28881,
+      "sha256": "B57A303C586154AD1741EB5D478BB80EAE8231495BD08995854BE7E711EEE5B8"
+    },
+    {
+      "file": "assets/wallpaper/Microsoft.Windows.SDK.NET.dll",
+      "bytes": 24877600,
+      "sha256": "0EC371D93798852E36461C8ADDDBEADCE0F963A04752F0B64E54FE19C1C834A7"
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.COM.dll",
+      "bytes": 168960,
+      "sha256": "35282958014C210BFDE28399C9FA3841B6D51F81FF1DA23AD0EDAD985DFA5B0C"
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.dll",
+      "bytes": 79872,
+      "sha256": "0DC12AB829852555CCC9D8193E4422CD4CA389741DE0A54A189DE8A1C9B6BF4A"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DXGI.dll",
+      "bytes": 91648,
+      "sha256": "6E381EAAB77257EE63C20A654A2AC51875BD38F24C5A7D44DD2E4B8E122E8623"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Direct3D11.dll",
+      "bytes": 352768,
+      "sha256": "EAD89D0F9C475527ABCB373C10B1D04C2BFA727070F126105430040B525AE2BC"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DirectX.dll",
+      "bytes": 365056,
+      "sha256": "100B3A02EA5FD5BB8DB39C24DD58DEAD5669FA5A46D1EBCD61D4A9D82F812C12"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Mathematics.dll",
+      "bytes": 125952,
+      "sha256": "A553C1C90D2D8BDE2D7613306B994B585ACF22284BE009F4151381F7308476CB"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.deps.json",
+      "bytes": 4947,
+      "sha256": "8356139AA4F13D3C11051CEB2DF5C22B1AC7F9A0E87CDAE003095960698EEB95"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.dll",
+      "bytes": 294912,
+      "sha256": "E359130534CA0E585557B5B4FDAA8309056A3DC0409E07B476E46C86201889B1"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.exe",
+      "bytes": 162304,
+      "sha256": "C2727F2BAD7CA64F97059BE781F4E2DE5214440BD94B704D58993FD0A1C12731"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.runtimeconfig.json",
+      "bytes": 399,
+      "sha256": "3E965CD7CFD553C2FF4E842D8D8019AAAE2DA0A21D92FF85A87573DD8D1B95C6"
+    },
+    {
+      "file": "assets/wallpaper/WinRT.Runtime.dll",
+      "bytes": 528944,
+      "sha256": "BCF3A14E8712A90837FC5C0D8C8A24696AF2BD7F74E9767597EC81EDEDFB23DB"
+    },
+    {
+      "file": "assets/whale-icon-helper.exe",
+      "bytes": 13312,
+      "sha256": "77C9BDCD3E7179A46C21782FA9D6036A3AB766EDB35EEBECB57E822307C30906"
+    },
+    {
+      "file": "cordis.patch.yml",
+      "bytes": 200,
+      "sha256": "E37C9096465EAB2DB253E3B3EF7D6A60FA7DB89899B4C9D96AAF51AF64621A07"
+    },
+    {
+      "file": "license-sources.json",
+      "bytes": 1688,
+      "sha256": "E0CEF8FC88502B46293C0CE7628C10534417CC8D9EDB4824BB84FC8F1208C11D"
+    },
+    {
+      "file": "licenses/DeepSeek-Harness-MIT.txt",
+      "bytes": 1065,
+      "sha256": "EBB4F09972AEE8608BE255DEBAF78451A68E95C290F55C240DEC2ECFA16EA6BE"
+    },
+    {
+      "file": "licenses/Microsoft-components-terms.md",
+      "bytes": 1534,
+      "sha256": "BA0ACD94B681DBF7C0DAB785985FB8F483AB784E8711F1C251B871BF6227DFB1"
+    },
+    {
+      "file": "licenses/SharpGenTools-MIT.txt",
+      "bytes": 1102,
+      "sha256": "68AB6BA2800DC74C78272BA399C1354DB74993D9019732F837996FA6D4DE683D"
+    },
+    {
+      "file": "licenses/Vortice.Mathematics-MIT.txt",
+      "bytes": 1090,
+      "sha256": "CF72351FA2E9F2EB181AF7FD508DD73DA1D84BA43575CB98F7AF22F26A81AF5E"
+    },
+    {
+      "file": "licenses/Vortice.Windows-MIT.txt",
+      "bytes": 1090,
+      "sha256": "82BD4E84D144BEBBB519ED05899F0CEAEAF2E0F95160AC32FD8CC388710C76D0"
+    },
+    {
+      "file": "licenses/Windows-SDK-license.rtf",
+      "bytes": 246945,
+      "sha256": "DD07EB178E00C6BBA4148457FC00FF77CD4887EB521D504186FE59C9EC8BBE62"
+    },
+    {
+      "file": "package.json",
+      "bytes": 4450,
+      "sha256": "9B15D707E237064931DF82E4A18341D9136BD53470B40CCD693B4E1DCAA1F30D"
+    },
+    {
+      "file": "src/client.js",
+      "bytes": 605367,
+      "sha256": "9D4914C6E4DA3CB7875C8F321B27613DD1D1B4C79628511CB5E47A6AFBED8F3B"
+    },
+    {
+      "file": "src/companion/companion.css",
+      "bytes": 18415,
+      "sha256": "B0F7D80620F21A42B3862FA6AF3C934CBF889A31B13205DB3D42C910C6F6DCF4"
+    },
+    {
+      "file": "src/companion/companion.js",
+      "bytes": 79827,
+      "sha256": "DA7A2FE52572DEEA4E290B51AFE30F8B333FF0F5FEAC0892821F83AAC04C0280"
+    },
+    {
+      "file": "src/companion/index.html",
+      "bytes": 16977,
+      "sha256": "CC7F4DAF01734AD8AF16B75BB5E007B70F8462D290009BA249B364D6CE3B66C6"
+    },
+    {
+      "file": "src/detachable-bridge.js",
+      "bytes": 19284,
+      "sha256": "18F17C2E82BEFBCC1A9EEECFFB681BFAD83F1704B0945AFA1E6750343669215F"
+    },
+    {
+      "file": "src/detachable-contract.js",
+      "bytes": 50097,
+      "sha256": "90970ED2C31F08369C3B02BAED248BFC0F0967F0C414EF451242531994BE33EA"
+    },
+    {
+      "file": "src/detachable-edge-adapter.js",
+      "bytes": 43766,
+      "sha256": "BA8B4C708E06FF5877FD323E0D3266BFC473E4C75042FAB355C185AB01C8E5E7"
+    },
+    {
+      "file": "src/detachable-host.js",
+      "bytes": 61084,
+      "sha256": "190F2F9BBE52DD3690F8E1FF37C13C68FD636ED400247F213C110D85B60229DF"
+    },
+    {
+      "file": "src/index.js",
+      "bytes": 12516,
+      "sha256": "82BE5602DC1B3215176CC3F40C080EB0E82F3E0E29C485B8FDB6716BD1E399C6"
+    },
+    {
+      "file": "src/wallpaper/author-properties-apply.js",
+      "bytes": 15680,
+      "sha256": "0DE2CF9949C471781AFBC3CD4651414D1C792EA4A2FAC697AA963CD865278154"
+    },
+    {
+      "file": "src/wallpaper/author-properties-contract.js",
+      "bytes": 8829,
+      "sha256": "3A5410A20E04C2B1B097107C1FF9B6FC7F0BF7414B08876C40D95F1E170AFB48"
+    },
+    {
+      "file": "src/wallpaper/author-properties-host.js",
+      "bytes": 21715,
+      "sha256": "926693DF1AF8A61D6A422F135F53592AF4979B63AAFFA27BED431FF2C058E68F"
+    },
+    {
+      "file": "src/wallpaper/author-properties-panel.js",
+      "bytes": 12289,
+      "sha256": "806F65C03F8872784022A62A711E43909480D94FFA9EB4B58F8BC3FA787AAD27"
+    },
+    {
+      "file": "src/wallpaper/author-properties-schema.js",
+      "bytes": 4395,
+      "sha256": "D2D5417FBF5CFF9EF2D74277EA2E21959FF5AE520E93D4D9AF4C1164567F0EF9"
+    },
+    {
+      "file": "src/wallpaper/catalog.js",
+      "bytes": 24805,
+      "sha256": "C5F67B2EDE128DD11B42DE93D40A4AD6F134ABAAC89A9317ABAB70B77B7C7843"
+    },
+    {
+      "file": "src/wallpaper/close-fence.js",
+      "bytes": 7118,
+      "sha256": "2977C6500FDF09508E43836008E9F9CC442AB1920E7767F91F60F79FC6A7B4C9"
+    },
+    {
+      "file": "src/wallpaper/frame-hub.js",
+      "bytes": 2115,
+      "sha256": "93386920898555DE5362176E505E107E7651A3895B510FBDF1BCB0A5B113ECE4"
+    },
+    {
+      "file": "src/wallpaper/frame-protocol.js",
+      "bytes": 1744,
+      "sha256": "074AB958CFA6E9D0050067BA8AD5B280605671D9630615194ACB282DCD79DED9"
+    },
+    {
+      "file": "src/wallpaper/library.js",
+      "bytes": 13691,
+      "sha256": "6B6F6FE57CDB8EB7810C2FAA326A90CEBCFDB0A516AC36453AE6E981B46A667C"
+    },
+    {
+      "file": "src/wallpaper/managed-window.js",
+      "bytes": 6370,
+      "sha256": "6CCCBE58DE3F890F374C896B4EB2B253B916711FA9EE620C8728600BE04EBA86"
+    },
+    {
+      "file": "src/wallpaper/media-bridge-permissions.js",
+      "bytes": 3604,
+      "sha256": "ED2F69809FBD1C73DB4CDD9BCE3C36CB8348B8641C33AEF6DE1A805D25912AEC"
+    },
+    {
+      "file": "src/wallpaper/media-bridge.js",
+      "bytes": 15068,
+      "sha256": "0F357447363C431D76AE2BAA47737DE6FE83B1BD76F6F835E8549116FBAC0160"
+    },
+    {
+      "file": "src/wallpaper/probe-log.js",
+      "bytes": 5178,
+      "sha256": "3E49A454180A249AA7C49912C428E524385C8A7C2A532E825147C25819F99C82"
+    },
+    {
+      "file": "src/wallpaper/scenes.js",
+      "bytes": 5887,
+      "sha256": "0BBA53EB4E96A6C04E4EAAC7EBBF73B5DAC9D3B2E46CCCBF657FB2CF9D24FA90"
+    },
+    {
+      "file": "src/wallpaper/session.js",
+      "bytes": 86236,
+      "sha256": "9E6BCD86188C2E2B35A8A826099662A341BD8763BB087701C959ECFF81C8C498"
+    },
+    {
+      "file": "src/windows/WhaleDesktopIcon.cs",
+      "bytes": 12634,
+      "sha256": "F35EEEDDA1F67CA68D3CCA36CD03F3074579A369E9D324753E3091E06D185653"
+    },
+    {
+      "file": "third-party-inventory.json",
+      "bytes": 5687,
+      "sha256": "C2D8DA7C7B02975378FE78F1FBF68E0635CE8B303FA14BDD15BAD8068DAFC1EE"
+    }
+  ]
+}

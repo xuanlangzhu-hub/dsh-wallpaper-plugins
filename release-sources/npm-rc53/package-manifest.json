@@ -1,0 +1,123 @@
+{
+  "name": "dsh-whale-mist",
+  "version": "0.6.0-rc.53.npm.1",
+  "description": "Whale Mist and Whale Abyss themes for the DeepSeek Harness Web UI",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "dsh": "0.2.1-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings-general",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-settings-general": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-theme": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-sidebar-right": "0.2.1-rc.3"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "assets/DeepSeek-Harness.ico",
+    "assets/wallpaper/Microsoft.Windows.SDK.NET.dll",
+    "assets/wallpaper/SharpGen.Runtime.COM.dll",
+    "assets/wallpaper/SharpGen.Runtime.dll",
+    "assets/wallpaper/Vortice.DXGI.dll",
+    "assets/wallpaper/Vortice.Direct3D11.dll",
+    "assets/wallpaper/Vortice.DirectX.dll",
+    "assets/wallpaper/Vortice.Mathematics.dll",
+    "assets/wallpaper/WallpaperProbe.deps.json",
+    "assets/wallpaper/WallpaperProbe.dll",
+    "assets/wallpaper/WallpaperProbe.exe",
+    "assets/wallpaper/WallpaperProbe.runtimeconfig.json",
+    "assets/wallpaper/WinRT.Runtime.dll",
+    "assets/whale-icon-helper.exe",
+    "cordis.patch.yml",
+    "license-sources.json",
+    "licenses/DeepSeek-Harness-MIT.txt",
+    "licenses/Microsoft-components-terms.md",
+    "licenses/SharpGenTools-MIT.txt",
+    "licenses/Vortice.Mathematics-MIT.txt",
+    "licenses/Vortice.Windows-MIT.txt",
+    "licenses/Windows-SDK-license.rtf",
+    "package.json",
+    "src/client.js",
+    "src/companion/companion.css",
+    "src/companion/companion.js",
+    "src/companion/index.html",
+    "src/detachable-bridge.js",
+    "src/detachable-contract.js",
+    "src/detachable-edge-adapter.js",
+    "src/detachable-host.js",
+    "src/index.js",
+    "src/wallpaper/author-properties-apply.js",
+    "src/wallpaper/author-properties-contract.js",
+    "src/wallpaper/author-properties-host.js",
+    "src/wallpaper/author-properties-panel.js",
+    "src/wallpaper/author-properties-schema.js",
+    "src/wallpaper/catalog.js",
+    "src/wallpaper/close-fence.js",
+    "src/wallpaper/frame-hub.js",
+    "src/wallpaper/frame-protocol.js",
+    "src/wallpaper/library.js",
+    "src/wallpaper/managed-window.js",
+    "src/wallpaper/media-bridge-permissions.js",
+    "src/wallpaper/media-bridge.js",
+    "src/wallpaper/probe-log.js",
+    "src/wallpaper/scenes.js",
+    "src/wallpaper/session.js",
+    "src/windows/WhaleDesktopIcon.cs",
+    "third-party-inventory.json"
+  ],
+  "license": "MIT",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins.git"
+  },
+  "homepage": "https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins#readme",
+  "bugs": {
+    "url": "https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "theme",
+    "wallpaper-engine"
+  ],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

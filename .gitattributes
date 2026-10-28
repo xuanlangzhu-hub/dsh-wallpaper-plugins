@@ -13,3 +13,5 @@
 /release-sources/rc53/INSTALL.md text eol=lf
 /release-sources/rc53/license-sources.json text eol=lf
 /release-sources/rc53/third-party-inventory.json text eol=lf
+/release-sources/npm-rc53/*.py text eol=lf
+/release-sources/npm-rc53/*.md text eol=lf
