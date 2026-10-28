@@ -2,6 +2,12 @@
 
 更新：2026-10-28。当前阶段为 **rc.53日常试用保持，首个GitHub预发行已公开**。[图库选择、显式播放和非Lucy作者参数](WALLPAPER_GALLERY_SELECTION_AND_AUTHOR_ID_20261028.md)已完成本轮限定验证。
 
+用户随后另行授权[npm发行](RC53_NPM_PUBLICATION_20261028.md)，账号ccosia已公开`dsh-whale-mist@0.6.0-rc.53.npm.1`。
+它是同一rc.53运行载荷的npm副本，manifest／README调整、补10份许可与来源资料，41运行文件／资产逐字节保持；
+53文件、预演、23JS语法、独立目录重建和匿名registry下载核对通过，SHA256 `7970984F984530F9E0FBBC5A5665AD7088AF3A7A06E2257499F266092652D7E9`。
+next正确；首包自动latest也指该rc，删除返回HTTP400，未重复操作或冒充仅next。原GitHub附件／tag和日常安装不变。
+下文“npm未发布”是该次GitHub发布时的历史，不代表当前状态。
+
 用户已明确同意公开，见[正式发布记录](RC53_FIRST_GITHUB_RELEASE_PUBLISHED_20261028.md)。Release ID426340728已从原草稿发布，
 draft=false／prerelease=true，发布时间06:52:41Z；正式tag指向发行材料83260ab，两附件匿名下载逐字节一致。
 没有npm发布或日常应用／Profile／WE操作。下文草稿、暂停和准备状态保留为过程历史，以本段为当前状态。

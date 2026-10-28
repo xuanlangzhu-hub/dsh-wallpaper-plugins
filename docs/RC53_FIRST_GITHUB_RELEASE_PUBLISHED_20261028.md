@@ -1,5 +1,8 @@
 # 首个 GitHub 预发行已公开
 
+后续：[npm专用副本0.6.0-rc.53.npm.1已公开](RC53_NPM_PUBLICATION_20261028.md)，原GitHub附件／tag未变。
+本文“没有npm发布”记录的是此前GitHub发布这一轮的范围。
+
 2026-10-28。用户明确同意公开已核对的 rc.53 草稿后，发布同一 Release，未重传或替换附件。
 
 - [公开发布页](https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.0-rc.53)

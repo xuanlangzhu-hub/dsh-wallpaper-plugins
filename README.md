@@ -9,6 +9,15 @@ Whale Appearance / 鲸系外观，为官方 DeepSeek Harness Windows Desktop 提
 项目源码按[MIT](LICENSE)提供，随包组件见[第三方声明](THIRD_PARTY_NOTICES.md)。
 2026-10-28首个预发行已公开，两附件已匿名下载核对，见[发布记录](docs/RC53_FIRST_GITHUB_RELEASE_PUBLISHED_20261028.md)。
 
+也可从 [npm 安装预发行版](https://www.npmjs.com/package/dsh-whale-mist/v/0.6.0-rc.53.npm.1)：
+
+```powershell
+dsh plugin --profile desktop add dsh-whale-mist@0.6.0-rc.53.npm.1
+```
+
+先正常退出并备份。npm版本仅补齐发布元数据、许可和说明，运行文件／资产与GitHub rc.53保持一致。
+`next`指向该预发行；npm首发同时保留了`latest`，版本仍为rc，建议指定以上版本。见[npm发行记录](docs/RC53_NPM_PUBLICATION_20261028.md)。
+
 当前日常：**DSH 0.2.1-rc.3 · Whale 0.6.0-rc.53 · Git Bash 0.1.2**。用户确认重开正常，助手已核对侧栏目录及停止状态。[rc.53日常交接](docs/RC53_DAILY_TRIAL_20261028.md)记录了本轮新备份、固定包与验收范围，rc.52回退来源保留。
 
 ## 功能
@@ -44,7 +53,8 @@ Whale Appearance / 鲸系外观，为官方 DeepSeek Harness Windows Desktop 提
 
 **不要直接对共享开发树执行 npm pack/publish。** 当前提交保存开发成果和固定发行源码；
 已公开的rc.53预发行附件来自固定已验tgz及独立核对的外层资料，tag固定指向83260ab。
-GitHub Release和npm发布分别安排，本次没有npm发布或清理现场。
+GitHub Release与npm载荷分别审计：npm专用材料在`release-sources/npm-rc53/`，
+共享开发树仍不直接用于公开打包。两个渠道的原始附件与证据保留，本轮没有清理现场。
 
 ## 检查
 
