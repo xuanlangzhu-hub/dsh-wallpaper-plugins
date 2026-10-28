@@ -7,6 +7,8 @@
 
 ## 实际附件
 
+后续进展：[GitHub预发行草稿及两附件](RC53_GITHUB_PRERELEASE_DRAFT_20261028.md)已就位，下载复核通过，尚未公开。
+
 当前本机目录 `release/rc53-first-prerelease-20261028-d/`（固定文本换行；旧a／b／c轮保留）：
 
 - `dsh-whale-mist-0.6.0-rc.53-windows-x64.zip`：7,013,702 字节，14 个条目。

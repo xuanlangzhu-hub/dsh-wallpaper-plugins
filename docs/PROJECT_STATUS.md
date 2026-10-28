@@ -4,7 +4,8 @@
 
 最新：用户要求继续，公开图标署名已精简为DeepSeek标志改色／透明处理及无背书说明；
 回忆细节只留审查记录。外层d轮ZIP固定文本换行并已核对，SHA256 `AFF40FFEA48298066403F6FE7EDF9E67888FC90CE2706549EB90B63678F99C24`，
-原tgz不变。正在提交资料、准备GitHub预发行草稿，尚未公开；不发布npm、不操作日常应用。
+原tgz不变。发行资料83260ab已推送，[GitHub预发行草稿](RC53_GITHUB_PRERELEASE_DRAFT_20261028.md)及两附件已就位，
+下载逐字节一致；draft=true／prerelease=true、未公开、无正式tag，等待用户最终公开安排。不发布npm、不操作日常应用。
 
 当前成果已推送至b8554cb。用户随后要求继续[首个预发行准备](FIRST_GITHUB_RELEASE_PREPARATION_20261028.md)，[本地下载ZIP及许可核对](RC53_FIRST_RELEASE_BUNDLE_20261028.md)完成：43文件原包不变，8DLL均匹配原NuGet条目，13校验条目及确定性重建通过。用户补记ICO为DeepSeek蓝鲸／Harness黑鲸标志改白、眼睛和腹部镂空的衍生图，原图／工具未知；已如实署名并重建外层b轮ZIP，保留旧a轮。材料已备，publicReleaseReady=false等待本次公开安排；本轮新增资料尚未提交推送，尚未建tag／Release或发布npm。日常rc.53不变。
 

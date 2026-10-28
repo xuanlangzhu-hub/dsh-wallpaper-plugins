@@ -4,6 +4,9 @@
 
 [本地发行附件与许可核对](docs/RC53_FIRST_RELEASE_BUNDLE_20261028.md)已完成归档检查；图标已按用户回忆记为DeepSeek标志的改色／透明处理衍生图，原图及工具未知的限制保留，等待公开发布安排。项目源码按[MIT](LICENSE)提供，随包组件见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
+[首个预发行草稿](docs/RC53_GITHUB_PRERELEASE_DRAFT_20261028.md)和两个附件已就位并下载核对，目前未公开；
+待公开后再提供正式下载入口。GitHub自动Source code.zip不是插件安装包。
+
 Whale Appearance / 鲸系外观，为官方 DeepSeek Harness Windows Desktop 提供主题、背景和 Wallpaper Engine 集成。
 
 当前日常：**DSH 0.2.1-rc.3 · Whale 0.6.0-rc.53 · Git Bash 0.1.2**。用户确认重开正常，助手已核对侧栏目录及停止状态。[rc.53日常交接](docs/RC53_DAILY_TRIAL_20261028.md)记录了本轮新备份、固定包与验收范围，rc.52回退来源保留。
