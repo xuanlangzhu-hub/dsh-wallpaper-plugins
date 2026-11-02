@@ -16,14 +16,14 @@
 
 ## 公开渠道与源码边界
 
-- GitHub [0.6.0正式版](STABLE_060_PUBLICATION_20261102.md)已公开并为Latest；运行代码与日常rc.61相同。npm0.6.0发布等待独立验证，旧rc.53仍保留，两个渠道结果分别记录。
+- GitHub与npm [0.6.0正式版](STABLE_060_PUBLICATION_20261102.md)均已公开，GitHub为Latest、npm latest=0.6.0。运行内容与日常rc.61相同，两个渠道同一tgz匿名下载已核对；旧rc.53及npm next预发行标签保留。
 - 共享 dsh-whale-mist manifest／assets 仍 rc.30 且含 Trace，不直接整体 npm pack／publish。固定发行来源／QA配方在 release-sources；历史配方仍依赖未提交的本机固定包与 .tmp 证据。
 - 真实会话截图、Profile、Cookie、运行授权、实测备份与候选仅本机。Pixso stock 原图的九张导出保留本机，设计链接和报告保留，合成夹具预览可随源码保存。
 
 ## 剩余事项
 
 1. 工作区整理、提交和推送已完成（源码 `1a87486`、文档 `fc431a8`，远端核对一致），结果见 [2026-11-02维护记录](WORKSPACE_MAINTENANCE_20261102.md)。不删除候选／实测／原始失败证据，不新增安装或发布。
-2. 日常使用有具体问题再定点改；UI主要留待布局反馈。后续公开更新须另按用户发布安排核包，不自动发Release／npm。
+2. 日常使用有具体问题再定点改；UI主要留待布局反馈。0.6.0正式版已发布；后续新版本另按用户安排，不自动发布。
 3. 三体节奏、进一步任务栏隐藏、滚动低优先级、通用输入／音频与其它未验范围保持暂缓。
 4. 宿主曾有启动认证／Cookie累积问题；定向恢复通过不等于永久修复，见 [rc.58故障收尾](RC58_PIXSO_UI_SHORT_TEST_20261030.md)。不自动清理Cookie或反复Restart。
 

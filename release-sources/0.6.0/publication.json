@@ -1,0 +1,26 @@
+{
+  "version": "0.6.0",
+  "github": {
+    "url": "https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.0",
+    "releaseId": 431020229,
+    "latest": true,
+    "targetCommit": "2f0c6dedc610a87206fc5916876946103b98b824",
+    "publishedAt": "2026-11-02T02:49:07Z"
+  },
+  "npm": {
+    "version": "0.6.0",
+    "tags": {
+      "latest": "0.6.0",
+      "next": "0.6.0-rc.53.npm.1"
+    },
+    "publishedAt": "2026-11-02T02:59:07.856Z",
+    "sha256": "15A2CA9FCB58586B254FB4E9266F01E3D7EF3B43BF76CE380063E39C486A837A",
+    "shasum": "055d710cb1068e4560ffd34e9964952d6939fd37",
+    "integrity": "sha512-thd0lvImCbghm1xQBW1z9Dujgl6zAI7d0INylIRW2JwQa2Wli43FXPrwy88v88hJPxBxEUYl0uVx7jC6rn+gqA==",
+    "bytes": 7633766,
+    "anonymousDownloadIdentical": true
+  },
+  "dailyInstallationUnchanged": "0.6.0-rc.61",
+  "runtimeCodeChanged": false,
+  "profileOrAppsOperated": false
+}

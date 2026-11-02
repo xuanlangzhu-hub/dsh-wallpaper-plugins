@@ -12,7 +12,7 @@
 
 ## 安装
 
-本次正式发行版本为 **0.6.0**，已验证宿主 **DSH 0.2.1-rc.3 · Windows x64**。开发进度与本机试用版本见[项目状态](docs/PROJECT_STATUS.md)。
+当前正式版本为 **0.6.0**，已验证宿主 **DSH 0.2.1-rc.3 · Windows x64**。开发进度与本机试用版本见[项目状态](docs/PROJECT_STATUS.md)。
 
 ### 从 GitHub 下载
 
@@ -24,8 +24,6 @@
 核对校验值后解压，按包内 `INSTALL.md` 安装。安装前正常退出 DSH 并备份设置。GitHub 自动生成的 `Source code.zip` 是源码压缩包。
 
 ### 从 npm 安装
-
-npm 0.6.0 正在完成发布验证；同步完成前请使用上方 GitHub 安装包。
 
 正常退出 DSH 并备份设置后，在终端运行：
 
