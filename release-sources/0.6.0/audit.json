@@ -1,0 +1,16 @@
+{
+  "version": "0.6.0",
+  "baseVersion": "0.6.0-rc.61",
+  "packageFiles": 58,
+  "unchangedRuntimeFiles": 45,
+  "unchangedAssets": 14,
+  "npmArchive": "dsh-whale-mist-0.6.0.tgz",
+  "npmBytes": 7633766,
+  "npmSha256": "15A2CA9FCB58586B254FB4E9266F01E3D7EF3B43BF76CE380063E39C486A837A",
+  "zip": "dsh-whale-mist-0.6.0-windows-x64.zip",
+  "zipBytes": 7407629,
+  "zipSha256": "CEC5A043EC2E47BEC1F07583DB059EADEF8261BFB8C400A9ED754DB6BD90FC34",
+  "published": false,
+  "installed": false,
+  "diagnosticCodeBuildRetained": true
+}

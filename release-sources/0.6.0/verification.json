@@ -1,0 +1,15 @@
+{
+  "basePackageManifestSha256": "77D269CC49DEA62507E7FC475FE2135979740ADF932C47BE2B47FCDB26A2ED2E",
+  "priorBehaviorReceiptSha256": "100CD47A53D49219EA9696CC421F0D1A7F530101646066A78AE9EDD3297EF3EC",
+  "priorSdkReceiptSha256": "A643A06B564D5B33BE683D2CE01E0126756776C73CF13A704C7992EF64814726",
+  "baseBehaviorChecks": 152,
+  "baseSdkChecks": 15,
+  "inheritedByExactRuntimeIdentity": true,
+  "newLiveVerification": false,
+  "repeatArchiveIdentical": true,
+  "textSnapshotFiles": 43,
+  "promotionOnlyChangedOriginalFiles": [
+    "README.md",
+    "package.json"
+  ]
+}

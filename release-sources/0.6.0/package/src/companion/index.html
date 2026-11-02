@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鲸系外观 · 独立设置</title>
+  <link rel="stylesheet" href="./companion.css">
+</head>
+<body class="whale-companion-body">
+  <div class="companion-shell">
+    <header class="companion-header">
+      <div class="header-brand">
+        <span class="brand-badge">Whale</span>
+        <h1 class="header-title">独立外观设置</h1>
+      </div>
+      <div id="status-pill" class="status-pill status-connecting" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="status-text" class="status-text">连接中...</span>
+      </div>
+    </header>
+
+    <div id="error-banner" class="error-banner hidden" role="alert"></div>
+
+    <!-- View Switcher (Visible in narrow mode, hidden in wide mode) -->
+    <nav id="view-switcher" class="view-switcher" aria-label="视图切换">
+      <button id="tab-btn-gallery" type="button" class="view-tab-btn is-active" aria-selected="true" data-tab="gallery">壁纸图库</button>
+      <button id="tab-btn-details" type="button" class="view-tab-btn" aria-selected="false" data-tab="details">所选详情</button>
+    </nav>
+
+    <main class="companion-content" id="companion-main-content">
+      <div class="companion-main-columns" id="companion-columns-wrap">
+        <!-- Left Column: 壁纸卡片库 (Gallery) -->
+        <section class="gallery-column" id="column-gallery" aria-labelledby="heading-gallery">
+          <div class="gallery-head">
+            <div class="head-text">
+              <h2 id="heading-gallery" class="column-title">壁纸图库</h2>
+              <span id="gallery-count-badge" class="count-badge">0 项</span>
+            </div>
+            <button id="btn-refresh-catalog" type="button" class="btn btn-secondary btn-sm" aria-label="刷新壁纸列表">
+              <span class="refresh-icon" aria-hidden="true">↻</span> 刷新
+            </button>
+          </div>
+
+          <div class="gallery-filters" id="gallery-age-filters" aria-label="年龄分级筛选">
+            <span class="filter-label">分级：</span>
+            <label class="filter-check-label">
+              <input type="checkbox" id="filter-rating-everyone" value="Everyone">
+              <span>所有人</span>
+            </label>
+            <label class="filter-check-label">
+              <input type="checkbox" id="filter-rating-questionable" value="Questionable">
+              <span>敏感内容</span>
+            </label>
+            <label class="filter-check-label">
+              <input type="checkbox" id="filter-rating-mature" value="Mature">
+              <span>成人内容</span>
+            </label>
+          </div>
+
+          <div id="gallery-notice" class="gallery-notice hidden" role="status"></div>
+
+          <div id="wallpaper-card-grid" class="wallpaper-card-grid" role="radiogroup" aria-label="壁纸列表">
+            <!-- Dynamic wallpaper cards rendered here -->
+          </div>
+        </section>
+
+        <!-- Right Column: 所选详情与外观调节 (Details & Settings) -->
+        <section class="details-column" id="column-details" aria-labelledby="heading-details">
+          <div class="details-top-bar">
+            <button id="btn-back-to-gallery" type="button" class="btn-back" aria-label="返回壁纸图库">
+              ← 返回图库
+            </button>
+            <h2 id="heading-details" class="column-title">所选壁纸详情</h2>
+          </div>
+
+          <!-- 所选壁纸详情卡片 -->
+          <div class="control-card group-card" id="card-selected-details">
+            <div class="details-preview-wrap">
+              <div id="details-preview-placeholder" class="preview-placeholder">
+                <span class="placeholder-icon" aria-hidden="true">🖼</span>
+                <span class="placeholder-text">暂无安全预览图</span>
+              </div>
+              <img id="details-preview-img" class="details-preview-img hidden" alt="壁纸大图预览">
+            </div>
+
+            <div class="details-info-wrap">
+              <div class="details-title-row">
+                <h3 id="details-title" class="details-wallpaper-title">--</h3>
+                <div class="details-badges-row">
+                  <span id="badge-details-type" class="item-tag">scene</span>
+                  <span id="badge-details-status" class="item-tag tag-verified">已验证</span>
+                  <span id="badge-details-playing" class="item-tag tag-playing hidden">正在播放</span>
+                  <span id="badge-details-selected" class="item-tag tag-selected">本次选择</span>
+                </div>
+              </div>
+
+              <!-- 播放状态与不一致提示 -->
+              <div id="details-playback-banner" class="playback-banner">
+                <div id="details-playback-text" class="playback-text">未开始播放</div>
+                <div id="details-mismatch-banner" class="mismatch-banner hidden">
+                  当前正在播放另一张壁纸。请先停止当前播放，再开始所选项。
+                </div>
+              </div>
+              <section id="author-properties-panel" aria-label="壁纸作者设置"></section>
+
+              <div class="wm-playback-options">
+                <label for="select-playback-mode">播放模式</label>
+                <select id="select-playback-mode" disabled>
+                  <option value="daily">日常（持续播放）</option>
+                  <option value="preview">预览（限时）</option>
+                </select>
+                <label for="checkbox-we-autostart">
+                  <input id="checkbox-we-autostart" type="checkbox" disabled>
+                  随 DSH 启动自动播放
+                </label>
+                <p class="wm-playback-hint">仅 Lucy 具备自动播放资格。修改播放模式或自动播放不会开始当前播放。</p>
+              </div>
+
+              <!-- 播放控制按钮 -->
+              <div class="details-actions-row">
+                <button id="btn-start-wallpaper" type="button" class="btn btn-primary" disabled>开始播放</button>
+                <button id="btn-stop-wallpaper" type="button" class="btn btn-secondary" disabled>停止播放</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 画面调节 (Visual) -->
+          <section class="control-card group-card" id="section-visual" aria-labelledby="heading-visual">
+            <div class="group-header">
+              <h3 id="heading-visual" class="group-title">壁纸画面效果</h3>
+              <span class="group-subtitle">DSH 背景渲染 · 仅影响背景</span>
+            </div>
+            <div id="visual-target-notice" class="control-hint-notice">
+              调节对当前播放的壁纸生效
+            </div>
+
+            <!-- 背景亮度 -->
+            <div class="control-item">
+              <div class="control-header">
+                <label for="slider-brightness" class="control-label">背景亮度</label>
+                <div class="control-value-wrap">
+                  <input id="input-brightness" type="number" class="control-number" min="20" max="120" step="1" aria-label="背景亮度数值">
+                  <span class="unit">%</span>
+                </div>
+              </div>
+              <input id="slider-brightness" type="range" class="control-slider" min="20" max="120" step="1" aria-label="背景亮度滑块">
+              <p class="control-hint">100%保留原亮度，可继续提亮；最终效果还受遮罩和界面底色影响</p>
+            </div>
+
+            <!-- 遮罩 -->
+            <div class="control-item">
+              <div class="control-header">
+                <label for="slider-mask" class="control-label">遮罩</label>
+                <div class="control-value-wrap">
+                  <input id="input-mask" type="number" class="control-number" min="0" max="90" step="1" aria-label="遮罩数值">
+                  <span class="unit">%</span>
+                </div>
+              </div>
+              <input id="slider-mask" type="range" class="control-slider" min="0" max="90" step="1" aria-label="遮罩滑块">
+              <p class="control-hint">叠加主题底色；数值越大，主题底色覆盖越强，0%关闭遮罩</p>
+            </div>
+
+            <!-- 模糊 -->
+            <div class="control-item">
+              <div class="control-header">
+                <label for="slider-blur" class="control-label">模糊</label>
+                <div class="control-value-wrap">
+                  <input id="input-blur" type="number" class="control-number" min="0" max="24" step="1" aria-label="模糊数值">
+                  <span class="unit">px</span>
+                </div>
+              </div>
+              <input id="slider-blur" type="range" class="control-slider" min="0" max="24" step="1" aria-label="模糊滑块">
+              <p class="control-hint">柔化壁纸细节，视频较大时会增加显卡负担</p>
+            </div>
+
+            <!-- 界面不透明度 -->
+            <div class="control-item">
+              <div class="control-header">
+                <label for="slider-surface" class="control-label">界面不透明度</label>
+                <div class="control-value-wrap">
+                  <input id="input-surface" type="number" class="control-number" min="40" max="100" step="1" aria-label="界面不透明度数值">
+                  <span class="unit">%</span>
+                </div>
+              </div>
+              <input id="slider-surface" type="range" class="control-slider" min="40" max="100" step="1" aria-label="界面不透明度滑块">
+              <p class="control-hint">侧栏与卡片；菜单和输入卡片保持不透明</p>
+            </div>
+          </section>
+
+          <!-- 壁纸外观预设 (Presets) -->
+          <section class="control-card group-card presets-card" id="section-presets" aria-labelledby="heading-presets">
+            <div class="group-header">
+              <h3 id="heading-presets" class="group-title">壁纸外观预设</h3>
+              <span class="group-subtitle">仅保存四项画面参数</span>
+            </div>
+            <div class="preset-target-row">
+              <span id="preset-target-title" class="preset-target-title">所选壁纸：--</span>
+              <span id="preset-status-text" class="preset-status-badge">未保存预设</span>
+            </div>
+            <p id="preset-hint" class="control-hint">每张壁纸保存一份亮度、遮罩、模糊与不透明度；手动应用到当前外观，全局恢复默认不删除预设</p>
+            <div class="preset-actions-row">
+              <button id="btn-preset-save" type="button" class="btn btn-preset" disabled>保存当前外观</button>
+              <button id="btn-preset-apply" type="button" class="btn btn-preset" disabled>应用已保存外观</button>
+              <button id="btn-preset-delete" type="button" class="btn btn-preset btn-preset-danger" disabled>删除预设</button>
+            </div>
+          </section>
+
+          <!-- DSH 界面外观 (Interface) -->
+          <section class="control-card group-card" id="section-interface" aria-labelledby="heading-interface">
+            <div class="group-header">
+              <h3 id="heading-interface" class="group-title">DSH 界面外观</h3>
+              <span class="group-subtitle">全局主题与配色 · 独立于壁纸</span>
+            </div>
+
+            <!-- 主题切换 -->
+            <div class="control-item">
+              <div class="control-header">
+                <span class="control-label">主题</span>
+              </div>
+              <div id="theme-segment" class="segment-group" role="group" aria-label="主题选择">
+                <button id="btn-theme-mist" type="button" class="segment-btn" data-theme="mist" aria-pressed="false">Mist (浅色拟态)</button>
+                <button id="btn-theme-abyss" type="button" class="segment-btn" data-theme="abyss" aria-pressed="false">Abyss (深色玻璃)</button>
+              </div>
+              <p class="control-hint">在 Whale Mist 与 Whale Abyss 之间切换</p>
+            </div>
+
+            <!-- 深色配色 (Abyss) -->
+            <div class="control-item">
+              <div class="control-header">
+                <span class="control-label">深色配色</span>
+                <span id="palette-applicability" class="item-tag">仅深色有效</span>
+              </div>
+              <div id="palette-segment" class="segment-group palette-group" role="group" aria-label="深色配色选择">
+                <button id="btn-palette-ocean" type="button" class="segment-btn palette-btn" data-palette="ocean" aria-pressed="false">
+                  <span class="swatch swatch-ocean" aria-hidden="true"></span>Ocean
+                </button>
+                <button id="btn-palette-graphite" type="button" class="segment-btn palette-btn" data-palette="graphite" aria-pressed="false">
+                  <span class="swatch swatch-graphite" aria-hidden="true"></span>Graphite
+                </button>
+                <button id="btn-palette-violet" type="button" class="segment-btn palette-btn" data-palette="violet" aria-pressed="false">
+                  <span class="swatch swatch-violet" aria-hidden="true"></span>Violet
+                </button>
+                <button id="btn-palette-jade" type="button" class="segment-btn palette-btn" data-palette="jade" aria-pressed="false">
+                  <span class="swatch swatch-jade" aria-hidden="true"></span>Jade
+                </button>
+              </div>
+              <p class="control-hint">Whale Abyss 的底色；跟随主题时也决定强调色</p>
+            </div>
+
+            <!-- 文字可读性 -->
+            <div class="control-item">
+              <div class="control-header">
+                <span class="control-label">文字可读性</span>
+              </div>
+              <div id="contrast-segment" class="segment-group" role="group" aria-label="文字可读性选择">
+                <button id="btn-contrast-standard" type="button" class="segment-btn" data-contrast="standard" aria-pressed="false">标准</button>
+                <button id="btn-contrast-enhanced" type="button" class="segment-btn" data-contrast="enhanced" aria-pressed="false">增强</button>
+              </div>
+              <p class="control-hint">增强模式提高正文与辅助文本反差，保留高对比度语义</p>
+            </div>
+
+            <!-- 聊天区底色 -->
+            <div class="control-item">
+              <div class="control-header">
+                <label for="slider-chatBackdrop" class="control-label">聊天区底色</label>
+                <div class="control-value-wrap">
+                  <input id="input-chatBackdrop" type="number" class="control-number" min="0" max="100" step="1" aria-label="聊天区底色数值">
+                  <span class="unit">%</span>
+                </div>
+              </div>
+              <input id="slider-chatBackdrop" type="range" class="control-slider" min="0" max="100" step="1" aria-label="聊天区底色滑块">
+              <p class="control-hint">0%保留壁纸透光，100%完全不透明；调节整个聊天列底色</p>
+            </div>
+
+            <!-- 强调色 -->
+            <div class="control-item">
+              <div class="control-header">
+                <span class="control-label">强调色</span>
+              </div>
+              <div id="accent-segment" class="segment-group" role="group" aria-label="强调色模式">
+                <button id="btn-accent-theme" type="button" class="segment-btn" data-accent-mode="theme" aria-pressed="false">跟随主题</button>
+                <button id="btn-accent-custom" type="button" class="segment-btn" data-accent-mode="custom" aria-pressed="false">自定义</button>
+              </div>
+              <div id="accent-color-picker-wrap" class="accent-color-wrap hidden">
+                <label for="input-accent-color" class="accent-picker-label">自定义色值</label>
+                <div class="accent-input-row">
+                  <input id="input-accent-color" type="color" class="color-picker" aria-label="强调色拾色器">
+                  <span id="text-accent-hex" class="color-hex">#8c72f2</span>
+                </div>
+              </div>
+              <p class="control-hint">按钮与高亮使用强调色；跟随主题恢复默认配色</p>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <footer class="companion-footer">
+      <button id="btn-dock" class="btn btn-primary" type="button">吸附回主窗口</button>
+      <button id="btn-close" class="btn btn-secondary" type="button">关闭窗口</button>
+    </footer>
+  </div>
+
+  <script type="module" src="./companion.js"></script>
+</body>
+</html>

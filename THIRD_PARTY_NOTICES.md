@@ -1,4 +1,4 @@
-# Third-party notices — Whale Appearance 0.6.0-rc.53
+# Third-party notices — Whale Appearance 0.6.0
 
 Copyright (c) 2026 dsh-wallpaper-plugins contributors.
 
