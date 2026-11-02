@@ -1,0 +1,13 @@
+{
+  "runtime": ".tmp/author-diagnostic-integration-20261029-e/isolated/runtime",
+  "controller": ".tmp/author-diagnostic-integration-20261029-e/isolated/native-sidebar.mjs",
+  "priorResult": ".tmp/author-diagnostic-integration-20261029-e/result.json",
+  "files": {
+    ".tmp/author-diagnostic-integration-20261029-e/result.json": "E67294B3D7BB8F82EB144BB0C0FA84BA692BD116B3B09FCC9A5FF65F288B7BCC",
+    ".tmp/author-diagnostic-integration-20261029-e/isolated/native-sidebar.mjs": "B293DB5CFDB5FCDA908CE9A90D31925976CEC8C6736A76A786C454F4EE870BCD",
+    ".tmp/author-diagnostic-integration-20261029-e/isolated/runtime/src/index.js": "82BE5602DC1B3215176CC3F40C080EB0E82F3E0E29C485B8FDB6716BD1E399C6",
+    ".tmp/author-diagnostic-integration-20261029-e/isolated/runtime/src/client.js": "90FF237DB5CDC270CB0BED305BA61FF47784CC5CD7013A33C898A7C83FA38C4E",
+    ".tmp/author-diagnostic-integration-20261029-e/isolated/runtime/src/wallpaper/author-diagnostics.js": "14907F56B546E0D501DEA9D51998615249145A4EFBBD74BAD0DEB567AD0B9097",
+    "dsh-whale-mist/scripts/build-native-sidebar.mjs": "A420D3C19F2C6A4152522881447D1EDCEB8E1EBD66FA7E78E34C4BB92A241BB2"
+  }
+}

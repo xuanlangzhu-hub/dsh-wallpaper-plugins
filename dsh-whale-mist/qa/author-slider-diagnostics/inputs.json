@@ -1,0 +1,11 @@
+{
+  "controller": ".tmp/author-slider-integration-20261029-f/repair/native-sidebar.mjs",
+  "runtime": ".tmp/author-slider-integration-20261029-f/payload",
+  "files": {
+    ".tmp/author-slider-integration-20261029-f/repair/native-sidebar.mjs": "9A3B7E1BE7B85E11090AE2E4827B02CED8836B71595973399B1AD5D1A9A0FAA7",
+    ".tmp/author-slider-integration-20261029-f/payload/src/wallpaper/author-properties-host.js": "3BF2E30158E7A9D64AD51278C48DDBB7FB8299B6681BE308857C82FF88830802",
+    ".tmp/author-slider-integration-20261029-f/payload/src/wallpaper/author-properties-apply.js": "0DE2CF9949C471781AFBC3CD4651414D1C792EA4A2FAC697AA963CD865278154",
+    ".tmp/author-slider-integration-20261029-f/result.json": "F60C82CB077645E2A8EA22AA003EC84E62FFF8CA3531250D84C4BE5468427E54",
+    "release-sources/rc56/package-manifest.json": "61D834C0A815E6D56E72FF6D1201CF3FA8892F4919CE6A8091F0BD298E88014A"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "kind": "offline-staging-plan-not-an-install-package",
+  "baseManifest": "release-sources/rc54/package-manifest.json",
+  "baseArchiveSha256": "D9E28918522C3ABFF974465D53604583BAC520806D388EAE773F84BCDAF2F096",
+  "replacementFiles": {
+    "assets/wallpaper/WallpaperProbe.dll": {
+      "sha256": "2C2C1FFEF7D0B491ED4EA68BC63FD60C32D58338DB2E008CD19938EC1EF4BB5F",
+      "source": ".tmp/taskbar-stage-timing-20261029-b/isolated/native-source/bin/Release/net10.0-windows10.0.19041.0/WallpaperProbe.dll"
+    }
+  },
+  "keepOtherBaselineFiles": 42,
+  "keepOldApphostDepsRuntimeconfig": true,
+  "metadataAllowlist": "dsh-whale-mist/qa/taskbar-stage-timing/metadata-allowlist.json",
+  "futureCandidateMetadata": [
+    "package.json version",
+    "README diagnostic candidate scope"
+  ],
+  "candidateVersionAssigned": false,
+  "evidence": ".tmp/taskbar-stage-integration-20261029-c/result.json",
+  "installOrPublicReleaseAuthorizedInThisStep": false
+}

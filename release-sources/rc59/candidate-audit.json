@@ -1,0 +1,25 @@
+{
+  "version": "0.6.0-rc.59",
+  "archive": "dsh-whale-mist-0.6.0-rc.59.tgz",
+  "sha256": "94B4FB04B8F026FEE6399F8666D7150BDD88DA8A8F82638A02F9980AC0F5EBA4",
+  "bytes": 7283059,
+  "files": 47,
+  "assetsUnchanged": 14,
+  "changedFromOriginalRc57": [
+    "README.md",
+    "package.json",
+    "src/client.js",
+    "src/wallpaper/author-diagnostic-build.js"
+  ],
+  "sourceIntegration": ".tmp\\pixso-ui-proportion-material-sdk-20261031-c",
+  "sourceReportSha256": "BEA2BCC5DC3A065AA84324D1EF984947C332DF620577AE8D07EFC64A962A6363",
+  "recipeSha256": "0EABBF7669BCFD8B484DF0748EA30B129A70C02006AA5071D81AE2CAC079CC40",
+  "archivePrimitivesRecipeSha256": "C018479EF94650326D618C5AD14A7D6C6218EC0080A88F81354F1904A0511AD1",
+  "defaultRollback": "0.6.0-rc.57",
+  "localTrialOnly": true,
+  "publicReleaseAuthorized": false,
+  "installed": false,
+  "nativeRecompiled": false,
+  "profileOrAppQueried": false,
+  "defaultEnabled": false
+}

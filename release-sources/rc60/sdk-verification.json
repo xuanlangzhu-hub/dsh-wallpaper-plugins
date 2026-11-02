@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "archiveSha256": "CCC49C5C5DEE6D4DFFA728C4A84B22755B98E3EAE905533CE93ECDFD203F4885",
+  "files": 47,
+  "cases": 11,
+  "actualArchivePayload": true,
+  "diagnosticMetadataBothSidesMatch": true,
+  "buildId": "0d856163958245401db1ff147c45f99c08a4af1b7cb0158fb73fa60eb671aeb4",
+  "productClientSha256": "EA65FDD649517F3EE7C5FCD9F61139E0560B5E7416491AC650E54539E6B6D57F",
+  "adapterSha256": "82830451F66E0681387D696CEB041A3C38B8819BB3664FDFCE22A61BD035B46C",
+  "reportSha256": "BE3C473D741A1747CB9D181C242AE80B602C2DB317E010E4103E4A52CA931B7C",
+  "knownBaselineWarnings": [
+    {
+      "path": "/api/main/snapshot",
+      "status": 401,
+      "method": "POST",
+      "generation": "1",
+      "mainRegisteredAtDispatch": false,
+      "everConnectedAtDispatch": false,
+      "responseError": "unauthorized-main-token"
+    },
+    {
+      "path": "/api/main/disconnect",
+      "status": 401,
+      "method": "POST",
+      "generation": "1",
+      "mainRegisteredAtDispatch": false,
+      "everConnectedAtDispatch": true,
+      "responseError": "unauthorized-main-token"
+    }
+  ],
+  "pageErrors": [],
+  "sourceIO": "substituted",
+  "liveAppUsed": false,
+  "cleanup": {
+    "page": {
+      "presetSubscriptions": 0,
+      "counts": {
+        "settings": 0,
+        "status": 0,
+        "library": 0
+      },
+      "refs": 0,
+      "pins": 0,
+      "remoteListeners": 0,
+      "commands": 0,
+      "domChildren": 0,
+      "activeObjectURLs": 0,
+      "createdURLs": 8,
+      "revokedURLs": 8,
+      "revokedWithConsumers": [],
+      "errors": []
+    },
+    "ownedBrowserExitConfirmed": true,
+    "closeHostDisposed": true,
+    "serverClosed": true,
+    "bridgeMainDisconnected": true,
+    "bridgeClosed": true
+  },
+  "firstSdkLogGateFailurePreserved": true,
+  "snapshotRaceFixed": false
+}

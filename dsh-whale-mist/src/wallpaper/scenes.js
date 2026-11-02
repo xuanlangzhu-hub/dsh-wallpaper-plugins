@@ -6,6 +6,43 @@
  * the frontend and the Host can never disagree about what may be started.
  */
 
+/** @typedef {'preview' | 'daily'} PlaybackMode */
+/**
+ * @typedef {object} SceneDefinition
+ * @property {string} id
+ * @property {string} label
+ * @property {string} project
+ * @property {boolean} [playbackVerified]
+ */
+/** @typedef {Readonly<Record<string, Readonly<SceneDefinition>>>} SceneMap */
+/** Unknown field view after the existing object check; not a validated request.
+ * @typedef {object} RequestFields
+ * @property {unknown} [scene]
+ * @property {unknown} [mode]
+ * @property {unknown} [seconds]
+ */
+/**
+ * @typedef {object} SceneSelection
+ * @property {string} sceneId
+ * @property {unknown} mode Not validated until resolveSceneRequest.
+ */
+/**
+ * @typedef {object} ResolveSceneOptions
+ * @property {SceneMap} [scenes]
+ * @property {(project: string) => boolean} [exists]
+ * @property {((sceneId: string) => unknown) | null} [resolveProject] Result is checked at runtime.
+ */
+/**
+ * @typedef {object} SceneRequest
+ * @property {string} sceneId Shape/lookup validation remains runtime work.
+ * @property {PlaybackMode} mode
+ * @property {string} project
+ * @property {number | null} seconds
+ * @property {number} width
+ * @property {number} height
+ * @property {number} fps
+ */
+
 /** Scenes verified by the supervised experiments. Only these can be started. */
 export const SCENES = Object.freeze({
   lucy: Object.freeze({
@@ -51,6 +88,9 @@ export const UNAVAILABLE_REASON = Object.freeze({
 export const CATALOG_ID_PATTERN = /^we-[0-9a-f]{24}$/;
 
 /** True for the verified sample id and for a well-formed catalogue id. */
+/** @param {unknown} [value]
+ * @returns {boolean} String coercion means this is not a string type predicate.
+ */
 export function isSceneId(value) {
   return value === 'lucy' || CATALOG_ID_PATTERN.test(String(value ?? ''));
 }
@@ -62,7 +102,11 @@ export function isSceneId(value) {
  * usable id is refused here: silently starting the sample instead would hide the bad selection and
  * play something the user did not choose.
  */
+/** @param {unknown} [payload]
+ * @returns {SceneSelection}
+ */
 export function sceneSelection(payload) {
+  /** @type {RequestFields} */
   const body = payload && typeof payload === 'object' ? payload : {};
   if (body.scene === undefined || body.scene === null) return { sceneId: 'lucy', mode: body.mode };
   if (typeof body.scene !== 'string' || !isSceneId(body.scene)) throw new Error(`unknown scene: ${String(body.scene)}`);
@@ -81,7 +125,12 @@ export function sceneSelection(payload) {
  * resolves the verified sample; the Host injects a catalogue-backed resolver instead, so a
  * catalogue id never resolves here on its own and a browser string can never become a path.
  */
+/** @param {unknown} [payload]
+ * @param {ResolveSceneOptions} [options]
+ * @returns {SceneRequest}
+ */
 export function resolveSceneRequest(payload, { scenes = SCENES, exists = () => true, resolveProject = null } = {}) {
+  /** @type {RequestFields} */
   const body = payload && typeof payload === 'object' ? payload : {};
   const sceneId = typeof body.scene === 'string' ? body.scene : 'lucy';
   let project;
@@ -101,16 +150,17 @@ export function resolveSceneRequest(payload, { scenes = SCENES, exists = () => t
   if (typeof mode !== 'string' || !PLAYBACK_MODES.includes(mode)) throw new Error(`unknown mode: ${String(mode)}`);
   let seconds = null;
   if (mode === 'preview') {
-    const requested = Number.isInteger(body.seconds) ? body.seconds : PREVIEW_SECONDS.default;
+    const requested = Number.isInteger(body.seconds) ? /** @type {number} */ (body.seconds) : PREVIEW_SECONDS.default;
     seconds = Math.min(PREVIEW_SECONDS.max, Math.max(PREVIEW_SECONDS.min, requested));
   } else if (body.seconds !== undefined && body.seconds !== null) {
     // A daily request has no timer; accepting a duration would silently recreate one.
     throw new Error('daily mode does not take a duration');
   }
-  return { sceneId, mode, project, seconds, width: WINDOW_SIZE.width, height: WINDOW_SIZE.height, fps: FPS };
+  return /** @type {SceneRequest} */ ({ sceneId, mode, project, seconds, width: WINDOW_SIZE.width, height: WINDOW_SIZE.height, fps: FPS });
 }
 
 /** Scene list for the UI, with the local sample dependency made explicit. */
+/** @param {Pick<ResolveSceneOptions, 'scenes' | 'exists'>} [options] */
 export function describeScenes({ scenes = SCENES, exists = () => true } = {}) {
   return Object.values(scenes).map(scene => ({ id: scene.id, label: scene.label, available: exists(scene.project), project: scene.project, playbackVerified: scene.playbackVerified === true }));
 }

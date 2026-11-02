@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "archiveSha256": "94B4FB04B8F026FEE6399F8666D7150BDD88DA8A8F82638A02F9980AC0F5EBA4",
+  "files": 47,
+  "groups": [
+    {
+      "group": "controls",
+      "cases": 7,
+      "report": ".tmp\\rc59-ui-material-sdk-controls-20261031-a\\rc59-windows-controls-report.json",
+      "sha256": "B6EB0365F1E8D74D5EEF860794BAFC177CF4AAEDFBB5932E1A65ADBF29333C2E",
+      "archivePayloadMatched": true,
+      "cleanupPassed": true
+    },
+    {
+      "group": "lifecycle",
+      "cases": 9,
+      "report": ".tmp\\rc59-ui-material-sdk-lifecycle-20261031-a\\rc59-windows-lifecycle-recheck-report.json",
+      "sha256": "3494346A0F360E7BB98F99A6A570BFA1F0E630694A00172795BCAA96AFDCC5CC",
+      "archivePayloadMatched": true,
+      "cleanupPassed": true
+    }
+  ],
+  "totalChecks": 16,
+  "actualArchivePayload": true,
+  "nativeIO": "substituted",
+  "liveAppsUsed": false,
+  "installed": false
+}

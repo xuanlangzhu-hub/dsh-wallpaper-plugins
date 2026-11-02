@@ -15,3 +15,12 @@
 /release-sources/rc53/third-party-inventory.json text eol=lf
 /release-sources/npm-rc53/*.py text eol=lf
 /release-sources/npm-rc53/*.md text eol=lf
+
+# These development inputs and audited recipes carry byte-level SHA-256 pins.
+# Preserve their existing LF/CRLF bytes on every platform; do not renormalize.
+/dsh-whale-mist/** -text whitespace=cr-at-eol,-blank-at-eof
+/release-sources/** -text whitespace=cr-at-eol,-blank-at-eof
+/docs/history/20261102/** -text whitespace=cr-at-eol,-blank-at-eof
+
+# A unified diff's blank context line is a literal space, not source whitespace.
+/release-sources/*/ui.patch whitespace=-trailing-space,cr-at-eol,-blank-at-eof

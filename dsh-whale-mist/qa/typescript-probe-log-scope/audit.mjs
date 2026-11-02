@@ -1,0 +1,20 @@
+// Read/type-check source text only. The application modules are not executed here.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+const root=path.resolve(process.argv[2]),info=JSON.parse(fs.readFileSync(path.join(root,'inputs.json'),'utf8'));
+const ts=(await import(pathToFileURL(info.compilerModule))).default;assert.equal(ts.version,'5.9.3');
+const options={allowJs:true,checkJs:true,strict:true,noEmit:true,incremental:false,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext,lib:['lib.es2022.d.ts'],types:[],skipLibCheck:false};
+let writes=0;const host=ts.createCompilerHost(options);host.writeFile=()=>{writes++;throw Error('Unexpected compiler output');};
+const program=ts.createProgram([info.source],options,host);
+const canonical=file=>path.resolve(file).replaceAll('\\','/').toLowerCase();
+assert.deepEqual(program.getSourceFiles().filter(x=>!x.isDeclarationFile).map(x=>canonical(x.fileName)),[canonical(info.source)]);
+const libs=program.getSourceFiles().filter(x=>x.isDeclarationFile);
+assert.ok(libs.every(x=>canonical(x.fileName).startsWith(canonical(path.dirname(info.compilerModule))+'/lib.')&&!/lib\.dom/.test(x.fileName)));
+const diagnostics=ts.getPreEmitDiagnostics(program).map(d=>({code:d.code,line:d.file&&d.start!==undefined?d.file.getLineAndCharacterOfPosition(d.start).line+1:null,file:d.file?canonical(d.file.fileName):null,message:ts.flattenDiagnosticMessageText(d.messageText,' ')}));
+assert.ok(diagnostics.length>0);assert.ok(diagnostics.every(d=>d.file===canonical(info.source)));assert.equal(writes,0);
+const tree=ts.createSourceFile(info.source,fs.readFileSync(info.source,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
+const imports=tree.statements.filter(ts.isImportDeclaration);assert.equal(imports.length,0);
+const result={passed:true,readOnlyScopeAudit:true,typeImplementationCompleted:false,compilerVersion:ts.version,source:info.source,imports:0,nonLibraryFiles:1,standardLibraryFiles:libs.length,baselineDiagnosticCount:diagnostics.length,diagnostics,compilerEmittedFiles:writes,sessionOrNativeModulesExecuted:false};
+fs.writeFileSync(path.join(root,'scope-types.json'),JSON.stringify(result,null,2),{flag:'wx'});console.log(JSON.stringify(result));

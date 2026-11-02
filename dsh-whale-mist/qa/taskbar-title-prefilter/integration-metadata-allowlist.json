@@ -1,0 +1,22 @@
+{
+  "baselineDllSha256": "2C2C1FFEF7D0B491ED4EA68BC63FD60C32D58338DB2E008CD19938EC1EF4BB5F",
+  "newDllSha256": "730DC34D8CAB1970093746CF1F1699EB833C02A267AE68BDFCC55CDFAF93D1E2",
+  "added": [],
+  "removed": [],
+  "changed": [],
+  "bodies": [
+    "M:SourceWindowHelper+<>c__DisplayClass66_0::<FindWindowsByTitle>b__0:20/0/2:Boolean(IntPtr,IntPtr)",
+    "M:SourceWindowHelper+<>c__DisplayClass77_0::<FindProbeWindows>b__0:20/0/2:Boolean(IntPtr,IntPtr)"
+  ],
+  "changedDefinitionValues": {},
+  "changedBodyHashes": {
+    "M:SourceWindowHelper+<>c__DisplayClass66_0::<FindWindowsByTitle>b__0:20/0/2:Boolean(IntPtr,IntPtr)": [
+      "22614D11FFFA8128C8F59DEF73FD25E3BA2128F9DB34859384CC104AD8458DFC",
+      "FD9D67D7C355F847425B1C6C52F66BEC00F3A76CD2D56EEE05B580004CCA5200"
+    ],
+    "M:SourceWindowHelper+<>c__DisplayClass77_0::<FindProbeWindows>b__0:20/0/2:Boolean(IntPtr,IntPtr)": [
+      "4B9D5E643C59132C4F9A286846A116992D4F0B19B2AFF38365FE2DC5DB8138BC",
+      "DD34E68011ACA4B2F3C0A914A69AB84EF339F8680ACFBB39AC98CE86318FA675"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "atUtc": "2026-10-31T01:19:32.412279+00:00",
+  "archiveSha256": "94B4FB04B8F026FEE6399F8666D7150BDD88DA8A8F82638A02F9980AC0F5EBA4",
+  "archiveBytes": 7283059,
+  "files": 47,
+  "unchangedAssets": 14,
+  "behaviorChecks": 152,
+  "sdkChecks": 16,
+  "protectedInputs": 439,
+  "protectedInputsChanged": 0,
+  "trialAuthorized": false,
+  "productionBackupCreated": false,
+  "liveAppQueried": false,
+  "installed": false,
+  "publicReleaseAuthorized": false,
+  "defaultRollback": "0.6.0-rc.57",
+  "cookieCleanupAutomatic": false
+}

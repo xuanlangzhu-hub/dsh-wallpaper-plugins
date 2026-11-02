@@ -1,0 +1,86 @@
+{
+  "frame": [
+    {
+      "name": "string-chunk",
+      "code": 2345,
+      "body": "new FrameDecoder(() => {}).push('bad');"
+    },
+    {
+      "name": "wrong-callback",
+      "code": 2345,
+      "body": "new FrameDecoder((frame: string) => { void frame; });"
+    },
+    {
+      "name": "unknown-frame-field",
+      "code": 2339,
+      "body": "new FrameDecoder(frame => { void frame.notAField; });"
+    },
+    {
+      "name": "wrong-width-type",
+      "code": 2322,
+      "body": "new FrameDecoder(frame => { const width: string = frame.width; void width; });"
+    },
+    {
+      "name": "missing-callback",
+      "code": 2554,
+      "body": "new FrameDecoder();"
+    },
+    {
+      "name": "bad-jpeg-element",
+      "code": 2322,
+      "body": "new FrameDecoder(frame => { frame.jpeg[0] = 'bad'; });"
+    },
+    {
+      "name": "bad-sequence-field",
+      "code": 2322,
+      "body": "new FrameDecoder(frame => { frame.sequence = 'bad'; });"
+    }
+  ],
+  "log": [
+    {
+      "name": "number-chunk",
+      "code": 2345,
+      "body": "new ProbeJournal().push(123);"
+    },
+    {
+      "name": "wrong-encoding",
+      "code": 2322,
+      "body": "new ProbeJournal().push({toString(encoding: 'hex') { return encoding; }});"
+    },
+    {
+      "name": "wrong-chunk-result",
+      "code": 2322,
+      "body": "new ProbeJournal().push({toString() { return 123; }});"
+    },
+    {
+      "name": "null-parse-result",
+      "code": 2345,
+      "body": "describeLog(parseLogLine(''));"
+    },
+    {
+      "name": "wrong-message-type",
+      "code": 2322,
+      "body": "const e = parseLogLine('x'); if(e) { const m: number = e.message; void m; }"
+    },
+    {
+      "name": "unparsed-timestamp",
+      "code": 2322,
+      "body": "const e = parseLogLine('x'); if(e) { const at: number = e.at; void at; }"
+    },
+    {
+      "name": "invalid-level",
+      "code": 2322,
+      "body": "const e = parseLogLine('x'); if(e) e.level = 'fatal';"
+    },
+    {
+      "name": "nullable-first-error",
+      "code": 2322,
+      "body": "const first: string = new ProbeJournal().snapshot().firstError; void first;"
+    },
+    {
+      "name": "journal-record-missing-time",
+      "code": 2345,
+      "body": "new ProbeJournal().entries.push({level:'info',scope:'',message:'x',detail:''});"
+    }
+  ]
+}

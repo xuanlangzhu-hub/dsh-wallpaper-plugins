@@ -1,0 +1,10 @@
+          if(body&&Object.hasOwn(body,'authorDiagnostics')){
+            // A distinct read-only operation on the existing authenticated main route.
+            // It never falls through to settings/snapshot mutation.
+            const d=body.authorDiagnostics,h=req.headers;
+            if(parsedUrl.search||h['x-whale-main-token']!==resolvedMainToken||h['x-whale-instance-id']!==mainSession.instanceId||typeof h['x-whale-generation']!=='string'||!/^[1-9]\d*$/.test(h['x-whale-generation'])||Number(h['x-whale-generation'])!==mainSession.generation){sendJson(res,403,{ok:false,error:'author-diagnostic-credentials-invalid'});return;}
+            if(Object.keys(body).sort().join(',')!=='authorDiagnostics,generation,instanceId'||body.generation!==mainSession.generation||body.instanceId!==mainSession.instanceId||!d||typeof d!=='object'||Array.isArray(d)||Object.keys(d).sort().join(',')!=='action,buildId'||d.action!=='export'||typeof d.buildId!=='string'||!/^[a-f0-9]{64}$/.test(d.buildId)){sendJson(res,400,{ok:false,error:'author-diagnostic-request-invalid'});return;}
+            const result=authorDiagnosticSession?.exportData(d.buildId)??{ok:false,error:'author-diagnostics-disabled'};
+            sendJson(res,result.ok?200:503,result,{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});return;
+          }
+

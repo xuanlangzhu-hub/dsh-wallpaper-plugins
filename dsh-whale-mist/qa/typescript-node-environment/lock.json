@@ -1,0 +1,38 @@
+{
+  "targetMajor": 24,
+  "selection": "Fixed offline QA baseline; no host-version claim and no latest resolution",
+  "packages": [
+    {
+      "key": "node",
+      "directory": "node",
+      "name": "@types/node",
+      "version": "24.10.0",
+      "license": "MIT",
+      "dependencies": {
+        "undici-types": "~7.16.0"
+      },
+      "metadata": "https://registry.npmjs.org/@types%2fnode/24.10.0",
+      "discoveredMetadataSha256": "914908F938A97C530959CF4658D87CDDE3D35B95402081AF773CBBA777186F29",
+      "tarball": "https://registry.npmjs.org/@types/node/-/node-24.10.0.tgz",
+      "integrity": "sha512-qzQZRBqkFsYyaSWXuEHc2WR9c0a0CXwiE5FWUvn7ZM+vdy1uZLfCunD38UzhuB7YN/J11ndbDBcTmOdxJo9Q7A==",
+      "shasum": "6b79086b0dfc54e775a34ba8114dcc4e0221f31f",
+      "fileCount": 88,
+      "unpackedSize": 2518290
+    },
+    {
+      "key": "undici",
+      "directory": "undici-types",
+      "name": "undici-types",
+      "version": "7.16.0",
+      "license": "MIT",
+      "dependencies": {},
+      "metadata": "https://registry.npmjs.org/undici-types/7.16.0",
+      "discoveredMetadataSha256": "49FB2027D25B6CC523324C32F2B9032D9CA909374610AFEE51E073B572FC5F31",
+      "tarball": "https://registry.npmjs.org/undici-types/-/undici-types-7.16.0.tgz",
+      "integrity": "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==",
+      "shasum": "ffccdff36aea4884cbfce9a750a0580224f58a46",
+      "fileCount": 45,
+      "unpackedSize": 110131
+    }
+  ]
+}

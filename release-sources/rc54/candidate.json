@@ -1,0 +1,33 @@
+{
+  "version": "0.6.0-rc.54",
+  "sha256": "D9E28918522C3ABFF974465D53604583BAC520806D388EAE773F84BCDAF2F096",
+  "bytes": 7261395,
+  "files": 43,
+  "changedFromRc53": [
+    "README.md",
+    "assets/wallpaper/WallpaperProbe.dll",
+    "package.json"
+  ],
+  "unchangedFiles": 40,
+  "unchangedJavaScript": 23,
+  "unchangedAssets": 13,
+  "inheritedApphostDepsRuntimeconfig": true,
+  "originalFileModesPreserved": true,
+  "manifestOnlyVersionChanged": true,
+  "private": true,
+  "enginesDsh": "0.2.1-rc.3",
+  "protectedInputs": 361,
+  "changedProtectedInputs": [],
+  "sourceArchiveSha256": "8AF3F10FC72923E5B4E11D43D2CBAB8749287C8B7A8CF275A1BDC400FC5229EA",
+  "replacementDllSha256": "6313602FE6CB8E8A80DCB93BE0D3D44EF8E961CCA1B7CC10E8F4F1AD5CCCD37D",
+  "recipeSha256": "E0F90AD83060F6CA0DD438A323A90DC8205515537F7ED3E8251E7EBFFF1215CE",
+  "readmePrefixSha256": "BF46827C22F223485934A8BB48534EC00235CBB0970E5587DD6BBD9CBCAEEC80",
+  "preflightReceiptSha256": "977F798B6F66D1865C766251498149BF42BEB88EC6C751E0F59A61ABB877EC69",
+  "nativeRecompiled": false,
+  "installed": false,
+  "published": false,
+  "realApplicationOperations": 0,
+  "visualAcceptance": false,
+  "archive": ".tmp/rc54-taskbar-first-frame-candidate-20261028-b/dsh-whale-mist-0.6.0-rc.54.tgz",
+  "independentRebuildSameBytes": true
+}

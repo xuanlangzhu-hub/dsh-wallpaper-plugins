@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "candidateVersion": "0.6.0-rc.60",
+  "candidateSha256": "CCC49C5C5DEE6D4DFFA728C4A84B22755B98E3EAE905533CE93ECDFD203F4885",
+  "trialRoot": "F:\\dsh-wallpaper-plugins\\.tmp\\rc60-thin-glass-short-trial-20261031-b",
+  "profileWritesAuthorized": false,
+  "backupCreated": false,
+  "authorizationCreated": false,
+  "liveAppQueried": false,
+  "sourceInputsUnchanged": 440,
+  "recipeHashes": {
+    "backup-startup-cookie-cache.ps1": "24095896C658A6AB2DAD5AA45259937D7EBC7B6E8D467DCA59E4CED74FB60D35",
+    "build-candidate.py": "1DC264D3B14EFEF55E6604762DA7C5303088A5B9004C328348021D5400115CEF",
+    "build.json": "0E182F7289B5CE6EE019D16EB0E70C28CB896A8F7C82C7947337BAB0C8AE87D8",
+    "candidate-audit.json": "4F5F47E07B46F8E958DEED281765712BD46226DEAE6BD1207F7A93F0A4DB08E1",
+    "check-candidate.py": "F8CFBEDE081E326AA57FB9F5015CE23BDC02154CCFCA1B24A1AC4B9FC5C0428A",
+    "package-manifest.json": "8E3CE3FEE35212C24FF2FD66358C21B4B0C735D11C08589D61C60E5E8AD20641",
+    "prepare-trial.py": "BDB55493ED824959EC127C0B2A5D472D97BAC68D8B762826AA3D8D08FA6E4C39",
+    "README-prefix.md": "929E8E001392268B2617CCAA7AB92595A8D0646988A4910034163ADBABA65FDD",
+    "README.md": "AA8C56788FF8C08A455A9E55C616E66D80ED1DA993E7F801AFD619FFD8F9E480",
+    "sdk-verification.json": "BAD83FBED66D7A99890CA1240857CC8083E32FC3FD39F216BB5AD3590D5B22F3",
+    "trial-template-hashes.json": "D12AC78690CBF35B992D3EBE0C2977B9C549910C93003D9B1C25C994607758C3",
+    "ui.patch": "575979C2D487D9B89003285122C5800E61AA81E997EDB50A2256BBDB90687ECB"
+  },
+  "preparationCommands": [
+    {
+      "label": "archives",
+      "pid": 31448,
+      "code": 0,
+      "exitConfirmed": true,
+      "timedOut": false
+    },
+    {
+      "label": "base-tool-checks",
+      "pid": 35348,
+      "code": 0,
+      "exitConfirmed": true,
+      "timedOut": false
+    },
+    {
+      "label": "extra-guard-checks",
+      "pid": 34412,
+      "code": 0,
+      "exitConfirmed": true,
+      "timedOut": false
+    }
+  ]
+}

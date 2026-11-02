@@ -1,0 +1,7 @@
+--- rc39/TaskbarHideRuntime.cs
++++ first-published-frame/TaskbarHideRuntime.cs
+@@ -61 +61,3 @@
+-            MinSeconds: 10);
++            // The historical delay supplied a before/after baseline for the C1 experiment.
++            // Production keeps the encoded/published-frame gate without that observation delay.
++            MinSeconds: 0);

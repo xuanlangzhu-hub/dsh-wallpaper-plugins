@@ -1,0 +1,22 @@
+      async function requestAuthorDiagnostics(buildId,{signal}={}) {
+        if(disposed||!authorConnected||!currentGeneration||typeof buildId!=='string'||!/^[a-f0-9]{64}$/.test(buildId))throw new Error('author-diagnostic-unavailable');
+        const generation=currentGeneration,abort=new AbortController();let timer,reader,rejectDeadline;
+        const cancel=()=>{abort.abort();rejectDeadline?.(new Error('author-diagnostic-cancelled'));};
+        const guard=new Promise((_,reject)=>{rejectDeadline=reject;timer=setTimeout(()=>{abort.abort();reject(new Error('author-diagnostic-timeout'));},2500);});
+        signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
+        const work=(async()=>{
+          if(abort.signal.aborted)throw new Error('author-diagnostic-cancelled');
+          const response=await fetch(`${baseUrl}/api/main/snapshot`,{method:'POST',headers:{'Content-Type':'application/json','X-Whale-Main-Token':mainToken,'X-Whale-Instance-Id':instanceId,'X-Whale-Generation':String(generation)},
+            body:JSON.stringify({instanceId,generation,authorDiagnostics:{action:'export',buildId}}),signal:abort.signal});
+          if(!response.ok||!response.body?.getReader)throw new Error('author-diagnostic-unavailable');
+          reader=response.body.getReader();const decoder=new TextDecoder();let bytes=0,text='';
+          while(true){if(abort.signal.aborted)throw new Error('author-diagnostic-cancelled');const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes>262144)throw new Error('author-diagnostic-response-limit');text+=decoder.decode(part.value,{stream:true});}
+          text+=decoder.decode();const value=JSON.parse(text);
+          if(disposed||!authorConnected||currentGeneration!==generation)throw new Error('author-diagnostic-stale');
+          if(value?.ok!==true||value.diagnostic?.format!=='whale-author-export-v1'||value.diagnostic?.buildId!==buildId)throw new Error('author-diagnostic-response-invalid');
+          return value;
+        })();
+        try{return await Promise.race([work,guard]);}
+        finally{clearTimeout(timer);signal?.removeEventListener('abort',cancel);abort.abort();try{if(reader)Promise.resolve(reader.cancel()).catch(()=>{});}catch{}}
+      }
+

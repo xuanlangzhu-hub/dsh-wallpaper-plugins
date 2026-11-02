@@ -1,0 +1,18 @@
+[
+  {"name":"helper-command-number","code":2345,"body":"runHelper(spawn,42,[]);"},
+  {"name":"helper-args-string","code":2345,"body":"runHelper(spawn,'x','--window-find');"},
+  {"name":"incomplete-spawn-result","code":2739,"body":"runHelper(()=>({}),'x',[]);"},
+  {"name":"timeout-string","code":2322,"body":"runHelper(spawn,'x',[],{timeoutMs:'10'});"},
+  {"name":"finder-string-result","code":2322,"body":"waitForWindow(async()=> 'unvalidated','x');"},
+  {"name":"raw-json-not-window-array","code":2322,"body":"waitForWindow(args=>runHelper(spawn,'x',args),'x');"},
+  {"name":"sleep-nonpromise","code":2322,"body":"waitForWindow(async()=>[],'x',{sleep:()=> 'done'});"},
+  {"name":"attempts-string","code":2322,"body":"waitForWindow(async()=>[],'x',{attempts:'2'});"},
+  {"name":"new-location-string-time","code":2345,"body":"newLocation('today',.5);"},
+  {"name":"nullable-window","code":18047,"body":"async function f(){const found=await waitForWindow(async()=>[],'x');return found.hwnd;}"},
+  {"name":"unknown-window-title","code":2322,"body":"const value:string=normalizeWindow({hwnd:1}).title;"},
+  {"name":"unknown-window-visible","code":2322,"body":"const value:boolean=normalizeWindow({hwnd:1}).visible;"},
+  {"name":"unknown-helper-json","code":18046,"body":"async function f(){const value=await runHelper(spawn,'x',[]);return value.hwnd;}"},
+  {"name":"fallback-not-always-number","code":2322,"body":"const value:number=validateSize(null,{marker:true});"},
+  {"name":"sleep-string-delay","code":2345,"body":"defaultSleep('1');"},
+  {"name":"nullable-window-pid","code":2322,"body":"const value:number=normalizeWindow({hwnd:1}).pid;"}
+]

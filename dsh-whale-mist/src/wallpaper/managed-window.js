@@ -4,25 +4,36 @@
 // this round's unique window name, and the sample must be an absolute .json or .mp4
 // playback path. Nothing in this file reads the network or the environment.
 
+/** @typedef {Pick<import('node:child_process').ChildProcess, 'on' | 'kill' | 'stdout' | 'stderr'>} HelperProcess */
+/** @typedef {(command: string, args: readonly string[], options: {windowsHide: true, stdio: ['ignore', 'pipe', 'pipe']}) => HelperProcess} HelperSpawn */
+/** @typedef {{hwnd?: unknown, Hwnd?: unknown, pid?: unknown, Pid?: unknown, title?: unknown, Title?: unknown, startUtc?: unknown, StartUtc?: unknown, visible?: unknown, Visible?: unknown, left?: unknown, Left?: unknown, top?: unknown, Top?: unknown}} WindowFields */
+/** @typedef {{hwnd: number, pid: number | null, title: unknown, visible: unknown, left: unknown, top: unknown, startUtc: string | null}} NormalizedWindow */
+/** Validated-by-caller array contract, NOT a claim that runHelper validates raw JSON.
+ * @typedef {(args: readonly string[]) => Promise<ReadonlyArray<{title?: unknown}> | null | undefined>} FindWindows
+ */
+/** @typedef {{fastAttempts?: number, fastDelayMs?: number, attempts?: number, delayMs?: number, graceAttempts?: number, graceDelayMs?: number, sleep?: (ms: number) => Promise<unknown>}} WaitOptions */
+
 export const LOCATION_PREFIX = 'WhaleWallpaperProbe-';
 const MAX_LOCATION = 120;
 const MAX_FILE = 400;
 
 const FORBIDDEN_LOCATION = new Set(['"', '\\', '/', ';', '&', '|', '^', '%']);
 
+/** @param {unknown} value @returns {string} */
 export function validateLocation(value) {
   const location = typeof value === 'string' ? value.trim() : '';
   if (!location) throw new Error('window location is required');
   if (location.length > MAX_LOCATION) throw new Error(`window location must be at most ${MAX_LOCATION} characters`);
   if (!location.startsWith(LOCATION_PREFIX)) throw new Error(`window location must start with ${LOCATION_PREFIX}`);
   for (const character of location) {
-    const code = character.codePointAt(0);
+    const code = /** @type {number} */ (character.codePointAt(0));
     if (code < 0x21 || code > 0x7e || FORBIDDEN_LOCATION.has(character))
       throw new Error(`window location contains unsupported character 0x${code.toString(16)}`);
   }
   return location;
 }
 
+/** @param {unknown} value @returns {string} */
 export function validateProjectFile(value) {
   const file = typeof value === 'string' ? value.trim() : '';
   if (!file) throw new Error('wallpaper project file is required');
@@ -34,10 +45,11 @@ export function validateProjectFile(value) {
   return file;
 }
 
+/** @template T @param {unknown} value @param {T} fallback @returns {number | T} */
 export function validateSize(value, fallback) {
   if (value === undefined || value === null) return fallback;
-  if (!Number.isInteger(value) || value < 160 || value > 7680) throw new Error('window size is out of range');
-  return value;
+  if (!Number.isInteger(value) || (/** @type {number} */ (value)) < 160 || (/** @type {number} */ (value)) > 7680) throw new Error('window size is out of range');
+  return /** @type {number} */ (value);
 }
 
 /** Round-unique window name; never reuses a previous round's name. */
@@ -48,10 +60,14 @@ export function newLocation(now = Date.now(), random = Math.random()) {
 }
 
 /** One helper invocation, resolved with its parsed stdout or a bounded error. */
+/** @param {HelperSpawn} spawnImpl @param {string} helper @param {readonly string[]} args
+ * @param {{timeoutMs?: number}} [options] @returns {Promise<unknown>}
+ */
 export function runHelper(spawnImpl, helper, args, { timeoutMs = 30000 } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawnImpl(helper, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '', stderr = '', settled = false;
+    /** @param {unknown} error @param {unknown} [value] */
     const finish = (error, value) => {
       if (settled) return;
       settled = true; clearTimeout(timer);
@@ -72,6 +88,7 @@ export function runHelper(spawnImpl, helper, args, { timeoutMs = 30000 } = {}) {
   });
 }
 
+/** @param {number} ms @returns {Promise<unknown>} */
 export const defaultSleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
@@ -79,6 +96,9 @@ export const defaultSleep = ms => new Promise(resolve => setTimeout(resolve, ms)
  * created by the helper slightly before or after its process exits, so the wait
  * runs a fast grace poll first and only then falls back to slow polling.
  * Returns null when nothing appeared within the bounded attempts.
+ */
+/** @param {FindWindows} runHelperFn @param {string} location
+ * @param {WaitOptions} [options] @returns {Promise<NormalizedWindow | null>}
  */
 export async function waitForWindow(runHelperFn, location, {
   fastAttempts = 40, fastDelayMs = 100,
@@ -102,21 +122,22 @@ export async function waitForWindow(runHelperFn, location, {
  * One shape for window records regardless of the helper's field naming, so the
  * lifecycle never depends on a serialization detail.
  */
+/** @param {unknown} window @returns {NormalizedWindow} */
 export function normalizeWindow(window) {
   if (!window || typeof window !== 'object') throw new Error('window record is missing');
-  const hwnd = window.hwnd ?? window.Hwnd;
-  const pid = window.pid ?? window.Pid;
-  const title = window.title ?? window.Title;
+  const hwnd = /** @type {number} */ ((/** @type {WindowFields} */ (window)).hwnd ?? (/** @type {WindowFields} */ (window)).Hwnd);
+  const pid = (/** @type {WindowFields} */ (window)).pid ?? (/** @type {WindowFields} */ (window)).Pid;
+  const title = (/** @type {WindowFields} */ (window)).title ?? (/** @type {WindowFields} */ (window)).Title;
   if (!Number.isInteger(hwnd) || hwnd <= 0) throw new Error(`window record has no usable handle: ${JSON.stringify(window)}`);
-  const rawStartUtc = window.startUtc ?? window.StartUtc ?? null;
+  const rawStartUtc = (/** @type {WindowFields} */ (window)).startUtc ?? (/** @type {WindowFields} */ (window)).StartUtc ?? null;
   const startUtc = typeof rawStartUtc === 'string' && rawStartUtc.trim() ? rawStartUtc.trim() : null;
   return {
     hwnd,
     pid: typeof pid === 'number' ? pid : null,
     title,
-    visible: window.visible ?? window.Visible ?? null,
-    left: window.left ?? window.Left ?? null,
-    top: window.top ?? window.Top ?? null,
+    visible: (/** @type {WindowFields} */ (window)).visible ?? (/** @type {WindowFields} */ (window)).Visible ?? null,
+    left: (/** @type {WindowFields} */ (window)).left ?? (/** @type {WindowFields} */ (window)).Left ?? null,
+    top: (/** @type {WindowFields} */ (window)).top ?? (/** @type {WindowFields} */ (window)).Top ?? null,
     startUtc,
   };
 }

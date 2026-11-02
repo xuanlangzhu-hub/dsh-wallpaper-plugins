@@ -1,0 +1,15 @@
+{
+  "source": "release-sources/rc53/build-inputs/native-appearance-sidebar.js",
+  "sha256": "CD3FB3388DA1005F9526A16552BCCE83EA1CFBEFD8359BC0232D4F68CACDFDC3",
+  "fixedRuntime": ".tmp/rc56-taskbar-title-candidate-20261029-b/unpacked",
+  "clientSha256": "9D4914C6E4DA3CB7875C8F321B27613DD1D1B4C79628511CB5E47A6AFBED8F3B",
+  "runtimeInputs": {
+    "src/wallpaper/author-properties-contract.js": "3A5410A20E04C2B1B097107C1FF9B6FC7F0BF7414B08876C40D95F1E170AFB48",
+    "src/wallpaper/author-properties-apply.js": "0DE2CF9949C471781AFBC3CD4651414D1C792EA4A2FAC697AA963CD865278154",
+    "src/wallpaper/author-properties-host.js": "926693DF1AF8A61D6A422F135F53592AF4979B63AAFFA27BED431FF2C058E68F"
+  },
+  "integrationInputs": {
+    "release-sources/rc56/package-manifest.json": "61D834C0A815E6D56E72FF6D1201CF3FA8892F4919CE6A8091F0BD298E88014A",
+    "dsh-whale-mist/scripts/build-native-sidebar.mjs": "A420D3C19F2C6A4152522881447D1EDCEB8E1EBD66FA7E78E34C4BB92A241BB2"
+  }
+}

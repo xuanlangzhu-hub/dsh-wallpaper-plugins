@@ -53,3 +53,7 @@ Thumbs.db
 
 # Real desktop captures contain private conversations; keep them local.
 /docs/screenshots/
+
+# Pixso exploration images use third-party stock placeholders without a per-image
+# provenance receipt. Keep original exports local; design links and reports remain.
+/docs/previews/gemini-design-20261030/*.png

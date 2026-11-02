@@ -1,0 +1,474 @@
+{
+  "passed": true,
+  "protectedInputs": 442,
+  "protectedUnchanged": true,
+  "archiveSha256": "D6B286A18E06E4F1BA0C9AAF114F957EECFBD66085F0946A63985EB28B000A47",
+  "archiveBytes": 7282810,
+  "archiveFiles": 47,
+  "assetsUnchanged": 14,
+  "repeatArchiveIdentical": true,
+  "behavior": {
+    "passed": true,
+    "archiveSha256": "D6B286A18E06E4F1BA0C9AAF114F957EECFBD66085F0946A63985EB28B000A47",
+    "files": 47,
+    "javaScriptSyntaxChecks": 27,
+    "checks": [
+      40,
+      30,
+      76,
+      6
+    ],
+    "totalBehaviorChecks": 152,
+    "importEdges": 36,
+    "cssGuard": true,
+    "protectedInputs": 442,
+    "commands": [
+      {
+        "label": "syntax-client",
+        "pid": 2696,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-detachable-bridge",
+        "pid": 7572,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-detachable-contract",
+        "pid": 2200,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-detachable-edge-adapter",
+        "pid": 44944,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-detachable-host",
+        "pid": 4168,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-index",
+        "pid": 13508,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-companion",
+        "pid": 41832,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-diagnostic-build",
+        "pid": 16196,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-diagnostic-export",
+        "pid": 17800,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-diagnostic-lifecycle",
+        "pid": 26332,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-diagnostics",
+        "pid": 24832,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-properties-apply",
+        "pid": 34512,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-properties-contract",
+        "pid": 38360,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-properties-host",
+        "pid": 24012,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-properties-panel",
+        "pid": 33992,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-author-properties-schema",
+        "pid": 31156,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-catalog",
+        "pid": 41436,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-close-fence",
+        "pid": 31776,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-frame-hub",
+        "pid": 46056,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-frame-protocol",
+        "pid": 18376,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-library",
+        "pid": 39952,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-managed-window",
+        "pid": 32688,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-media-bridge-permissions",
+        "pid": 6608,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-media-bridge",
+        "pid": 424,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-probe-log",
+        "pid": 27580,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-scenes",
+        "pid": 26288,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "syntax-session",
+        "pid": 32088,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "ui",
+        "pid": 20600,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "export",
+        "pid": 44048,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "host",
+        "pid": 17548,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "material",
+        "pid": 22024,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      },
+      {
+        "label": "css-guard",
+        "pid": 7928,
+        "code": 0,
+        "exitConfirmed": true,
+        "timedOut": false
+      }
+    ],
+    "liveAppsUsed": false,
+    "installed": false,
+    "publicReleaseAuthorized": false,
+    "defaultDiagnosticsEnabled": false
+  },
+  "sdk": ".tmp\\rc61-basic-transparent-package-sdk-20261031-a",
+  "sdkChecks": 15,
+  "trialRoot": "F:\\dsh-wallpaper-plugins\\.tmp\\rc61-basic-transparent-short-trial-20261031-b",
+  "trialPreparation": {
+    "passed": true,
+    "rows": [
+      {
+        "pythonSyntax": "make-archives.py"
+      },
+      {
+        "pythonSyntax": "offline-trial-checks.py"
+      },
+      {
+        "pythonSyntax": "retain-after-test.py"
+      },
+      {
+        "pythonSyntax": "retain-before-install.py"
+      },
+      {
+        "pythonSyntax": "trial_guard.py"
+      },
+      {
+        "pythonSyntax": "verify-installed-readonly.py"
+      },
+      {
+        "pythonSyntax": "verify.py"
+      },
+      {
+        "nodeSyntax": "check-layout.cjs"
+      },
+      {
+        "nodeSyntax": "run-launch.cjs"
+      },
+      {
+        "nodeSyntax": "run-step.cjs"
+      },
+      {
+        "pureOfflineCheck": "parse-scripts.ps1",
+        "stdout": "All trial PowerShell scripts parsed successfully\n"
+      },
+      {
+        "pureOfflineCheck": "offline-authorization-check.ps1",
+        "stdout": "{\n  \"productionWrites\": false,\n  \"realAuthorizationCreated\": false,\n  \"processOrWindowQueries\": false,\n  \"checks\": 10,\n  \"passed\": true\n}\n"
+      },
+      {
+        "pureOfflineCheck": "offline-precision-check.ps1",
+        "stdout": "{\n  \"nativeQueries\": false,\n  \"syntheticFixturesOnly\": true,\n  \"checks\": 5,\n  \"actualAuthorizationCreated\": false,\n  \"passed\": true\n}\n"
+      },
+      {
+        "pureOfflineCheck": "offline-switch-cleanup-check.ps1",
+        "stdout": "{\n  \"checks\": 7,\n  \"passed\": true,\n  \"productionWrites\": false,\n  \"nativeQueries\": false,\n  \"syntheticOnly\": true\n}\n"
+      },
+      {
+        "guardedEntry": "backup-startup-cookie-cache.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "install.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "restore-package.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "backup-closed.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "restore-settings.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "media-storage.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "preflight.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "test-datekind.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "pre-restore-current.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "verify-live-cleanup-current.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "verify-live-cleanup-rc61.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "pre-restore-rc61.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "closed-assert.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "restore-layout.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "post-runtime.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "restore-runtime.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "snapshot-live.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "discover-live.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "discover-default.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "snapshot-default.ps1",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "retain-before-install.py",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "retain-after-test.py",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "verify.py",
+        "rejectedWithoutAuthorization": true
+      },
+      {
+        "guardedEntry": "verify-installed-readonly.py",
+        "rejectedWithoutAuthorization": true
+      }
+    ],
+    "sourceTemplates": 48,
+    "powerShellScriptsParsed": 33,
+    "authorizationObjectChecks": 10,
+    "restorePrecisionChecks": 5,
+    "switchCleanupEvidenceChecks": 7,
+    "guardedEntries": 24,
+    "runnerReferencesResolved": 25,
+    "candidateArchiveSha256": "D6B286A18E06E4F1BA0C9AAF114F957EECFBD66085F0946A63985EB28B000A47",
+    "dailyArchiveSha256": "EE286630B7D6F090C8762A7409A9E816BCE31D892EF355D0DEE4CEEE7273D262",
+    "sourceTemplatesUnchanged": true,
+    "realAuthorizationCreated": false,
+    "productionBackupCreated": false,
+    "processOrWindowSampling": false,
+    "productionWrites": false
+  },
+  "launchRunnerFixture": {
+    "passed": true,
+    "cases": [
+      {
+        "kind": "success",
+        "passed": true
+      },
+      {
+        "kind": "helper-exit-error",
+        "passed": true
+      },
+      {
+        "kind": "timeout-exit",
+        "passed": true
+      },
+      {
+        "kind": "timeout-unknown",
+        "passed": true
+      },
+      {
+        "kind": "duplicate-receipt",
+        "passed": true
+      }
+    ],
+    "realProcessesStarted": 0,
+    "realAppsUsed": false
+  },
+  "preparationSteps": [
+    {
+      "label": "archives",
+      "pid": 880,
+      "code": 0,
+      "exitConfirmed": true,
+      "timedOut": false
+    },
+    {
+      "label": "base-tool-checks",
+      "pid": 37556,
+      "code": 0,
+      "exitConfirmed": true,
+      "timedOut": false
+    },
+    {
+      "label": "extra-guard-checks",
+      "pid": 22588,
+      "code": 0,
+      "exitConfirmed": true,
+      "timedOut": false
+    }
+  ],
+  "authorizationCreated": false,
+  "productionBackupCreated": false,
+  "installed": false,
+  "published": false
+}

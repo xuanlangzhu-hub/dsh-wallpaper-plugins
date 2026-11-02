@@ -1,0 +1,17 @@
+# rc.56: one fresh diagnostic round
+
+Closed historical round: this trial completed, restoredrc.53 and received user confirmation. `closed-out.json` forbids reuse. The following plan records the preparation-time procedure; it is not permission to rerun this root, authorization, endpoint or backup. See [the final report](../../docs/RC56_TASKBAR_TITLE_PREFILTER_SHORT_TEST_20261029.md).
+
+Prepared round: `.tmp/rc56-taskbar-title-short-trial-20261029-a/`. Its config is unauthorized. The corresponding backup path does not exist. Closed rc.54/55 rounds, authorization, process IDs, endpoints and backups cannot be reused.
+
+1. Obtain current convenience/no-task confirmation and normal DSH exit; preserve original WE. Only then create current-round authorization and perform the closed preflight/new backup sequence. Back up current Profile, closed Local Storage, active install/archives, media and layout. Recheck before install. Do not replace later user data from an old backup.
+2. Install the pinned rc.56 candidate, verify all43 files; run layoutAfter/runtime while still closed. Reopen normally, discover a fresh Host and verify it. Assistant operates controls; no DSH model request.
+3. Select Lucy, daily/manual playback, autoplay off. Keep window/appearance/taskbar settings as found. Ask the user to watch the extra source icon before playback. Do not edit author parameters, source styles or owner.
+4. Record the actual Play click time. Plan about20s playback. Take only the necessary snapshotPlaying proof, then prioritize normal Stop; do not run analysis/collection or wait for user feedback while playing. If approaching30s, stop first. This is an operating target, not an implemented automatic-stop timer; report actual duration if control latency exceeds it. A failed playing proof cannot be invented or replaced by an unstarted/quiescent claim.
+5. After normal Stop: snapshotStopped → verifyLiveCleanup → collectEvidence. Require strict stopped/source-window/capture closure evidence, keep original WE. Source PID may be the original WE PID; never kill it. If closure is uncertain, retain evidence and stop dependent restoration rather than weakening the gate.
+6. Ask visual feedback only after Stop. If the user missed the icon, keep visual disappearance unknown. No second playback without a separate reason/decision.
+7. Normal Quit → strict played restore preflight → retain after-test data → restore rc.53/settings/layout/media → closed verification. Reopen normally, fresh stopped snapshot and user appearance/layout confirmation, then close the round. An actually produced snapshotPlaying proof binds the round; never use a nonexistent final-playing file.
+
+Timing comparison: collector retains six required logs plus up to two M1 sidecars, binding location/HWND/sourcePID/start. Missing/corrupt/foreign timing remains unknown. Compare each run's within-process verifyBefore/verifyAfter/DeleteTab intervals; never subtract elapsed values with different clock origins or sum nested parent/worker spans. rc.55 reference is `docs/RC55_TASKBAR_STAGE_TIMING_SHORT_TEST_20261029.md`; its two checks were921.3161/886.4631ms. New real timings are not yet measured, and cross-run load is not a controlled benchmark.
+
+The collector never supplies termination permission. I/O count reduction is not a displayed-FPS or zero-taskbar-flash result. Daily adoption, public release, TS/UI/Three-Body work, process prewarm and owner/TOOLWINDOW/SW_HIDE changes remain outside this trial.

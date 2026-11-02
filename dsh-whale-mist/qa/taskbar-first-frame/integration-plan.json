@@ -1,0 +1,20 @@
+{
+  "kind": "offline-integration-plan-not-an-install-package",
+  "baseManifest": "release-sources/rc53/package-manifest.json",
+  "baseArchiveSha256": "8AF3F10FC72923E5B4E11D43D2CBAB8749287C8B7A8CF275A1BDC400FC5229EA",
+  "replacementFiles": {
+    "assets/wallpaper/WallpaperProbe.dll": {
+      "sha256": "6313602FE6CB8E8A80DCB93BE0D3D44EF8E961CCA1B7CC10E8F4F1AD5CCCD37D",
+      "source": ".tmp/taskbar-first-frame-repair-20261028-c/green/native-source/bin/Release/net10.0-windows10.0.19041.0/WallpaperProbe.dll"
+    }
+  },
+  "keepOtherBaselineFiles": 42,
+  "futureCandidateMetadata": [
+    "package.json version",
+    "README candidate scope"
+  ],
+  "candidateVersionAssigned": false,
+  "keepOldApphostDepsRuntimeconfig": true,
+  "noInstallOrPublicReleaseAuthorizationInThisStep": true,
+  "evidence": ".tmp\\taskbar-first-frame-integration-20261028-c/result.json"
+}

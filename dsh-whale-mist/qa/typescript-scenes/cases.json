@@ -1,0 +1,62 @@
+[
+  {
+    "name": "shape-is-not-string",
+    "body": "function use(value: unknown) { if (isSceneId(value)) { const id: string = value; void id; } }",
+    "code": 2322
+  },
+  {
+    "name": "selection-mode-unvalidated",
+    "body": "const mode: 'preview' | 'daily' = sceneSelection({mode:'preview'}).mode; void mode;",
+    "code": 2322
+  },
+  {
+    "name": "nullable-duration",
+    "body": "const seconds: number = resolveSceneRequest({mode:'daily'}).seconds; void seconds;",
+    "code": 2322
+  },
+  {
+    "name": "project-not-number",
+    "body": "const project: number = resolveSceneRequest({}).project; void project;",
+    "code": 2322
+  },
+  {
+    "name": "exists-argument",
+    "body": "resolveSceneRequest({}, {exists: (project: number) => true});",
+    "code": 2322
+  },
+  {
+    "name": "exists-result",
+    "body": "resolveSceneRequest({}, {exists: () => 'yes'});",
+    "code": 2322
+  },
+  {
+    "name": "resolver-argument",
+    "body": "resolveSceneRequest({}, {resolveProject: (id: number) => 'fixture'});",
+    "code": 2322
+  },
+  {
+    "name": "resolver-not-function",
+    "body": "resolveSceneRequest({}, {resolveProject: 'fixture'});",
+    "code": 2322
+  },
+  {
+    "name": "scene-project-type",
+    "body": "resolveSceneRequest({}, {scenes:{custom:{id:'custom',label:'Custom',project:123}}});",
+    "code": 2322
+  },
+  {
+    "name": "readonly-default-scene",
+    "body": "SCENES.lucy.project = 'other';",
+    "code": 2540
+  },
+  {
+    "name": "validated-mode",
+    "body": "const request = resolveSceneRequest({}); request.mode = 'forever';",
+    "code": 2322
+  },
+  {
+    "name": "availability-type",
+    "body": "const available: string = describeScenes()[0].available; void available;",
+    "code": 2322
+  }
+]

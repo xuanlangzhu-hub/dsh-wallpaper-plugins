@@ -1,0 +1,25 @@
+{
+  "version": "0.6.0-rc.61",
+  "archive": "dsh-whale-mist-0.6.0-rc.61.tgz",
+  "sha256": "D6B286A18E06E4F1BA0C9AAF114F957EECFBD66085F0946A63985EB28B000A47",
+  "bytes": 7282810,
+  "files": 47,
+  "assetsUnchanged": 14,
+  "changedFromOriginalRc57": [
+    "README.md",
+    "package.json",
+    "src/client.js",
+    "src/wallpaper/author-diagnostic-build.js"
+  ],
+  "sourceIntegration": ".tmp\\gallery-pagination-sdk-20261031-d",
+  "sourceReportSha256": "15246614DA2C57E0D7DD2A9C4E31AC71D1501785E55EEAD15A0407CC0B1027DA",
+  "recipeSha256": "15F0B7ED415D2A42026BFF77B4A89397EE4D8C605E08F3315128DCA410CCEFBC",
+  "archivePrimitivesRecipeSha256": "C018479EF94650326D618C5AD14A7D6C6218EC0080A88F81354F1904A0511AD1",
+  "defaultRollback": "0.6.0-rc.57",
+  "localTrialOnly": true,
+  "publicReleaseAuthorized": false,
+  "installed": false,
+  "nativeRecompiled": false,
+  "profileOrAppQueried": false,
+  "defaultEnabled": false
+}

@@ -1,0 +1,25 @@
+{
+  "version": "0.6.0-rc.60",
+  "archive": "dsh-whale-mist-0.6.0-rc.60.tgz",
+  "sha256": "CCC49C5C5DEE6D4DFFA728C4A84B22755B98E3EAE905533CE93ECDFD203F4885",
+  "bytes": 7283152,
+  "files": 47,
+  "assetsUnchanged": 14,
+  "changedFromOriginalRc57": [
+    "README.md",
+    "package.json",
+    "src/client.js",
+    "src/wallpaper/author-diagnostic-build.js"
+  ],
+  "sourceIntegration": ".tmp\\thin-glass-sdk-20261031-c",
+  "sourceReportSha256": "17C9F27A3BC2E427DB2DAE05B902EE5B511BD94D3C9D0A7610FB5E17280610F9",
+  "recipeSha256": "1DC264D3B14EFEF55E6604762DA7C5303088A5B9004C328348021D5400115CEF",
+  "archivePrimitivesRecipeSha256": "C018479EF94650326D618C5AD14A7D6C6218EC0080A88F81354F1904A0511AD1",
+  "defaultRollback": "0.6.0-rc.57",
+  "localTrialOnly": true,
+  "publicReleaseAuthorized": false,
+  "installed": false,
+  "nativeRecompiled": false,
+  "profileOrAppQueried": false,
+  "defaultEnabled": false
+}

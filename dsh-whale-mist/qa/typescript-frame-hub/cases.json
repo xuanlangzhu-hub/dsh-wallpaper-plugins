@@ -1,0 +1,72 @@
+[
+  {
+    "name": "wrong-byte-chunk",
+    "body": "hub.push('bad');",
+    "code": 2345
+  },
+  {
+    "name": "wrong-trace-callback",
+    "body": "new FrameHub({cadenceTrace:{enabled:true,record:(entry:string)=>{void entry;}}});",
+    "code": 2322
+  },
+  {
+    "name": "missing-enabled-trace-record",
+    "body": "new FrameHub({cadenceTrace:{enabled:true}});",
+    "code": 2322
+  },
+  {
+    "name": "invalid-trace-event",
+    "body": "const entry: HubTraceRecord = {runId:'x',sequence:1,clockDomain:'host-mono',atMonoMs:0,event:'host-other'}; void entry;",
+    "code": 2322
+  },
+  {
+    "name": "invalid-run-id",
+    "body": "new FrameHub({runId:123});",
+    "code": 2322
+  },
+  {
+    "name": "missing-response-methods",
+    "body": "streamFrames(hub, {});",
+    "code": 2345
+  },
+  {
+    "name": "nonboolean-response-write",
+    "body": "streamFrames(hub,{writeHead:response.writeHead,on:response.on,off:response.off,end:response.end,write:()=>undefined});",
+    "code": 2322
+  },
+  {
+    "name": "wrong-connection-callback",
+    "body": "streamFrames(hub,response,{registerConnection:(id:number)=>{void id;}});",
+    "code": 2322
+  },
+  {
+    "name": "wrong-client-trace-callback",
+    "body": "streamFrames(hub,response,{clientTrace:{registerConnection:(id:number)=>{void id;}}});",
+    "code": 2322
+  },
+  {
+    "name": "nullable-latest",
+    "body": "const latest=hub.latest; const sequence: number=latest.sequence; void sequence;",
+    "code": 18047
+  },
+  {
+    "name": "frame-width-type",
+    "body": "const latest=hub.latest; if(latest){const width: string=latest.width;void width;}",
+    "code": 2322
+  },
+  {
+    "name": "buffer-byte-type",
+    "body": "const latest=hub.latest; if(latest)latest.jpeg[0]='bad';",
+    "code": 2322
+  },
+  {
+    "name": "trace-backpressure-type",
+    "body": "const entry: HubTraceRecord = {runId:'x',sequence:1,clockDomain:'host-mono',atMonoMs:0,event:'host-stream-write',connectionId:'x',durationMs:1,backpressure:'bad'}; void entry;",
+    "code": 2322
+  },
+  {
+    "name": "snapshot-age-null",
+    "body": "const age: number=hub.snapshot().captureAgeMs; void age;",
+    "code": 2322
+  }
+]

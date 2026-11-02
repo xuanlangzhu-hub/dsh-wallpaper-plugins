@@ -1,0 +1,14 @@
+{
+  "runtime": ".tmp/author-diagnostics-20261029-e/runtime",
+  "controller": ".tmp/author-diagnostics-20261029-e/isolated/native-sidebar.mjs",
+  "diagnosticResult": ".tmp/author-diagnostics-20261029-e/result.json",
+  "files": {
+    ".tmp/author-diagnostics-20261029-e/result.json": "FB78912871AAB8111D307F5B4AA3CE06A33F007852C9795B9FBD0AEF606DFA52",
+    ".tmp/author-diagnostics-20261029-e/isolated/native-sidebar.mjs": "C1561CD24373D30D1693E8E6FCFC5E25F0C7B0AD536B4349C85CF8EAFAEF9FEE",
+    ".tmp/author-diagnostics-20261029-e/runtime/src/client.js": "FB2710AB69444754A5317A386F2492862048740F110FE66080282BF54409B1B3",
+    ".tmp/author-diagnostics-20261029-e/runtime/src/detachable-host.js": "190F2F9BBE52DD3690F8E1FF37C13C68FD636ED400247F213C110D85B60229DF",
+    "dsh-whale-mist/scripts/build-native-sidebar.mjs": "A420D3C19F2C6A4152522881447D1EDCEB8E1EBD66FA7E78E34C4BB92A241BB2",
+    "release-sources/rc56/package-manifest.json": "61D834C0A815E6D56E72FF6D1201CF3FA8892F4919CE6A8091F0BD298E88014A",
+    ".tmp/author-slider-integration-20261029-f/result.json": "F60C82CB077645E2A8EA22AA003EC84E62FFF8CA3531250D84C4BE5468427E54"
+  }
+}

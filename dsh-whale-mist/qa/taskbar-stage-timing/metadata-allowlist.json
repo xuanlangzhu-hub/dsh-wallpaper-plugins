@@ -1,0 +1,1336 @@
+{
+  "baselineDllSha256": "6313602FE6CB8E8A80DCB93BE0D3D44EF8E961CCA1B7CC10E8F4F1AD5CCCD37D",
+  "newDllSha256": "2C2C1FFEF7D0B491ED4EA68BC63FD60C32D58338DB2E008CD19938EC1EF4BB5F",
+  "reviewBasis": "Five fixed diagnostic-only source edits plus TaskbarTiming. Six existing internal method/constructor signature replacements, new entry-core wrapper, observer property and timing fields, compiler closure renumbering. No wildcard acceptance outside exact lists.",
+  "added": [
+    "F:TaskbarHideRuntime::_timing",
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::location",
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::pid",
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::runtime",
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::startUtc",
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::stopFile",
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::workerFactory",
+    "F:TaskbarHideRuntime+<>c__DisplayClass32_0::args",
+    "F:TaskbarHideRuntime+<>c::<>9__19_3",
+    "F:TaskbarHideStrategy::<DiagnosticStage>k__BackingField",
+    "F:TaskbarList+<>c__DisplayClass10_0::report",
+    "F:TaskbarList+<>c__DisplayClass10_0::timing",
+    "F:TaskbarList+<>c__DisplayClass11_0::parentLostOrStop",
+    "F:TaskbarList+<>c__DisplayClass11_0::parentProcess",
+    "F:TaskbarList+<>c__DisplayClass11_0::stopRequested",
+    "F:TaskbarList+<>c__DisplayClass11_0::timing",
+    "F:TaskbarList+<>c__DisplayClass11_0::verify",
+    "F:TaskbarList+<>c__DisplayClass13_0::factory",
+    "F:TaskbarList+<>c__DisplayClass13_0::hwnd",
+    "F:TaskbarList+<>c__DisplayClass13_0::trace",
+    "F:TaskbarList+<>c__DisplayClass19_0::report",
+    "F:TaskbarList+ComAction::_timing",
+    "F:TaskbarList+ComAction+<>c::<>9__3_0",
+    "F:TaskbarList+ComAction+<>c::<>9__3_1",
+    "F:TaskbarList+ComAction+<>c::<>9__6_0",
+    "F:TaskbarTiming::_clock",
+    "F:TaskbarTiming::_clockInvalid",
+    "F:TaskbarTiming::_events",
+    "F:TaskbarTiming::_frequency",
+    "F:TaskbarTiming::_location",
+    "F:TaskbarTiming::_origin",
+    "F:TaskbarTiming::_originUtc",
+    "F:TaskbarTiming::_previous",
+    "F:TaskbarTiming::_role",
+    "F:TaskbarTiming::_saved",
+    "F:TaskbarTiming::_sync",
+    "F:TaskbarTiming::_targetHwnd",
+    "F:TaskbarTiming::_targetPid",
+    "F:TaskbarTiming::_targetStartUtc",
+    "F:TaskbarTiming::_truncated",
+    "F:TaskbarTiming::_utc",
+    "F:TaskbarTiming::_write",
+    "F:TaskbarTiming::_writeAllowed",
+    "F:TaskbarTiming::Capacity",
+    "F:TaskbarTiming+<>c__DisplayClass27_0::path",
+    "F:TaskbarTiming+<>c::<>9",
+    "F:TaskbarTiming+<>c::<>9__21_0",
+    "F:TaskbarTiming+<>O::<0>__GetTimestamp",
+    "F:TaskbarTiming+Point::<ElapsedMs>k__BackingField",
+    "F:TaskbarTiming+Point::<Stage>k__BackingField",
+    "F:TaskbarTiming+Point::<Utc>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<ClockId>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<ClockInvalid>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<Events>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<Frequency>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<Location>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<OriginTimestamp>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<OriginUtc>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<Purpose>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<Role>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<TargetHwnd>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<TargetPid>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<TargetStartUtc>k__BackingField",
+    "F:TaskbarTiming+Snapshot::<Truncated>k__BackingField",
+    "F:TaskbarWorker+<>c__DisplayClass0_0::timing",
+    "F:TaskbarWorker+RealWorker::_timing",
+    "F:TaskbarWorker+RealWorker+<>c::<>9__10_0",
+    "M:TaskbarHideRuntime::<.ctor>b__19_0:20/0/0:Double()",
+    "M:TaskbarHideRuntime::<.ctor>b__19_1:20/0/0:Boolean()",
+    "M:TaskbarHideRuntime::<.ctor>b__19_2:20/0/1:Void(String)",
+    "M:TaskbarHideRuntime::RunWorkerEntry:00/0/2:Int32(String[],TaskbarTiming)",
+    "M:TaskbarHideRuntime+<>c__DisplayClass20_0::.ctor:20/0/0:Void()",
+    "M:TaskbarHideRuntime+<>c__DisplayClass20_0::<Create>b__0:20/0/1:Execution(Int64)",
+    "M:TaskbarHideRuntime+<>c__DisplayClass32_0::.ctor:20/0/0:Void()",
+    "M:TaskbarHideRuntime+<>c__DisplayClass32_0::<RunWorkerEntry>b__0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()",
+    "M:TaskbarHideRuntime+<>c__DisplayClass32_0::<RunWorkerEntry>b__1:20/0/0:Boolean()",
+    "M:TaskbarHideRuntime+<>c::<.ctor>b__19_3:20/0/0:Boolean()",
+    "M:TaskbarHideStrategy::get_DiagnosticStage:20/0/0:[System.Runtime]System.Action`1<String>()",
+    "M:TaskbarHideStrategy::set_DiagnosticStage:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void([System.Runtime]System.Action`1<String>)",
+    "M:TaskbarList::<SelfTest>g__Check|19_0:00/0/4:Void(String,Boolean,String,TaskbarList+<>c__DisplayClass19_0&)",
+    "M:TaskbarList::ExecuteCalls:00/0/5:TaskbarList+CallTrace([System.Runtime]System.Func`1<TaskbarList+ICalls>,Int64,[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,TaskbarTiming)",
+    "M:TaskbarList::RunWorkerEntry:00/0/5:Int32(String[],[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action`1<String>,TaskbarTiming)",
+    "M:TaskbarList::RunWorkerEntryCore:00/0/5:Int32(String[],[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action`1<String>,TaskbarTiming)",
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__0:20/0/1:Void(String)",
+    "M:TaskbarList+<>c__DisplayClass11_0::.ctor:20/0/0:Void()",
+    "M:TaskbarList+<>c__DisplayClass11_0::<RunWorkerEntryCore>b__0:20/0/0:Boolean()",
+    "M:TaskbarList+<>c__DisplayClass11_0::<RunWorkerEntryCore>b__1:20/0/0:TaskbarList+ComAction()",
+    "M:TaskbarList+<>c__DisplayClass11_0::<RunWorkerEntryCore>b__2:20/0/0:Void()",
+    "M:TaskbarList+<>c__DisplayClass13_0::.ctor:20/0/0:Void()",
+    "M:TaskbarList+<>c__DisplayClass13_0::<RunTrace>b__0:20/0/0:Void()",
+    "M:TaskbarList+ComAction::.ctor:20/0/3:Void([System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,TaskbarTiming)",
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__3_0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()",
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__3_1:20/0/0:Boolean()",
+    "M:TaskbarList+ComAction+<>c::<DeleteTabTrace>b__6_0:20/0/0:TaskbarList+ICalls()",
+    "M:TaskbarTiming::.ctor:20/0/10:Void(String,Int64,Int32,String,String,[System.Runtime]System.Action`1<String>,Boolean,[System.Runtime]System.Func`1<Int64>,[System.Runtime]System.Nullable`1<Int64>,[System.Runtime]System.Func`1<[System.Runtime]System.DateTimeOffset>)",
+    "M:TaskbarTiming::AllowWrite:20/0/0:Void()",
+    "M:TaskbarTiming::ForParent:00/0/5:TaskbarTiming(String,Int64,Int32,[System.Runtime]System.DateTimeOffset,String)",
+    "M:TaskbarTiming::ForWorker:00/0/1:TaskbarTiming(String[])",
+    "M:TaskbarTiming::Inspect:20/0/0:TaskbarTiming+Snapshot()",
+    "M:TaskbarTiming::Mark:20/0/1:Void(String)",
+    "M:TaskbarTiming::NewFile:00/0/1:[System.Runtime]System.Action`1<String>(String)",
+    "M:TaskbarTiming::Save:20/0/0:Boolean()",
+    "M:TaskbarTiming::Utc:20/0/0:String()",
+    "M:TaskbarTiming+<>c__DisplayClass27_0::.ctor:20/0/0:Void()",
+    "M:TaskbarTiming+<>c__DisplayClass27_0::<NewFile>b__0:20/0/1:Void(String)",
+    "M:TaskbarTiming+<>c::.cctor:00/0/0:Void()",
+    "M:TaskbarTiming+<>c::.ctor:20/0/0:Void()",
+    "M:TaskbarTiming+<>c::<.ctor>b__21_0:20/0/0:[System.Runtime]System.DateTimeOffset()",
+    "M:TaskbarTiming+Point::.ctor:20/0/1:Void(TaskbarTiming+Point)",
+    "M:TaskbarTiming+Point::.ctor:20/0/3:Void(String,[System.Runtime]System.Nullable`1<Double>,String)",
+    "M:TaskbarTiming+Point::<Clone>$:20/0/0:TaskbarTiming+Point()",
+    "M:TaskbarTiming+Point::Deconstruct:20/0/3:Void(String&,[System.Runtime]System.Nullable`1<Double>&,String&)",
+    "M:TaskbarTiming+Point::Equals:20/0/1:Boolean(Object)",
+    "M:TaskbarTiming+Point::Equals:20/0/1:Boolean(TaskbarTiming+Point)",
+    "M:TaskbarTiming+Point::get_ElapsedMs:20/0/0:[System.Runtime]System.Nullable`1<Double>()",
+    "M:TaskbarTiming+Point::get_EqualityContract:20/0/0:[System.Runtime]System.Type()",
+    "M:TaskbarTiming+Point::get_Stage:20/0/0:String()",
+    "M:TaskbarTiming+Point::get_Utc:20/0/0:String()",
+    "M:TaskbarTiming+Point::GetHashCode:20/0/0:Int32()",
+    "M:TaskbarTiming+Point::op_Equality:00/0/2:Boolean(TaskbarTiming+Point,TaskbarTiming+Point)",
+    "M:TaskbarTiming+Point::op_Inequality:00/0/2:Boolean(TaskbarTiming+Point,TaskbarTiming+Point)",
+    "M:TaskbarTiming+Point::PrintMembers:20/0/1:Boolean([System.Runtime]System.Text.StringBuilder)",
+    "M:TaskbarTiming+Point::set_ElapsedMs:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void([System.Runtime]System.Nullable`1<Double>)",
+    "M:TaskbarTiming+Point::set_Stage:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Point::set_Utc:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Point::ToString:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::.ctor:20/0/1:Void(TaskbarTiming+Snapshot)",
+    "M:TaskbarTiming+Snapshot::.ctor:20/0/13:Void(String,String,String,String,Int64,String,Int64,Int32,String,String,TaskbarTiming+Point[],Boolean,Boolean)",
+    "M:TaskbarTiming+Snapshot::<Clone>$:20/0/0:TaskbarTiming+Snapshot()",
+    "M:TaskbarTiming+Snapshot::Deconstruct:20/0/13:Void(String&,String&,String&,String&,Int64&,String&,Int64&,Int32&,String&,String&,TaskbarTiming+Point[]&,Boolean&,Boolean&)",
+    "M:TaskbarTiming+Snapshot::Equals:20/0/1:Boolean(Object)",
+    "M:TaskbarTiming+Snapshot::Equals:20/0/1:Boolean(TaskbarTiming+Snapshot)",
+    "M:TaskbarTiming+Snapshot::get_ClockId:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_ClockInvalid:20/0/0:Boolean()",
+    "M:TaskbarTiming+Snapshot::get_EqualityContract:20/0/0:[System.Runtime]System.Type()",
+    "M:TaskbarTiming+Snapshot::get_Events:20/0/0:TaskbarTiming+Point[]()",
+    "M:TaskbarTiming+Snapshot::get_Frequency:20/0/0:Int64()",
+    "M:TaskbarTiming+Snapshot::get_Location:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_OriginTimestamp:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_OriginUtc:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_Purpose:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_Role:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_TargetHwnd:20/0/0:Int64()",
+    "M:TaskbarTiming+Snapshot::get_TargetPid:20/0/0:Int32()",
+    "M:TaskbarTiming+Snapshot::get_TargetStartUtc:20/0/0:String()",
+    "M:TaskbarTiming+Snapshot::get_Truncated:20/0/0:Boolean()",
+    "M:TaskbarTiming+Snapshot::GetHashCode:20/0/0:Int32()",
+    "M:TaskbarTiming+Snapshot::op_Equality:00/0/2:Boolean(TaskbarTiming+Snapshot,TaskbarTiming+Snapshot)",
+    "M:TaskbarTiming+Snapshot::op_Inequality:00/0/2:Boolean(TaskbarTiming+Snapshot,TaskbarTiming+Snapshot)",
+    "M:TaskbarTiming+Snapshot::PrintMembers:20/0/1:Boolean([System.Runtime]System.Text.StringBuilder)",
+    "M:TaskbarTiming+Snapshot::set_ClockId:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_ClockInvalid:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Boolean)",
+    "M:TaskbarTiming+Snapshot::set_Events:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(TaskbarTiming+Point[])",
+    "M:TaskbarTiming+Snapshot::set_Frequency:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Int64)",
+    "M:TaskbarTiming+Snapshot::set_Location:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_OriginTimestamp:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_OriginUtc:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_Purpose:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_Role:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_TargetHwnd:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Int64)",
+    "M:TaskbarTiming+Snapshot::set_TargetPid:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Int32)",
+    "M:TaskbarTiming+Snapshot::set_TargetStartUtc:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)",
+    "M:TaskbarTiming+Snapshot::set_Truncated:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Boolean)",
+    "M:TaskbarTiming+Snapshot::ToString:20/0/0:String()",
+    "M:TaskbarWorker::Run:00/0/6:WorkerOutcome(TaskbarList+WorkerRequest,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Func`1<ITaskbarWorkerProcess>,[System.Runtime]System.Func`1<Int64>,[System.Runtime]System.Action,TaskbarTiming)",
+    "M:TaskbarWorker+<>c__DisplayClass0_0::<Run>b__1:20/0/0:ITaskbarWorkerProcess()",
+    "M:TaskbarWorker+RealWorker::.ctor:20/0/1:Void(TaskbarTiming)",
+    "M:TaskbarWorker+RealWorker+<>c::<ReadTrace>b__10_0:20/0/1:Boolean(String)",
+    "P:TaskbarHideStrategy::DiagnosticStage",
+    "P:TaskbarTiming+Point::ElapsedMs",
+    "P:TaskbarTiming+Point::EqualityContract",
+    "P:TaskbarTiming+Point::Stage",
+    "P:TaskbarTiming+Point::Utc",
+    "P:TaskbarTiming+Snapshot::ClockId",
+    "P:TaskbarTiming+Snapshot::ClockInvalid",
+    "P:TaskbarTiming+Snapshot::EqualityContract",
+    "P:TaskbarTiming+Snapshot::Events",
+    "P:TaskbarTiming+Snapshot::Frequency",
+    "P:TaskbarTiming+Snapshot::Location",
+    "P:TaskbarTiming+Snapshot::OriginTimestamp",
+    "P:TaskbarTiming+Snapshot::OriginUtc",
+    "P:TaskbarTiming+Snapshot::Purpose",
+    "P:TaskbarTiming+Snapshot::Role",
+    "P:TaskbarTiming+Snapshot::TargetHwnd",
+    "P:TaskbarTiming+Snapshot::TargetPid",
+    "P:TaskbarTiming+Snapshot::TargetStartUtc",
+    "P:TaskbarTiming+Snapshot::Truncated",
+    "T:TaskbarHideRuntime+<>c__DisplayClass20_0",
+    "T:TaskbarHideRuntime+<>c__DisplayClass32_0",
+    "T:TaskbarList+<>c__DisplayClass11_0",
+    "T:TaskbarList+<>c__DisplayClass13_0",
+    "T:TaskbarList+<>c__DisplayClass19_0",
+    "T:TaskbarTiming",
+    "T:TaskbarTiming+<>c",
+    "T:TaskbarTiming+<>c__DisplayClass27_0",
+    "T:TaskbarTiming+<>O",
+    "T:TaskbarTiming+Point",
+    "T:TaskbarTiming+Snapshot"
+  ],
+  "removed": [
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::location",
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::pid",
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::runtime",
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::startUtc",
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::stopFile",
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::workerFactory",
+    "F:TaskbarHideRuntime+<>c__DisplayClass31_0::args",
+    "F:TaskbarHideRuntime+<>c::<>9__18_2",
+    "F:TaskbarList+<>c__DisplayClass10_0::parentLostOrStop",
+    "F:TaskbarList+<>c__DisplayClass10_0::parentProcess",
+    "F:TaskbarList+<>c__DisplayClass10_0::stopRequested",
+    "F:TaskbarList+<>c__DisplayClass10_0::verify",
+    "F:TaskbarList+<>c__DisplayClass12_0::factory",
+    "F:TaskbarList+<>c__DisplayClass12_0::hwnd",
+    "F:TaskbarList+<>c__DisplayClass12_0::trace",
+    "F:TaskbarList+<>c__DisplayClass18_0::report",
+    "F:TaskbarList+ComAction+<>c::<>9__2_0",
+    "F:TaskbarList+ComAction+<>c::<>9__2_1",
+    "F:TaskbarList+ComAction+<>c::<>9__5_0",
+    "F:TaskbarWorker+<>c::<>9",
+    "F:TaskbarWorker+<>c::<>9__0_1",
+    "F:TaskbarWorker+RealWorker+<>c::<>9__8_0",
+    "M:TaskbarHideRuntime::<.ctor>b__18_0:20/0/0:Double()",
+    "M:TaskbarHideRuntime::<.ctor>b__18_1:20/0/0:Boolean()",
+    "M:TaskbarHideRuntime::RunWorkerEntry:00/0/1:Int32(String[])",
+    "M:TaskbarHideRuntime+<>c__DisplayClass19_0::.ctor:20/0/0:Void()",
+    "M:TaskbarHideRuntime+<>c__DisplayClass19_0::<Create>b__0:20/0/1:Execution(Int64)",
+    "M:TaskbarHideRuntime+<>c__DisplayClass31_0::.ctor:20/0/0:Void()",
+    "M:TaskbarHideRuntime+<>c__DisplayClass31_0::<RunWorkerEntry>b__0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()",
+    "M:TaskbarHideRuntime+<>c__DisplayClass31_0::<RunWorkerEntry>b__1:20/0/0:Boolean()",
+    "M:TaskbarHideRuntime+<>c::<.ctor>b__18_2:20/0/0:Boolean()",
+    "M:TaskbarList::<SelfTest>g__Check|18_0:00/0/4:Void(String,Boolean,String,TaskbarList+<>c__DisplayClass18_0&)",
+    "M:TaskbarList::ExecuteCalls:00/0/4:TaskbarList+CallTrace([System.Runtime]System.Func`1<TaskbarList+ICalls>,Int64,[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>)",
+    "M:TaskbarList::RunWorkerEntry:00/0/4:Int32(String[],[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action`1<String>)",
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__0:20/0/0:Boolean()",
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__1:20/0/0:TaskbarList+ComAction()",
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__2:20/0/0:Void()",
+    "M:TaskbarList+<>c__DisplayClass12_0::.ctor:20/0/0:Void()",
+    "M:TaskbarList+<>c__DisplayClass12_0::<RunTrace>b__0:20/0/0:Void()",
+    "M:TaskbarList+ComAction::.ctor:20/0/2:Void([System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>)",
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__2_0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()",
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__2_1:20/0/0:Boolean()",
+    "M:TaskbarList+ComAction+<>c::<DeleteTabTrace>b__5_0:20/0/0:TaskbarList+ICalls()",
+    "M:TaskbarWorker::Run:00/0/5:WorkerOutcome(TaskbarList+WorkerRequest,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Func`1<ITaskbarWorkerProcess>,[System.Runtime]System.Func`1<Int64>,[System.Runtime]System.Action)",
+    "M:TaskbarWorker+<>c::.cctor:00/0/0:Void()",
+    "M:TaskbarWorker+<>c::.ctor:20/0/0:Void()",
+    "M:TaskbarWorker+<>c::<Run>b__0_1:20/0/0:ITaskbarWorkerProcess()",
+    "M:TaskbarWorker+RealWorker::.ctor:20/0/0:Void()",
+    "M:TaskbarWorker+RealWorker+<>c::<ReadTrace>b__8_0:20/0/1:Boolean(String)",
+    "T:TaskbarHideRuntime+<>c__DisplayClass19_0",
+    "T:TaskbarHideRuntime+<>c__DisplayClass31_0",
+    "T:TaskbarList+<>c__DisplayClass12_0",
+    "T:TaskbarList+<>c__DisplayClass18_0",
+    "T:TaskbarWorker+<>c"
+  ],
+  "changed": [],
+  "bodies": [
+    "M:Program+<<Main>$>d__0::MoveNext:20/0/0:Void()",
+    "M:TaskbarHideRuntime::.ctor:20/0/5:Void(TaskbarHideOptions,IWindowProbe,String,String,[System.Runtime]System.Func`1<Double>)",
+    "M:TaskbarHideRuntime::Create:00/0/6:TaskbarHideRuntime(Int64,Int32,[System.Runtime]System.DateTimeOffset,String,String,[System.Runtime]System.Func`1<ITaskbarWorkerProcess>)",
+    "M:TaskbarHideRuntime::Finish:20/0/0:Void()",
+    "M:TaskbarHideStrategy::OnFrameAsync:20/0/1:StrategyDecision(FrameObservation)",
+    "M:TaskbarList::RunTrace:00/0/2:TaskbarList+CallTrace([System.Runtime]System.Func`1<TaskbarList+ComAction>,Int64)",
+    "M:TaskbarList::RunWorker:00/0/3:WorkerOutcome(TaskbarList+WorkerRequest,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action)",
+    "M:TaskbarList::SelfTest:00/0/1:Void([System.Runtime]System.Action`3<String,Boolean,String>)",
+    "M:TaskbarList+ComAction::.ctor:20/0/0:Void()",
+    "M:TaskbarList+ComAction::DeleteTabTrace:20/0/1:TaskbarList+CallTrace(Int64)",
+    "M:TaskbarWorker+RealWorker::ReadTrace:20/0/0:TaskbarList+CallTrace()",
+    "M:TaskbarWorker+RealWorker::Start:20/0/1:Boolean(TaskbarList+WorkerRequest)"
+  ],
+  "changedDefinitionValues": {
+    "F:TaskbarHideRuntime::_timing": [
+      null,
+      "Private, InitOnly:TaskbarTiming:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::location": [
+      null,
+      "Public:String:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::pid": [
+      null,
+      "Public:Int32:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::runtime": [
+      null,
+      "Public:TaskbarHideRuntime:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::startUtc": [
+      null,
+      "Public:[System.Runtime]System.DateTimeOffset:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::stopFile": [
+      null,
+      "Public:String:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass20_0::workerFactory": [
+      null,
+      "Public:[System.Runtime]System.Func`1<ITaskbarWorkerProcess>:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass32_0::args": [
+      null,
+      "Public:String[]:nil"
+    ],
+    "F:TaskbarHideRuntime+<>c::<>9__19_3": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`1<Boolean>:nil"
+    ],
+    "F:TaskbarHideStrategy::<DiagnosticStage>k__BackingField": [
+      null,
+      "Private, InitOnly:[System.Runtime]System.Action`1<String>:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass10_0::report": [
+      null,
+      "Public:[System.Runtime]System.Action`1<String>:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass10_0::timing": [
+      null,
+      "Public:TaskbarTiming:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass11_0::parentLostOrStop": [
+      null,
+      "Public:[System.Runtime]System.Func`1<Boolean>:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass11_0::parentProcess": [
+      null,
+      "Public:[System.Diagnostics.Process]System.Diagnostics.Process:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass11_0::stopRequested": [
+      null,
+      "Public:[System.Runtime]System.Func`1<Boolean>:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass11_0::timing": [
+      null,
+      "Public:TaskbarTiming:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass11_0::verify": [
+      null,
+      "Public:[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass13_0::factory": [
+      null,
+      "Public:[System.Runtime]System.Func`1<TaskbarList+ComAction>:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass13_0::hwnd": [
+      null,
+      "Public:Int64:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass13_0::trace": [
+      null,
+      "Public:TaskbarList+CallTrace:nil"
+    ],
+    "F:TaskbarList+<>c__DisplayClass19_0::report": [
+      null,
+      "Public:[System.Runtime]System.Action`3<String,Boolean,String>:nil"
+    ],
+    "F:TaskbarList+ComAction::_timing": [
+      null,
+      "Private, InitOnly:TaskbarTiming:nil"
+    ],
+    "F:TaskbarList+ComAction+<>c::<>9__3_0": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>:nil"
+    ],
+    "F:TaskbarList+ComAction+<>c::<>9__3_1": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`1<Boolean>:nil"
+    ],
+    "F:TaskbarList+ComAction+<>c::<>9__6_0": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`1<TaskbarList+ICalls>:nil"
+    ],
+    "F:TaskbarTiming::_clock": [
+      null,
+      "Private, InitOnly:[System.Runtime]System.Func`1<Int64>:nil"
+    ],
+    "F:TaskbarTiming::_clockInvalid": [
+      null,
+      "Private:Boolean:nil"
+    ],
+    "F:TaskbarTiming::_events": [
+      null,
+      "Private, InitOnly:[System.Collections]System.Collections.Generic.List`1<TaskbarTiming+Point>:nil"
+    ],
+    "F:TaskbarTiming::_frequency": [
+      null,
+      "Private, InitOnly:Int64:nil"
+    ],
+    "F:TaskbarTiming::_location": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming::_origin": [
+      null,
+      "Private, InitOnly:Int64:nil"
+    ],
+    "F:TaskbarTiming::_originUtc": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming::_previous": [
+      null,
+      "Private:Int64:nil"
+    ],
+    "F:TaskbarTiming::_role": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming::_saved": [
+      null,
+      "Private:Boolean:nil"
+    ],
+    "F:TaskbarTiming::_sync": [
+      null,
+      "Private, InitOnly:Object:nil"
+    ],
+    "F:TaskbarTiming::_targetHwnd": [
+      null,
+      "Private, InitOnly:Int64:nil"
+    ],
+    "F:TaskbarTiming::_targetPid": [
+      null,
+      "Private, InitOnly:Int32:nil"
+    ],
+    "F:TaskbarTiming::_targetStartUtc": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming::_truncated": [
+      null,
+      "Private:Boolean:nil"
+    ],
+    "F:TaskbarTiming::_utc": [
+      null,
+      "Private, InitOnly:[System.Runtime]System.Func`1<[System.Runtime]System.DateTimeOffset>:nil"
+    ],
+    "F:TaskbarTiming::_write": [
+      null,
+      "Private, InitOnly:[System.Runtime]System.Action`1<String>:nil"
+    ],
+    "F:TaskbarTiming::_writeAllowed": [
+      null,
+      "Private:Boolean:nil"
+    ],
+    "F:TaskbarTiming::Capacity": [
+      null,
+      "Public, Static, Literal, HasDefault:Int32:Int32:40000000"
+    ],
+    "F:TaskbarTiming+<>c__DisplayClass27_0::path": [
+      null,
+      "Public:String:nil"
+    ],
+    "F:TaskbarTiming+<>c::<>9": [
+      null,
+      "Public, Static, InitOnly:TaskbarTiming+<>c:nil"
+    ],
+    "F:TaskbarTiming+<>c::<>9__21_0": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`1<[System.Runtime]System.DateTimeOffset>:nil"
+    ],
+    "F:TaskbarTiming+<>O::<0>__GetTimestamp": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`1<Int64>:nil"
+    ],
+    "F:TaskbarTiming+Point::<ElapsedMs>k__BackingField": [
+      null,
+      "Private, InitOnly:[System.Runtime]System.Nullable`1<Double>:nil"
+    ],
+    "F:TaskbarTiming+Point::<Stage>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Point::<Utc>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<ClockId>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<ClockInvalid>k__BackingField": [
+      null,
+      "Private, InitOnly:Boolean:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<Events>k__BackingField": [
+      null,
+      "Private, InitOnly:TaskbarTiming+Point[]:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<Frequency>k__BackingField": [
+      null,
+      "Private, InitOnly:Int64:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<Location>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<OriginTimestamp>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<OriginUtc>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<Purpose>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<Role>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<TargetHwnd>k__BackingField": [
+      null,
+      "Private, InitOnly:Int64:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<TargetPid>k__BackingField": [
+      null,
+      "Private, InitOnly:Int32:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<TargetStartUtc>k__BackingField": [
+      null,
+      "Private, InitOnly:String:nil"
+    ],
+    "F:TaskbarTiming+Snapshot::<Truncated>k__BackingField": [
+      null,
+      "Private, InitOnly:Boolean:nil"
+    ],
+    "F:TaskbarWorker+<>c__DisplayClass0_0::timing": [
+      null,
+      "Public:TaskbarTiming:nil"
+    ],
+    "F:TaskbarWorker+RealWorker::_timing": [
+      null,
+      "Private, InitOnly:TaskbarTiming:nil"
+    ],
+    "F:TaskbarWorker+RealWorker+<>c::<>9__10_0": [
+      null,
+      "Public, Static:[System.Runtime]System.Func`2<String,Boolean>:nil"
+    ],
+    "M:TaskbarHideRuntime::<.ctor>b__19_0:20/0/0:Double()": [
+      null,
+      "Private, HideBySig:IL:"
+    ],
+    "M:TaskbarHideRuntime::<.ctor>b__19_1:20/0/0:Boolean()": [
+      null,
+      "Private, HideBySig:IL:"
+    ],
+    "M:TaskbarHideRuntime::<.ctor>b__19_2:20/0/1:Void(String)": [
+      null,
+      "Private, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarHideRuntime::RunWorkerEntry:00/0/2:Int32(String[],TaskbarTiming)": [
+      null,
+      "Public, Static, HideBySig:IL:1:None:nil;2:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass20_0::.ctor:20/0/0:Void()": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass20_0::<Create>b__0:20/0/1:Execution(Int64)": [
+      null,
+      "Assembly, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass32_0::.ctor:20/0/0:Void()": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass32_0::<RunWorkerEntry>b__0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()": [
+      null,
+      "Assembly, HideBySig:IL:0:None:nil"
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass32_0::<RunWorkerEntry>b__1:20/0/0:Boolean()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarHideRuntime+<>c::<.ctor>b__19_3:20/0/0:Boolean()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarHideStrategy::get_DiagnosticStage:20/0/0:[System.Runtime]System.Action`1<String>()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:0:None:nil"
+    ],
+    "M:TaskbarHideStrategy::set_DiagnosticStage:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void([System.Runtime]System.Action`1<String>)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarList::<SelfTest>g__Check|19_0:00/0/4:Void(String,Boolean,String,TaskbarList+<>c__DisplayClass19_0&)": [
+      null,
+      "Assembly, Static, HideBySig:IL:1:None:nil;2:None:nil;3:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarList::ExecuteCalls:00/0/5:TaskbarList+CallTrace([System.Runtime]System.Func`1<TaskbarList+ICalls>,Int64,[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,TaskbarTiming)": [
+      null,
+      "Public, Static, HideBySig:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil;5:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarList::RunWorkerEntry:00/0/5:Int32(String[],[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action`1<String>,TaskbarTiming)": [
+      null,
+      "Public, Static, HideBySig:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil;5:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarList::RunWorkerEntryCore:00/0/5:Int32(String[],[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action`1<String>,TaskbarTiming)": [
+      null,
+      "Private, Static, HideBySig:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil;5:None:nil"
+    ],
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__0:20/0/1:Void(String)": [
+      null,
+      "Assembly, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarList+<>c__DisplayClass11_0::.ctor:20/0/0:Void()": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarList+<>c__DisplayClass11_0::<RunWorkerEntryCore>b__0:20/0/0:Boolean()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarList+<>c__DisplayClass11_0::<RunWorkerEntryCore>b__1:20/0/0:TaskbarList+ComAction()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarList+<>c__DisplayClass11_0::<RunWorkerEntryCore>b__2:20/0/0:Void()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarList+<>c__DisplayClass13_0::.ctor:20/0/0:Void()": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarList+<>c__DisplayClass13_0::<RunTrace>b__0:20/0/0:Void()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarList+ComAction::.ctor:20/0/3:Void([System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,TaskbarTiming)": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil;2:None:nil;3:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__3_0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()": [
+      null,
+      "Assembly, HideBySig:IL:0:None:nil"
+    ],
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__3_1:20/0/0:Boolean()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarList+ComAction+<>c::<DeleteTabTrace>b__6_0:20/0/0:TaskbarList+ICalls()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming::.ctor:20/0/10:Void(String,Int64,Int32,String,String,[System.Runtime]System.Action`1<String>,Boolean,[System.Runtime]System.Func`1<Int64>,[System.Runtime]System.Nullable`1<Int64>,[System.Runtime]System.Func`1<[System.Runtime]System.DateTimeOffset>)": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil;5:None:nil;6:None:nil;7:Optional, HasDefault:Boolean:00;8:Optional, HasDefault:NullReference:00000000;9:Optional, HasDefault:NullReference:00000000;10:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarTiming::AllowWrite:20/0/0:Void()": [
+      null,
+      "Public, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming::ForParent:00/0/5:TaskbarTiming(String,Int64,Int32,[System.Runtime]System.DateTimeOffset,String)": [
+      null,
+      "Public, Static, HideBySig:IL:0:None:nil;1:None:nil;2:None:nil;3:None:nil;4:None:nil;5:None:nil"
+    ],
+    "M:TaskbarTiming::ForWorker:00/0/1:TaskbarTiming(String[])": [
+      null,
+      "Public, Static, HideBySig:IL:0:None:nil;1:None:nil"
+    ],
+    "M:TaskbarTiming::Inspect:20/0/0:TaskbarTiming+Snapshot()": [
+      null,
+      "Public, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming::Mark:20/0/1:Void(String)": [
+      null,
+      "Public, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming::NewFile:00/0/1:[System.Runtime]System.Action`1<String>(String)": [
+      null,
+      "Private, Static, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming::Save:20/0/0:Boolean()": [
+      null,
+      "Public, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming::Utc:20/0/0:String()": [
+      null,
+      "Private, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+<>c__DisplayClass27_0::.ctor:20/0/0:Void()": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarTiming+<>c__DisplayClass27_0::<NewFile>b__0:20/0/1:Void(String)": [
+      null,
+      "Assembly, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+<>c::.cctor:00/0/0:Void()": [
+      null,
+      "Private, Static, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarTiming+<>c::.ctor:20/0/0:Void()": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:"
+    ],
+    "M:TaskbarTiming+<>c::<.ctor>b__21_0:20/0/0:[System.Runtime]System.DateTimeOffset()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+Point::.ctor:20/0/1:Void(TaskbarTiming+Point)": [
+      null,
+      "Private, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::.ctor:20/0/3:Void(String,[System.Runtime]System.Nullable`1<Double>,String)": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil;2:None:nil;3:None:nil"
+    ],
+    "M:TaskbarTiming+Point::<Clone>$:20/0/0:TaskbarTiming+Point()": [
+      null,
+      "Public, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+Point::Deconstruct:20/0/3:Void(String&,[System.Runtime]System.Nullable`1<Double>&,String&)": [
+      null,
+      "Public, HideBySig:IL:1:Out:nil;2:Out:nil;3:Out:nil"
+    ],
+    "M:TaskbarTiming+Point::Equals:20/0/1:Boolean(Object)": [
+      null,
+      "Public, Virtual, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::Equals:20/0/1:Boolean(TaskbarTiming+Point)": [
+      null,
+      "Public, Final, Virtual, HideBySig, VtableLayoutMask:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::get_ElapsedMs:20/0/0:[System.Runtime]System.Nullable`1<Double>()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Point::get_EqualityContract:20/0/0:[System.Runtime]System.Type()": [
+      null,
+      "Private, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Point::get_Stage:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Point::get_Utc:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Point::GetHashCode:20/0/0:Int32()": [
+      null,
+      "Public, Virtual, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+Point::op_Equality:00/0/2:Boolean(TaskbarTiming+Point,TaskbarTiming+Point)": [
+      null,
+      "Public, Static, HideBySig, SpecialName:IL:1:None:nil;2:None:nil"
+    ],
+    "M:TaskbarTiming+Point::op_Inequality:00/0/2:Boolean(TaskbarTiming+Point,TaskbarTiming+Point)": [
+      null,
+      "Public, Static, HideBySig, SpecialName:IL:1:None:nil;2:None:nil"
+    ],
+    "M:TaskbarTiming+Point::PrintMembers:20/0/1:Boolean([System.Runtime]System.Text.StringBuilder)": [
+      null,
+      "Private, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::set_ElapsedMs:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void([System.Runtime]System.Nullable`1<Double>)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::set_Stage:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::set_Utc:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Point::ToString:20/0/0:String()": [
+      null,
+      "Public, Virtual, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::.ctor:20/0/1:Void(TaskbarTiming+Snapshot)": [
+      null,
+      "Private, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::.ctor:20/0/13:Void(String,String,String,String,Int64,String,Int64,Int32,String,String,TaskbarTiming+Point[],Boolean,Boolean)": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil;5:None:nil;6:None:nil;7:None:nil;8:None:nil;9:None:nil;10:None:nil;11:None:nil;12:None:nil;13:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::<Clone>$:20/0/0:TaskbarTiming+Snapshot()": [
+      null,
+      "Public, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::Deconstruct:20/0/13:Void(String&,String&,String&,String&,Int64&,String&,Int64&,Int32&,String&,String&,TaskbarTiming+Point[]&,Boolean&,Boolean&)": [
+      null,
+      "Public, HideBySig:IL:1:Out:nil;2:Out:nil;3:Out:nil;4:Out:nil;5:Out:nil;6:Out:nil;7:Out:nil;8:Out:nil;9:Out:nil;10:Out:nil;11:Out:nil;12:Out:nil;13:Out:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::Equals:20/0/1:Boolean(Object)": [
+      null,
+      "Public, Virtual, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::Equals:20/0/1:Boolean(TaskbarTiming+Snapshot)": [
+      null,
+      "Public, Final, Virtual, HideBySig, VtableLayoutMask:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::get_ClockId:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_ClockInvalid:20/0/0:Boolean()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_EqualityContract:20/0/0:[System.Runtime]System.Type()": [
+      null,
+      "Private, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_Events:20/0/0:TaskbarTiming+Point[]()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_Frequency:20/0/0:Int64()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_Location:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_OriginTimestamp:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_OriginUtc:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_Purpose:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_Role:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_TargetHwnd:20/0/0:Int64()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_TargetPid:20/0/0:Int32()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_TargetStartUtc:20/0/0:String()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::get_Truncated:20/0/0:Boolean()": [
+      null,
+      "Public, HideBySig, SpecialName:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::GetHashCode:20/0/0:Int32()": [
+      null,
+      "Public, Virtual, HideBySig:IL:"
+    ],
+    "M:TaskbarTiming+Snapshot::op_Equality:00/0/2:Boolean(TaskbarTiming+Snapshot,TaskbarTiming+Snapshot)": [
+      null,
+      "Public, Static, HideBySig, SpecialName:IL:1:None:nil;2:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::op_Inequality:00/0/2:Boolean(TaskbarTiming+Snapshot,TaskbarTiming+Snapshot)": [
+      null,
+      "Public, Static, HideBySig, SpecialName:IL:1:None:nil;2:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::PrintMembers:20/0/1:Boolean([System.Runtime]System.Text.StringBuilder)": [
+      null,
+      "Private, HideBySig:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_ClockId:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_ClockInvalid:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Boolean)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_Events:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(TaskbarTiming+Point[])": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_Frequency:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Int64)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_Location:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_OriginTimestamp:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_OriginUtc:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_Purpose:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_Role:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_TargetHwnd:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Int64)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_TargetPid:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Int32)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_TargetStartUtc:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(String)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::set_Truncated:20/0/1:req([System.Runtime]System.Runtime.CompilerServices.IsExternalInit)Void(Boolean)": [
+      null,
+      "Public, HideBySig, SpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarTiming+Snapshot::ToString:20/0/0:String()": [
+      null,
+      "Public, Virtual, HideBySig:IL:"
+    ],
+    "M:TaskbarWorker::Run:00/0/6:WorkerOutcome(TaskbarList+WorkerRequest,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Func`1<ITaskbarWorkerProcess>,[System.Runtime]System.Func`1<Int64>,[System.Runtime]System.Action,TaskbarTiming)": [
+      null,
+      "Public, Static, HideBySig:IL:1:None:nil;2:None:nil;3:Optional, HasDefault:NullReference:00000000;4:Optional, HasDefault:NullReference:00000000;5:Optional, HasDefault:NullReference:00000000;6:Optional, HasDefault:NullReference:00000000"
+    ],
+    "M:TaskbarWorker+<>c__DisplayClass0_0::<Run>b__1:20/0/0:ITaskbarWorkerProcess()": [
+      null,
+      "Assembly, HideBySig:IL:"
+    ],
+    "M:TaskbarWorker+RealWorker::.ctor:20/0/1:Void(TaskbarTiming)": [
+      null,
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil"
+    ],
+    "M:TaskbarWorker+RealWorker+<>c::<ReadTrace>b__10_0:20/0/1:Boolean(String)": [
+      null,
+      "Assembly, HideBySig:IL:1:None:nil"
+    ],
+    "P:TaskbarHideStrategy::DiagnosticStage": [
+      null,
+      "None:28/0/0:[System.Runtime]System.Action`1<String>()"
+    ],
+    "P:TaskbarTiming+Point::ElapsedMs": [
+      null,
+      "None:28/0/0:[System.Runtime]System.Nullable`1<Double>()"
+    ],
+    "P:TaskbarTiming+Point::EqualityContract": [
+      null,
+      "None:28/0/0:[System.Runtime]System.Type()"
+    ],
+    "P:TaskbarTiming+Point::Stage": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Point::Utc": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::ClockId": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::ClockInvalid": [
+      null,
+      "None:28/0/0:Boolean()"
+    ],
+    "P:TaskbarTiming+Snapshot::EqualityContract": [
+      null,
+      "None:28/0/0:[System.Runtime]System.Type()"
+    ],
+    "P:TaskbarTiming+Snapshot::Events": [
+      null,
+      "None:28/0/0:TaskbarTiming+Point[]()"
+    ],
+    "P:TaskbarTiming+Snapshot::Frequency": [
+      null,
+      "None:28/0/0:Int64()"
+    ],
+    "P:TaskbarTiming+Snapshot::Location": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::OriginTimestamp": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::OriginUtc": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::Purpose": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::Role": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::TargetHwnd": [
+      null,
+      "None:28/0/0:Int64()"
+    ],
+    "P:TaskbarTiming+Snapshot::TargetPid": [
+      null,
+      "None:28/0/0:Int32()"
+    ],
+    "P:TaskbarTiming+Snapshot::TargetStartUtc": [
+      null,
+      "None:28/0/0:String()"
+    ],
+    "P:TaskbarTiming+Snapshot::Truncated": [
+      null,
+      "None:28/0/0:Boolean()"
+    ],
+    "T:TaskbarHideRuntime+<>c__DisplayClass20_0": [
+      null,
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarHideRuntime+<>c__DisplayClass32_0": [
+      null,
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarList+<>c__DisplayClass11_0": [
+      null,
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarList+<>c__DisplayClass13_0": [
+      null,
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarList+<>c__DisplayClass19_0": [
+      null,
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.ValueType:"
+    ],
+    "T:TaskbarTiming": [
+      null,
+      "Public, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarTiming+<>c": [
+      null,
+      "NestedPrivate, Sealed, Serializable, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarTiming+<>c__DisplayClass27_0": [
+      null,
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarTiming+<>O": [
+      null,
+      "NestedPrivate, Abstract, Sealed, BeforeFieldInit:[System.Runtime]System.Object:"
+    ],
+    "T:TaskbarTiming+Point": [
+      null,
+      "NestedPublic, Sealed, BeforeFieldInit:[System.Runtime]System.Object:[System.Runtime]System.IEquatable`1<TaskbarTiming+Point>"
+    ],
+    "T:TaskbarTiming+Snapshot": [
+      null,
+      "NestedPublic, Sealed, BeforeFieldInit:[System.Runtime]System.Object:[System.Runtime]System.IEquatable`1<TaskbarTiming+Snapshot>"
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::location": [
+      "Public:String:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::pid": [
+      "Public:Int32:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::runtime": [
+      "Public:TaskbarHideRuntime:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::startUtc": [
+      "Public:[System.Runtime]System.DateTimeOffset:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::stopFile": [
+      "Public:String:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass19_0::workerFactory": [
+      "Public:[System.Runtime]System.Func`1<ITaskbarWorkerProcess>:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c__DisplayClass31_0::args": [
+      "Public:String[]:nil",
+      null
+    ],
+    "F:TaskbarHideRuntime+<>c::<>9__18_2": [
+      "Public, Static:[System.Runtime]System.Func`1<Boolean>:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass10_0::parentLostOrStop": [
+      "Public:[System.Runtime]System.Func`1<Boolean>:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass10_0::parentProcess": [
+      "Public:[System.Diagnostics.Process]System.Diagnostics.Process:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass10_0::stopRequested": [
+      "Public:[System.Runtime]System.Func`1<Boolean>:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass10_0::verify": [
+      "Public:[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass12_0::factory": [
+      "Public:[System.Runtime]System.Func`1<TaskbarList+ComAction>:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass12_0::hwnd": [
+      "Public:Int64:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass12_0::trace": [
+      "Public:TaskbarList+CallTrace:nil",
+      null
+    ],
+    "F:TaskbarList+<>c__DisplayClass18_0::report": [
+      "Public:[System.Runtime]System.Action`3<String,Boolean,String>:nil",
+      null
+    ],
+    "F:TaskbarList+ComAction+<>c::<>9__2_0": [
+      "Public, Static:[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>:nil",
+      null
+    ],
+    "F:TaskbarList+ComAction+<>c::<>9__2_1": [
+      "Public, Static:[System.Runtime]System.Func`1<Boolean>:nil",
+      null
+    ],
+    "F:TaskbarList+ComAction+<>c::<>9__5_0": [
+      "Public, Static:[System.Runtime]System.Func`1<TaskbarList+ICalls>:nil",
+      null
+    ],
+    "F:TaskbarWorker+<>c::<>9": [
+      "Public, Static, InitOnly:TaskbarWorker+<>c:nil",
+      null
+    ],
+    "F:TaskbarWorker+<>c::<>9__0_1": [
+      "Public, Static:[System.Runtime]System.Func`1<ITaskbarWorkerProcess>:nil",
+      null
+    ],
+    "F:TaskbarWorker+RealWorker+<>c::<>9__8_0": [
+      "Public, Static:[System.Runtime]System.Func`2<String,Boolean>:nil",
+      null
+    ],
+    "M:TaskbarHideRuntime::<.ctor>b__18_0:20/0/0:Double()": [
+      "Private, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarHideRuntime::<.ctor>b__18_1:20/0/0:Boolean()": [
+      "Private, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarHideRuntime::RunWorkerEntry:00/0/1:Int32(String[])": [
+      "Public, Static, HideBySig:IL:1:None:nil",
+      null
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass19_0::.ctor:20/0/0:Void()": [
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:",
+      null
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass19_0::<Create>b__0:20/0/1:Execution(Int64)": [
+      "Assembly, HideBySig:IL:1:None:nil",
+      null
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass31_0::.ctor:20/0/0:Void()": [
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:",
+      null
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass31_0::<RunWorkerEntry>b__0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()": [
+      "Assembly, HideBySig:IL:0:None:nil",
+      null
+    ],
+    "M:TaskbarHideRuntime+<>c__DisplayClass31_0::<RunWorkerEntry>b__1:20/0/0:Boolean()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarHideRuntime+<>c::<.ctor>b__18_2:20/0/0:Boolean()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarList::<SelfTest>g__Check|18_0:00/0/4:Void(String,Boolean,String,TaskbarList+<>c__DisplayClass18_0&)": [
+      "Assembly, Static, HideBySig:IL:1:None:nil;2:None:nil;3:Optional, HasDefault:NullReference:00000000",
+      null
+    ],
+    "M:TaskbarList::ExecuteCalls:00/0/4:TaskbarList+CallTrace([System.Runtime]System.Func`1<TaskbarList+ICalls>,Int64,[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>)": [
+      "Public, Static, HideBySig:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil",
+      null
+    ],
+    "M:TaskbarList::RunWorkerEntry:00/0/4:Int32(String[],[System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action`1<String>)": [
+      "Public, Static, HideBySig:IL:1:None:nil;2:None:nil;3:None:nil;4:None:nil",
+      null
+    ],
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__0:20/0/0:Boolean()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__1:20/0/0:TaskbarList+ComAction()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarList+<>c__DisplayClass10_0::<RunWorkerEntry>b__2:20/0/0:Void()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarList+<>c__DisplayClass12_0::.ctor:20/0/0:Void()": [
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:",
+      null
+    ],
+    "M:TaskbarList+<>c__DisplayClass12_0::<RunTrace>b__0:20/0/0:Void()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarList+ComAction::.ctor:20/0/2:Void([System.Runtime]System.Func`1<[System.Runtime]System.ValueTuple`2<Boolean,String>>,[System.Runtime]System.Func`1<Boolean>)": [
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:1:None:nil;2:None:nil",
+      null
+    ],
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__2_0:20/0/0:[System.Runtime]System.ValueTuple`2<Boolean,String>()": [
+      "Assembly, HideBySig:IL:0:None:nil",
+      null
+    ],
+    "M:TaskbarList+ComAction+<>c::<.ctor>b__2_1:20/0/0:Boolean()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarList+ComAction+<>c::<DeleteTabTrace>b__5_0:20/0/0:TaskbarList+ICalls()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarWorker::Run:00/0/5:WorkerOutcome(TaskbarList+WorkerRequest,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Func`1<ITaskbarWorkerProcess>,[System.Runtime]System.Func`1<Int64>,[System.Runtime]System.Action)": [
+      "Public, Static, HideBySig:IL:1:None:nil;2:None:nil;3:Optional, HasDefault:NullReference:00000000;4:Optional, HasDefault:NullReference:00000000;5:Optional, HasDefault:NullReference:00000000",
+      null
+    ],
+    "M:TaskbarWorker+<>c::.cctor:00/0/0:Void()": [
+      "Private, Static, HideBySig, SpecialName, RTSpecialName:IL:",
+      null
+    ],
+    "M:TaskbarWorker+<>c::.ctor:20/0/0:Void()": [
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:",
+      null
+    ],
+    "M:TaskbarWorker+<>c::<Run>b__0_1:20/0/0:ITaskbarWorkerProcess()": [
+      "Assembly, HideBySig:IL:",
+      null
+    ],
+    "M:TaskbarWorker+RealWorker::.ctor:20/0/0:Void()": [
+      "Public, HideBySig, SpecialName, RTSpecialName:IL:",
+      null
+    ],
+    "M:TaskbarWorker+RealWorker+<>c::<ReadTrace>b__8_0:20/0/1:Boolean(String)": [
+      "Assembly, HideBySig:IL:1:None:nil",
+      null
+    ],
+    "T:TaskbarHideRuntime+<>c__DisplayClass19_0": [
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:",
+      null
+    ],
+    "T:TaskbarHideRuntime+<>c__DisplayClass31_0": [
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:",
+      null
+    ],
+    "T:TaskbarList+<>c__DisplayClass12_0": [
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.Object:",
+      null
+    ],
+    "T:TaskbarList+<>c__DisplayClass18_0": [
+      "NestedPrivate, Sealed, BeforeFieldInit:[System.Runtime]System.ValueType:",
+      null
+    ],
+    "T:TaskbarWorker+<>c": [
+      "NestedPrivate, Sealed, Serializable, BeforeFieldInit:[System.Runtime]System.Object:",
+      null
+    ]
+  },
+  "changedBodyHashes": {
+    "M:Program+<<Main>$>d__0::MoveNext:20/0/0:Void()": [
+      "3623E9E37691616F9891420CF43027DE90ADBA63F4EC15FCE0CF31D2A6E8353F",
+      "7855CD8D9924EA857D21C7A72A911C340F46DE53BED9E8936E2674CD58A66B3E"
+    ],
+    "M:TaskbarHideRuntime::.ctor:20/0/5:Void(TaskbarHideOptions,IWindowProbe,String,String,[System.Runtime]System.Func`1<Double>)": [
+      "5CF8552D08498E37782C03E0D1A86AC88347FD58394C257EBA5FCF903E6C393E",
+      "D852F50F160A2800D6AB6D379078AE48D34C2AA72CFE775EAF994DA22DEC0D56"
+    ],
+    "M:TaskbarHideRuntime::Create:00/0/6:TaskbarHideRuntime(Int64,Int32,[System.Runtime]System.DateTimeOffset,String,String,[System.Runtime]System.Func`1<ITaskbarWorkerProcess>)": [
+      "F6E091A85D2FEA7874BF102CBFE4679B8BD44336C38F18AB6506F5A70F3E979E",
+      "7222ABC6C3913FA48DDB41FED8A93071BABBECA0EE538780F017132D9803AC54"
+    ],
+    "M:TaskbarHideRuntime::Finish:20/0/0:Void()": [
+      "BCDDEDB86A252EFF3A4A1D0FF2050C1669070E1130FA04330636F9D9659F89BF",
+      "5583A049F25CF71B5D59C1D0A2D663D7DAB90B953F9EB66434A87BC19089BF80"
+    ],
+    "M:TaskbarHideStrategy::OnFrameAsync:20/0/1:StrategyDecision(FrameObservation)": [
+      "5823D2C2767E542E473D296775DD3E03C955AA29AF296366C4209FEB8B7EF749",
+      "DD0F9E29E405B1BEB6850AA509751A8807116D69D529D6AFB13E35319107C3FB"
+    ],
+    "M:TaskbarList::RunTrace:00/0/2:TaskbarList+CallTrace([System.Runtime]System.Func`1<TaskbarList+ComAction>,Int64)": [
+      "6AECC47485921D18A2F6BBCC7577C51B7B055B1759E7001F2F65B7B17B5CAB69",
+      "A63BC12808BC6DD0F6704776CEA69CA1400E4BDA43635E167802E01ACDC9A5C7"
+    ],
+    "M:TaskbarList::RunWorker:00/0/3:WorkerOutcome(TaskbarList+WorkerRequest,[System.Runtime]System.Func`1<Boolean>,[System.Runtime]System.Action)": [
+      "25C50FD34309ACD239FCC7B0EDF206BAFE2F7E23F46707E4F06F4BE416B3375A",
+      "D0774E694F58D545E23A3E210B73F2AC62DFFFB4C0674714CC27C9A12A10CBA1"
+    ],
+    "M:TaskbarList::SelfTest:00/0/1:Void([System.Runtime]System.Action`3<String,Boolean,String>)": [
+      "9705A26CF18789193C1020CC208C9CA7992BCC5393EF16B1B8BB0AD623F8CA52",
+      "1124732D2C647B74372FFD30BFA08ACA662ABF927EEA628AA202BAD335BFDE96"
+    ],
+    "M:TaskbarList+ComAction::.ctor:20/0/0:Void()": [
+      "59ED646958C26E7A719F1F2A585698D54CCDD08AB8B2747DF20808038175698A",
+      "F0E53D6B6F184B1DCE283D79627FCAFC4DF304C8416578A739F4504C16D77AB7"
+    ],
+    "M:TaskbarList+ComAction::DeleteTabTrace:20/0/1:TaskbarList+CallTrace(Int64)": [
+      "93A5E12C76BBCF19BE11DE5B9E57F49A59C437F731FB860BE4A7F993C46D45A6",
+      "E6FDE0DFBD6185A9973F322A514CDD0395B252DB02D2C95C6C53127D902E7810"
+    ],
+    "M:TaskbarWorker+RealWorker::ReadTrace:20/0/0:TaskbarList+CallTrace()": [
+      "2BF8FB2F021803A3E1671342F86DA027738C45978F6A627F878E08B723F83CBF",
+      "AFA3EADF2BE787BA01E63599993A818CF7A7E71F2D947FF12E6CE7B32F1F1D74"
+    ],
+    "M:TaskbarWorker+RealWorker::Start:20/0/1:Boolean(TaskbarList+WorkerRequest)": [
+      "23BE760B88B63A40E8C7985083E9694D5A6429E3FC5DD89F135A405DC4C6C146",
+      "C2CA0CAB5CDB0E847BCFE34E33B8607B6F9CF1B9C4A3FA1092769F39D7C9CB11"
+    ]
+  }
+}

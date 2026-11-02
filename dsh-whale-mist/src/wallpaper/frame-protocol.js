@@ -1,8 +1,21 @@
 export const HEADER_BYTES = 24;
 export const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
+/**
+ * A decoded WHL1 packet. Numeric bounds remain enforced by the runtime parser.
+ * @typedef {object} WhlFrame
+ * @property {number} sequence
+ * @property {number} capturedAt
+ * @property {number} width
+ * @property {number} height
+ * @property {Uint8Array} packet
+ * @property {Uint8Array} jpeg
+ */
+
 export class FrameDecoder {
+  /** @param {(frame: WhlFrame) => void} onFrame */
   constructor(onFrame) { this.onFrame = onFrame; this.pending = new Uint8Array(0); }
+  /** @param {Uint8Array} chunk */
   push(chunk) {
     if (!(chunk instanceof Uint8Array)) throw new TypeError('Expected byte buffer');
     if (chunk.byteLength > 32 * 1024 * 1024) throw new Error('Oversized input chunk');

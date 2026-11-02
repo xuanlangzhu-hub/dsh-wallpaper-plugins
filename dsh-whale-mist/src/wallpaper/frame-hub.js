@@ -1,8 +1,37 @@
 import { EventEmitter } from 'node:events';
 import { FrameDecoder } from './frame-protocol.js';
 
+/** @typedef {{runId: string, sequence: number, clockDomain: 'host-mono', atMonoMs: number}} HubTraceBase */
+/** @typedef {HubTraceBase & {event: 'host-hub-received', capturedAt: number, packetBytes: number}} HubReceivedRecord */
+/** @typedef {HubTraceBase & {event: 'host-stream-skip', connectionId: string, reason: 'duplicate-sequence'}} DuplicateRecord */
+/** @typedef {HubTraceBase & {event: 'host-stream-skip', connectionId: string, reason: 'latest-overwritten', skippedFrom: number, skippedTo: number, skippedCount: number}} OverwrittenRecord */
+/** @typedef {HubTraceBase & {event: 'host-stream-write', connectionId: string, durationMs: number, backpressure: boolean}} WriteRecord */
+/** @typedef {HubTraceBase & {event: 'host-stream-write-error', connectionId: string, reason: string}} WriteErrorRecord */
+/** @typedef {HubTraceBase & {event: 'host-stream-drain', connectionId: string}} DrainRecord */
+/** @typedef {HubReceivedRecord | DuplicateRecord | OverwrittenRecord | WriteRecord | WriteErrorRecord | DrainRecord} HubTraceRecord */
+/** A full sink may toggle enabled; a disabled hook need not provide record.
+ * @typedef {{enabled: boolean, record: (entry: HubTraceRecord) => void} | {enabled?: false, record?: (entry: HubTraceRecord) => void}} HubTrace
+ */
+/** @typedef {{registerConnection?: (connectionId: string) => unknown}} ClientTrace */
+/**
+ * @typedef {object} HubOptions
+ * @property {HubTrace | null} [cadenceTrace]
+ * @property {string} [runId]
+ * @property {ClientTrace | null} [clientTrace] Accepted from existing callers; not stored by the constructor.
+ */
+/**
+ * @typedef {object} StreamOptions
+ * @property {HubTrace | null} [cadenceTrace]
+ * @property {ClientTrace | null} [clientTrace]
+ * @property {string} [runId]
+ * @property {string} [connId]
+ * @property {(connectionId: string) => unknown} [registerConnection]
+ */
+/** @typedef {Pick<import('node:http').ServerResponse, 'writeHead' | 'write' | 'end' | 'on' | 'off'> & Partial<Pick<import('node:http').ServerResponse, 'flushHeaders'>>} FrameResponse */
+
 // One latest frame. Slow HTTP clients never enqueue every produced frame.
 export class FrameHub extends EventEmitter {
+  /** @param {HubOptions} [options] */
   constructor(options = {}) {
     super(); this.latest = null; this.received = 0; this.bytes = 0; this.closed = false;
     this.startedAt = Date.now(); this.updatedAt = 0;
@@ -27,6 +56,7 @@ export class FrameHub extends EventEmitter {
       this.emit('frame');
     });
   }
+  /** @param {Uint8Array} bytes */
   push(bytes) { if (!this.closed) this.decoder.push(bytes); }
   close() { if (!this.closed) { this.closed = true; this.emit('end'); } }
   snapshot() { return { received: this.received, bytes: this.bytes, updatedAt: this.updatedAt,
@@ -35,6 +65,11 @@ export class FrameHub extends EventEmitter {
     running: !this.closed, seconds: (Date.now() - this.startedAt) / 1000 }; }
 }
 
+/** @param {FrameHub & {clientTrace?: ClientTrace | null}} hub
+ * @param {FrameResponse} res
+ * @param {StreamOptions} [options]
+ * @returns {() => void}
+ */
 export function streamFrames(hub, res, options = {}) {
   const cadenceTrace = options.cadenceTrace ?? hub.cadenceTrace ?? null;
   const clientTrace = options.clientTrace ?? hub.clientTrace ?? null;
@@ -107,7 +142,7 @@ export function streamFrames(hub, res, options = {}) {
           event: 'host-stream-write-error',
           atMonoMs: writeStart,
           connectionId: connId,
-          reason: String(err?.message ?? err),
+          reason: String((/** @type {{message?: unknown} | null | undefined} */ (err))?.message ?? err),
         });
       }
       end();
@@ -127,6 +162,7 @@ export function streamFrames(hub, res, options = {}) {
     }
     pump();
   };
+  /** @type {Record<string, string>} */
   const headers = { 'content-type': 'application/x-whale-frames', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
   if (cadenceTrace?.enabled) {
     headers['x-cadence-trace'] = '1';
