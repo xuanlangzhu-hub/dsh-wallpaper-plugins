@@ -1,0 +1,11 @@
+{
+  "name": "liquid-glass-react",
+  "version": "1.1.1",
+  "license": "MIT",
+  "gitHead": "2f134d928b0313a7075f22e9f844212a72254231",
+  "tarball": "https://registry.npmjs.org/liquid-glass-react/-/liquid-glass-react-1.1.1.tgz",
+  "integrity": "sha512-pKzaktaMAEztd93wpWcz2Z5Z9qdLJUNJdMX+n00Ca4XsnrLTQ5xJzm/+GQXZUeuFXe/PQ8ziVMZO6531PyaFJw==",
+  "integrityVerified": true,
+  "tarballSha256": "e177f25fa758600b075c179e2bc614d01f55fca17928ae4603cb9aa87d2d3bbc",
+  "dependencyLockSha256": "727ca0e6b8b4411044dd4058648a3395b5dc2b5167e45d312597094ced383865"
+}

@@ -1,0 +1,22 @@
+{
+  "agent-handoff-before-maintenance.md": {
+    "originalPath": "AGENTS.md",
+    "sha256": "B9273800A4919BEE723C601B97855C9A23023401CD2690499D81BEFC184EE8CF"
+  },
+  "root-readme-before-maintenance.md": {
+    "originalPath": "README.md",
+    "sha256": "3C59638D1E223938BE5D1F4B77611C14B236ACC8E5295E1511F9E29D18E502B2"
+  },
+  "project-status-before-maintenance.md": {
+    "originalPath": "docs/PROJECT_STATUS.md",
+    "sha256": "C2C5081D600A329EBECC3F244AA09F53502D56052445D61BBE742E541FF6F88A"
+  },
+  "post-release-plan-before-maintenance.md": {
+    "originalPath": "docs/POST_RELEASE_DEVELOPMENT_PLAN_20261028.md",
+    "sha256": "28AA44CA0CCDDFB0217269410811360708836706780F83399984872EA8D868C4"
+  },
+  "product-roadmap-before-maintenance.md": {
+    "originalPath": "docs/PRODUCT_ROADMAP_20261011.md",
+    "sha256": "97C2F8821304E85968B21D7E1F059EBBCA6B4C3C209F6F8CF7F26F965BA4DA81"
+  }
+}
