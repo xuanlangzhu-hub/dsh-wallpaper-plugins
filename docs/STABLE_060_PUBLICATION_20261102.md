@@ -22,3 +22,16 @@
 ## 边界
 
 已知问题见[发行说明](../release-sources/0.6.0/RELEASE_NOTES.md)。正式版本号表示选择公开交付当前功能范围，不等于三体／长期滑块／全部壁纸兼容已解决。没有新增运行功能、修改共享rc.30 manifest／assets、重编原生、安装或操作日常应用；三体、进一步任务栏优化和UI继续暂缓。
+
+## GitHub 已正式公开
+
+- [Whale Appearance 0.6.0](https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.0)，Release ID `431020229`。
+- `draft=false`、`prerelease=false`，`/releases/latest`也指向本版。
+- tag `dsh-whale-mist-v0.6.0` 固定指向发行材料提交 `2f0c6dedc610a87206fc5916876946103b98b824`。
+- 两附件通过公开、未登录API查询与匿名下载核对，逐字节等同本机已审ZIP和校验文件；服务端SHA256 digest同样匹配。
+
+创建草稿后第一次按tag读取未成功；按现有Release列表核对唯一名称／目标提交后定位同一ID，再下载草稿附件验证，没有重发创建或更换资产。发布只PATCH同一ID的draft／prerelease／make_latest；旧rc.53、tag和npm版本均未修改。
+
+## npm 认证进度
+
+初次非交互publish在认证阶段EOTP退出1；公开0.6.0仍404，确认未上传后才开启一次交互认证。交互流程已获得独立发布验证，等待用户完成；认证链接／authId不进入Git。尚不能称npm正式版可下载，最终registry与匿名tgz核对待补。

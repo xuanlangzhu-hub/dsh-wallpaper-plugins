@@ -16,7 +16,7 @@
 
 ## 公开渠道与源码边界
 
-- 已公开：GitHub [rc.53](RC53_FIRST_GITHUB_RELEASE_PUBLISHED_20261028.md)、npm [0.6.0-rc.53.npm.1](RC53_NPM_PUBLICATION_20261028.md)，仍为预发行。rc.61仅本机日常，尚未公开更新。
+- GitHub [0.6.0正式版](STABLE_060_PUBLICATION_20261102.md)已公开并为Latest；运行代码与日常rc.61相同。npm0.6.0发布等待独立验证，旧rc.53仍保留，两个渠道结果分别记录。
 - 共享 dsh-whale-mist manifest／assets 仍 rc.30 且含 Trace，不直接整体 npm pack／publish。固定发行来源／QA配方在 release-sources；历史配方仍依赖未提交的本机固定包与 .tmp 证据。
 - 真实会话截图、Profile、Cookie、运行授权、实测备份与候选仅本机。Pixso stock 原图的九张导出保留本机，设计链接和报告保留，合成夹具预览可随源码保存。
 
