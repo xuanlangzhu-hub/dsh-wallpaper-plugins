@@ -1,0 +1,475 @@
+{
+  "version": "0.6.1",
+  "archive": "dsh-whale-mist-0.6.1.tgz",
+  "archiveBytes": 7842682,
+  "sha256": "c55053c1d37ce1dc326955ac6c658b7580a66990d72ae4fface61f31d13f811d",
+  "shasum": "447c017ed7a0841554c6f586a0c3aadaed45e004",
+  "integrity": "sha512-Y0iMSAn8lUP8t7UEnB0BNGx7NpC90DcW1V64Tv+nnTS5GfWaPRaPmJRgk9A+x7/fmxnCP4QeKTFbPGT3ilcX/A==",
+  "files": [
+    {
+      "file": "BUILD_PROVENANCE.json",
+      "bytes": 6057,
+      "sha256": "a6b5817ad79a9c075f6c99fcb76d986125da6ced2c1ffbeaa3c8fe9b8231f692"
+    },
+    {
+      "file": "LICENSE",
+      "bytes": 1091,
+      "sha256": "46efdd68e619ec1ef72c5352ec6ffffa7fbd81b6ce278624e88760e2fee355af"
+    },
+    {
+      "file": "README.md",
+      "bytes": 996,
+      "sha256": "85efbce92323f00262082eba32c7bc52987bbd80e891dadf2dc46fb16b0ea94a"
+    },
+    {
+      "file": "THIRD_PARTY_NOTICES.md",
+      "bytes": 2931,
+      "sha256": "2bd84b9a8a21096b1124d03bbb10e0f4b1f563d6f5a504851e253394ed0d303b"
+    },
+    {
+      "file": "assets/DeepSeek-Harness.ico",
+      "bytes": 28881,
+      "sha256": "b57a303c586154ad1741eb5d478bb80eae8231495bd08995854be7e711eee5b8"
+    },
+    {
+      "file": "assets/desktop-follow/manifest.json",
+      "bytes": 1311,
+      "sha256": "35ebf4fda1b9eea98f345aefc4c8a0b09f1f61fce4e3fa3525ad9cd1255fbdad"
+    },
+    {
+      "file": "assets/desktop-follow/native/DesktopRuntimeQuery.deps.json",
+      "bytes": 451,
+      "sha256": "b225ec65d0eee0985ab6bcbdea58d7a3b20f815617a5561ccc5e171dd54114fa"
+    },
+    {
+      "file": "assets/desktop-follow/native/DesktopRuntimeQuery.dll",
+      "bytes": 113152,
+      "sha256": "ba11e38e30333ecee7e46a5841af6b281f22f4a8332c8292c8c847dcdcb08e53"
+    },
+    {
+      "file": "assets/desktop-follow/native/DesktopRuntimeQuery.exe",
+      "bytes": 162816,
+      "sha256": "709507f869fb2a8f22dabd8b864eda4af7ed1ee6c2eeb11ea3ad6bf43828be25"
+    },
+    {
+      "file": "assets/desktop-follow/native/DesktopRuntimeQuery.runtimeconfig.json",
+      "bytes": 342,
+      "sha256": "c230a317a54dd960bcbeb5f347f52e18dc665a26f7efda2159fced9a5ac7e097"
+    },
+    {
+      "file": "assets/wallpaper/DailyFixedCanvas.deps.json",
+      "bytes": 1284,
+      "sha256": "4de396b827ec64e5c7a39a63e4fb4cadf80f4401b9fdb80121f1cbf36b78a6c6"
+    },
+    {
+      "file": "assets/wallpaper/DailyFixedCanvas.dll",
+      "bytes": 111616,
+      "sha256": "4f5b1aa9b45ae7c0ca1b22571dfcf6741637a29aec40a027528d9c4f6f1e57f7"
+    },
+    {
+      "file": "assets/wallpaper/DailyFixedCanvas.exe",
+      "bytes": 162304,
+      "sha256": "46f72495873d32ae1f9cf9aa10fb372296401ed29c6938a12d041bf3c9b2a671"
+    },
+    {
+      "file": "assets/wallpaper/DailyFixedCanvas.runtimeconfig.json",
+      "bytes": 399,
+      "sha256": "3e965cd7cfd553c2ff4e842d8d8019aaae2da0a21d92ff85a87573dd8d1b95c6"
+    },
+    {
+      "file": "assets/wallpaper/Microsoft.Windows.SDK.NET.dll",
+      "bytes": 24877600,
+      "sha256": "0ec371d93798852e36461c8adddbeadce0f963a04752f0b64e54fe19c1c834a7"
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.COM.dll",
+      "bytes": 168960,
+      "sha256": "35282958014c210bfde28399c9fa3841b6d51f81ff1da23ad0edad985dfa5b0c"
+    },
+    {
+      "file": "assets/wallpaper/SharpGen.Runtime.dll",
+      "bytes": 79872,
+      "sha256": "0dc12ab829852555ccc9d8193e4422cd4ca389741de0a54a189de8a1c9b6bf4a"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DXGI.dll",
+      "bytes": 91648,
+      "sha256": "6e381eaab77257ee63c20a654a2ac51875bd38f24c5a7d44dd2e4b8e122e8623"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Direct3D11.dll",
+      "bytes": 352768,
+      "sha256": "ead89d0f9c475527abcb373c10b1d04c2bfa727070f126105430040b525ae2bc"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.DirectX.dll",
+      "bytes": 365056,
+      "sha256": "100b3a02ea5fd5bb8db39c24dd58dead5669fa5a46d1ebcd61d4a9d82f812c12"
+    },
+    {
+      "file": "assets/wallpaper/Vortice.Mathematics.dll",
+      "bytes": 125952,
+      "sha256": "a553c1c90d2d8bde2d7613306b994b585acf22284be009f4151381f7308476cb"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.deps.json",
+      "bytes": 3532,
+      "sha256": "3f6538acd8621babd1e36e65a976d15cf01eca549fd7afb84bf12380bed7db60"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.dll",
+      "bytes": 308736,
+      "sha256": "e3914341c70e048e9aed358c249bdb51b1e4114620b759d7c032e02a4faf1765"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.exe",
+      "bytes": 162304,
+      "sha256": "15d3edaf5180212d794dc97e0f8a182a4751521c4f22c43bee1f92a2b88591fe"
+    },
+    {
+      "file": "assets/wallpaper/WallpaperProbe.runtimeconfig.json",
+      "bytes": 399,
+      "sha256": "b21c131e7ba9aa4f91056fff957e57e8668004eaa36b238a2620a8bc970d0816"
+    },
+    {
+      "file": "assets/wallpaper/WinRT.Runtime.dll",
+      "bytes": 528944,
+      "sha256": "bcf3a14e8712a90837fc5c0d8c8a24696af2bd7f74e9767597ec81ededfb23db"
+    },
+    {
+      "file": "assets/whale-icon-helper.exe",
+      "bytes": 13312,
+      "sha256": "77c9bdcd3e7179a46c21782fa9d6036a3ab766edb35eebecb57e822307c30906"
+    },
+    {
+      "file": "cordis.patch.yml",
+      "bytes": 200,
+      "sha256": "e37c9096465eab2db253e3b3ef7d6a60fa7db89899b4c9d96aaf51af64621a07"
+    },
+    {
+      "file": "license-sources.json",
+      "bytes": 1688,
+      "sha256": "e0cef8fc88502b46293c0ce7628c10534417cc8d9edb4824bb84fc8f1208c11d"
+    },
+    {
+      "file": "licenses/DeepSeek-Harness-MIT.txt",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "file": "licenses/Microsoft-components-terms.md",
+      "bytes": 1534,
+      "sha256": "ba0acd94b681dbf7c0dab785985fb8f483ab784e8711f1c251b871bf6227dfb1"
+    },
+    {
+      "file": "licenses/SharpGenTools-MIT.txt",
+      "bytes": 1102,
+      "sha256": "68ab6ba2800dc74c78272ba399c1354db74993d9019732f837996fa6d4de683d"
+    },
+    {
+      "file": "licenses/Vortice.Mathematics-MIT.txt",
+      "bytes": 1090,
+      "sha256": "cf72351fa2e9f2eb181af7fd508dd73da1d84ba43575cb98f7af22f26a81af5e"
+    },
+    {
+      "file": "licenses/Vortice.Windows-MIT.txt",
+      "bytes": 1090,
+      "sha256": "82bd4e84d144bebbb519ed05899f0ceaeaf2e0f95160ac32fd8cc388710c76d0"
+    },
+    {
+      "file": "licenses/Windows-SDK-license.rtf",
+      "bytes": 246945,
+      "sha256": "dd07eb178e00c6bba4148457fc00ff77cd4887eb521d504186fe59c9ec8bbe62"
+    },
+    {
+      "file": "package.json",
+      "bytes": 6455,
+      "sha256": "b17016c2439b342e74c55f994388abb40459f21dd78606a9e1e7c5bfd405a505"
+    },
+    {
+      "file": "src/appearance-contract.js",
+      "bytes": 1410,
+      "sha256": "94736e2b926165679d5b028a07435ca89b1e471cf0e5c7b0ae73e5d3a1e4ad3d"
+    },
+    {
+      "file": "src/appearance-service-host.js",
+      "bytes": 31491,
+      "sha256": "09197fcd5972db2e0dba28a63ea669bd519b945cf99c54d1216c0b2dcdff09ea"
+    },
+    {
+      "file": "src/client.js",
+      "bytes": 574503,
+      "sha256": "acd7456eaf73b36551342c0758a608c36cb56976d62bf99048f3aaf3ed4875fc"
+    },
+    {
+      "file": "src/index.js",
+      "bytes": 13198,
+      "sha256": "22d93107fb48097fd10ed7fe9681e55b28138a06aa1f45711a365acabd1d29af"
+    },
+    {
+      "file": "src/sidebar-host.js",
+      "bytes": 246,
+      "sha256": "77c250c2eae13c0e3af0e2e4678e1873bde4473e4a5606cbaefa5eb6af670972"
+    },
+    {
+      "file": "src/wallpaper/author-diagnostic-build.js",
+      "bytes": 517,
+      "sha256": "a304a734b3e05a156eaa70c115b01b0b6c7ec0c4688ecb431541bcfdac29a9e7"
+    },
+    {
+      "file": "src/wallpaper/author-diagnostic-export.js",
+      "bytes": 1902,
+      "sha256": "ef93f20985f3b933496d4b684b709aa9aae13b737017ce25f421a6e1178656df"
+    },
+    {
+      "file": "src/wallpaper/author-diagnostic-lifecycle.js",
+      "bytes": 5798,
+      "sha256": "994685c7888f663be8997c804509b065f458fe45526eb68e7b71e66bd6a0483a"
+    },
+    {
+      "file": "src/wallpaper/author-diagnostics.js",
+      "bytes": 10735,
+      "sha256": "1cec19dd579ea6728df211147dded53aef9d04881c4639a0d791c6f9185f6844"
+    },
+    {
+      "file": "src/wallpaper/author-properties-apply.js",
+      "bytes": 16589,
+      "sha256": "a2022d6b66d4dfe1a2c8ecd5a7495d40c581edecb6eaa93a2a1c79739c857026"
+    },
+    {
+      "file": "src/wallpaper/author-properties-contract.js",
+      "bytes": 8829,
+      "sha256": "f6d7c517e04cc0566d856eace76c297fb016bcf907b598721574550f728a881d"
+    },
+    {
+      "file": "src/wallpaper/author-properties-host.js",
+      "bytes": 22925,
+      "sha256": "a3c00b1dca2228f7fe1ad7e67bd1d59d5f05d9653c3ff5a0c792716bc4ec74c9"
+    },
+    {
+      "file": "src/wallpaper/author-properties-panel.js",
+      "bytes": 12289,
+      "sha256": "806f65c03f8872784022a62a711e43909480d94ffa9eb4b58f8bc3fa787aad27"
+    },
+    {
+      "file": "src/wallpaper/author-properties-schema.js",
+      "bytes": 4395,
+      "sha256": "69f7bcce866f530629d931792b8d2eec55d98868d092d529fd52334b5f5edb2b"
+    },
+    {
+      "file": "src/wallpaper/bootstrap-port.js",
+      "bytes": 8277,
+      "sha256": "4562baadeeeeb9b0cc67a15d285a0386f5b31b44fb704bec78876d64c863ca97"
+    },
+    {
+      "file": "src/wallpaper/bootstrap-service.js",
+      "bytes": 2090,
+      "sha256": "281d8f87dc70297135d0627cce21d7a81226cc4df4cb70e9df80b2955fa54fbc"
+    },
+    {
+      "file": "src/wallpaper/catalog.js",
+      "bytes": 25610,
+      "sha256": "8eddc6e4c3c708ce53ee74f62952f6045af80cbc39a6ce59b311ed624e5c9903"
+    },
+    {
+      "file": "src/wallpaper/close-fence.js",
+      "bytes": 7118,
+      "sha256": "2977c6500fdf09508e43836008e9f9cc442ab1920e7767f91f60f79fc6a7b4c9"
+    },
+    {
+      "file": "src/wallpaper/console-output-decode.js",
+      "bytes": 1926,
+      "sha256": "601136ba044b20e980fa084d68f057b82e8569910afe2327953b6d4af36520d5"
+    },
+    {
+      "file": "src/wallpaper/desktop-follow-controller.js",
+      "bytes": 8007,
+      "sha256": "222111f15c884cb54ecd376f6d4e39d4e4663fbf9f07fbaab207d42105b88936"
+    },
+    {
+      "file": "src/wallpaper/desktop-follow-library.js",
+      "bytes": 3202,
+      "sha256": "c6c37278c824586172a9189f03aa1e04138e6520501cbfbfd2ba3cd8bcad5d44"
+    },
+    {
+      "file": "src/wallpaper/desktop-follow-selection.js",
+      "bytes": 5695,
+      "sha256": "51d5f54d50d462d6500abe6eae66fda1d3d0e404fb3ab1d93fc314a1d2a082b1"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/fixed-canvas-native.mjs",
+      "bytes": 5249,
+      "sha256": "0c5fae6522ce0764118daa016e2da3c8057d83eb89f2e86983bdbe32f019ede2"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/fixed-canvas-runtime.mjs",
+      "bytes": 7960,
+      "sha256": "b306bb4029e97351bfe9f1f49b3ad8e335f1fc2f11a4325a70d7f44a5ab582c1"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/fixed-canvas-service.mjs",
+      "bytes": 9385,
+      "sha256": "94596545ab698f23182ab4f401ab14f101b3c1150515b5c5870c545024293b75"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/layout-timing.mjs",
+      "bytes": 1658,
+      "sha256": "64e336e8ced2714748001318926dda860594ab98238b039d681040de070a7432"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/live-layout/surface-layout.mjs",
+      "bytes": 8541,
+      "sha256": "ffe092cd46035303f65df6a7e94951a04cdd1ba38b3e4c5d5ba90300e6c70aae"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/manual-fixed-canvas.mjs",
+      "bytes": 7192,
+      "sha256": "0ba0266c82b22bb5f121044247a060662e5b184dfe6de2ab3fe52c468244070b"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/media-source-evidence.mjs",
+      "bytes": 1654,
+      "sha256": "6491b938962b2f0aaf1263dce25b9e63cc841eb00d0ac120335f40e3b9642e8e"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/packaged-fixed-canvas.mjs",
+      "bytes": 1899,
+      "sha256": "62a08b67985b7ff15a227224ce993a7f41278fbc2fda51a68bc5dd862d13a556"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/renderer-surface.mjs",
+      "bytes": 2622,
+      "sha256": "85d3969741d2423c94074c8f4f862cae1d02437b033263f25bacdc494de56252"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/source-evidence.mjs",
+      "bytes": 1624,
+      "sha256": "40ea81266d41556753ab0f1525de5ab2734f809e1760f1370c8719b20d14f4e7"
+    },
+    {
+      "file": "src/wallpaper/fixed-canvas/viewport-observation.mjs",
+      "bytes": 3448,
+      "sha256": "3c3f8436a3739a60d62a23c1147ffa53229ae633cb01aee1bc955d0ee90fcf7e"
+    },
+    {
+      "file": "src/wallpaper/fixed-source.js",
+      "bytes": 1062,
+      "sha256": "9f4d0c436cd64a6165958ab95796d1e2fdb744ad9dc0113f73347f4c10bc2ed7"
+    },
+    {
+      "file": "src/wallpaper/frame-hub.js",
+      "bytes": 2115,
+      "sha256": "93386920898555de5362176e505e107e7651a3895b510fbdf1bcb0a5b113ece4"
+    },
+    {
+      "file": "src/wallpaper/frame-protocol.js",
+      "bytes": 1744,
+      "sha256": "074ab958cfa6e9d0050067ba8ad5b280605671d9630615194acb282dcd79ded9"
+    },
+    {
+      "file": "src/wallpaper/library.js",
+      "bytes": 13846,
+      "sha256": "1256d4f7f8ee7ae95878a358cf36c4c8d78988e2d3604d27a703bdc2f74013f1"
+    },
+    {
+      "file": "src/wallpaper/managed-window.js",
+      "bytes": 6370,
+      "sha256": "6cccbe58de3f890f374c896b4eb2b253b916711fa9ee620c8728600be04eba86"
+    },
+    {
+      "file": "src/wallpaper/media-bridge-permissions.js",
+      "bytes": 3604,
+      "sha256": "ed2f69809fbd1c73db4cdd9bce3c36cb8348b8641c33aef6de1a805d25912aec"
+    },
+    {
+      "file": "src/wallpaper/media-bridge.js",
+      "bytes": 15068,
+      "sha256": "0f357447363c431d76ae2baa47737de6fe83b1bd76f6f835e8549116fbac0160"
+    },
+    {
+      "file": "src/wallpaper/native-config.js",
+      "bytes": 1296,
+      "sha256": "c0a7944f1fd288f09291eb121ba78cfdf852092b7bd5c055b4014e86833189f0"
+    },
+    {
+      "file": "src/wallpaper/native-query-decode.js",
+      "bytes": 2402,
+      "sha256": "f4a29993d99a9bf0b2f83aeda0e258ac3ff25099869f0cb69fba525a027a15e1"
+    },
+    {
+      "file": "src/wallpaper/native-runtime-port.js",
+      "bytes": 4805,
+      "sha256": "ef7a53ad396e42cb9fd0cd0c55b63650ef2aaf24bcfbca6e4944831ed85a7b71"
+    },
+    {
+      "file": "src/wallpaper/native-worker-launcher.js",
+      "bytes": 3774,
+      "sha256": "28a771a3b5e2c38c719464e9b5e95365660cb4200d4ec3a2e8ff6de8466504fe"
+    },
+    {
+      "file": "src/wallpaper/probe-log.js",
+      "bytes": 5178,
+      "sha256": "3e49a454180a249aa7c49912c428e524385c8a7c2a532e825147c25819f99c82"
+    },
+    {
+      "file": "src/wallpaper/query-lifecycle.js",
+      "bytes": 2317,
+      "sha256": "fd505f9238af557d8f07161ea048af5aada221da0042ec63592829ae898a3138"
+    },
+    {
+      "file": "src/wallpaper/runtime-console-decode.js",
+      "bytes": 1107,
+      "sha256": "bf7cccf8158bb3d2d28c0a7d83d48612ce36dcefbb7e64427001e8493da5e566"
+    },
+    {
+      "file": "src/wallpaper/runtime-service.js",
+      "bytes": 5968,
+      "sha256": "6f2f507bbf837dcb7eb2819b09242172c1d886461045082f7427f8a3c3275551"
+    },
+    {
+      "file": "src/wallpaper/scenes.js",
+      "bytes": 5635,
+      "sha256": "90393263acdb95b432bc4712fa876380126f0d117adab323c8c592512580cf50"
+    },
+    {
+      "file": "src/wallpaper/scheduled-service.js",
+      "bytes": 1855,
+      "sha256": "aaf6fd2419365262347e2b50e2bac5f8bc764ab4d02f21ac39c68cbd8ad6cd68"
+    },
+    {
+      "file": "src/wallpaper/scheduler.js",
+      "bytes": 2681,
+      "sha256": "11f24211fb469abfd8b43b6384ca8d8a492a6c0e2af76cca6ca66f70db9413d0"
+    },
+    {
+      "file": "src/wallpaper/session.js",
+      "bytes": 91393,
+      "sha256": "6fc9bfe0a7f0de8663e2650950999b4d8160d20d4767fba82921694c9ab8e0cf"
+    },
+    {
+      "file": "src/wallpaper/steam-library.js",
+      "bytes": 971,
+      "sha256": "1b65b2de66786182933bf202c58b81f5f2f3571587c3507f9985382787856d95"
+    },
+    {
+      "file": "src/wallpaper/task-service.js",
+      "bytes": 6304,
+      "sha256": "5ad31c04cb67e71bee581db51a3d909b5f29f63badfa597a0719d5388f67b475"
+    },
+    {
+      "file": "src/wallpaper/worker-launcher.js",
+      "bytes": 3697,
+      "sha256": "5b4baeb177ba65b442ea36517ea580b26e06e53259f5c2df87473ce087196d3f"
+    },
+    {
+      "file": "src/windows/WhaleDesktopIcon.cs",
+      "bytes": 12634,
+      "sha256": "f35eeedda1f67ca68d3cca36cd03f3074579a369e9d324753e3091e06d185653"
+    },
+    {
+      "file": "third-party-inventory.json",
+      "bytes": 5866,
+      "sha256": "47e11cadb77554873cc63ce333d41aa6ce734ad0180e130c31e91cf1b35c3803"
+    }
+  ]
+}

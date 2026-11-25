@@ -24,3 +24,7 @@
 
 # A unified diff's blank context line is a literal space, not source whitespace.
 /release-sources/*/ui.patch whitespace=-trailing-space,cr-at-eol,-blank-at-eof
+
+# Keep the original SDK license and the tested client payload byte-for-byte.
+/release-sources/0.6.1/package/licenses/Windows-SDK-license.rtf binary
+/release-sources/0.6.1/package/src/client.js -text whitespace=cr-at-eol,-blank-at-eof,-blank-at-eol

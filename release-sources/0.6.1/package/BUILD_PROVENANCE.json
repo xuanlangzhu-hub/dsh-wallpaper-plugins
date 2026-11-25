@@ -1,0 +1,77 @@
+{
+  "distributionVersion": "0.6.1",
+  "baseVersion": "0.6.1-rc.49",
+  "baseArchiveSha256": "c4447d30b4a50e5c59d1fabb2f60864fd7c16d6c33be6ae006965119672b9c74",
+  "diagnosticBuild": {
+    "format": "whale-author-build-v1",
+    "buildId": "04cca80da08f3c4d13d3aedd952b12d31ac67454656544f3722db114fbafb003",
+    "payloadVersion": "0.6.1-rc.49",
+    "sources": {
+      "controller": "B1C04D92237ABDE1A26B976F83B9A084392B59408976242F493C6463C0942FA3",
+      "host": "A3C00B1DCA2228F7FE1AD7E67BD1D59D5F05D9653C3FF5A0C792716BC4EC74C9",
+      "adapter": "5E90EFAE803FB0169DB1087566152AE73A4D9DE56A144A9898D6A98696E83EBB",
+      "recorder": "1CEC19DD579EA6728DF211147DDED53AEF9D04881C4639A0D791C6F9185F6844"
+    }
+  },
+  "verifiedHosts": {
+    "windowTrials": "0.2.2-rc.5",
+    "platform": "Windows x64"
+  },
+  "releaseChanges": {
+    "steamLibrary": "Host-local Steam library path for all Wallpaper Engine entry points",
+    "nativeRebuilds": [
+      "WallpaperProbe",
+      "DesktopRuntimeQuery"
+    ],
+    "unchangedNative": [
+      "DailyFixedCanvas",
+      "whale-icon-helper"
+    ],
+    "redistributedDllsUnchanged": 8
+  },
+  "nativeSources": {
+    "native/desktop-follow/BootstrapLogic.cs": "25423d44f9883f9845293552fbcde04bbb80e8a56001356f5a72a5bb91a0a7c1",
+    "native/desktop-follow/Capture.cs": "6f50f0a7d23ab6b5dc9cc6f8aa9460758ea0c7e8b6fd84d80bc325ecefa52c4c",
+    "native/desktop-follow/ConsoleBridge.cs": "4ccafc6c96b7d947ac5d1ec948dde0bea053f319a891984a1634fba40d2f45a0",
+    "native/desktop-follow/Native.cs": "04747ef3a4b23e1ec7f4931510c94dbc461eff6e11fd40d9ada5dd32ad4e95f5",
+    "native/desktop-follow/NativeRuntime.cs": "e8387323f0f9549bc47887052af2fd18bf6db1c944cd344f6cc1ba5cfd7fbf4e",
+    "native/desktop-follow/QueryCore.cs": "31a136e59a8deb37055a490925764d6745e808f73d47a75358c0bd9d7e46f269",
+    "native/desktop-follow/RuntimeQuery.csproj": "8c2c37fbc0b875d37e9cd6407a1d0072b6d39486f3f395fce3bc659a1c035133",
+    "native/desktop-follow/WindowsRuntime.cs": "f9b778f49783e090a275c2838b4dc0faba5cc41c758cacb868860b83a33c8afa",
+    "native/fixed-canvas/CaptureApi.cs": "c9168c928ee001a93bb9cdaf36063635959ae9c166bf64de3329826f35ea46f2",
+    "native/fixed-canvas/DailyFixedCanvas.cs": "03d7358f5cd4654bda6270329cd3b78ec4e7282d052ad89aaf6f2dcf1e5d02ec",
+    "native/fixed-canvas/NativeSurface.cs": "d5a94f3b01f445061860e034f003c7fc1e3bae1e6f28a2d00c5ca87155a873c3",
+    "native/fixed-canvas/NuGet.Config": "15ba1d1915b1944909ebb32a70c2c3a004e33686dedb07252f2fe52168ec5109",
+    "native/fixed-canvas/OffscreenEdgeEvidence.cs": "fcaf8bbab1ff717c86f92eb71efd98e252604cc853985eaac8789bc596cf9d69",
+    "native/fixed-canvas/OffscreenEdgeProbe.cs": "660d0ed6e1a4460990a989c77d58faae130eb6c067f1c49ad9e811df984ee9ee",
+    "native/fixed-canvas/OffscreenEdgeProbe.csproj": "3a3a47e0f6c40c36134df8df34f962f988c3e0b73350791f326f2b9b213c0d18",
+    "native/fixed-canvas/OffscreenEdgeTests.cs": "7549e746bd9acff80f7202c5e165dcfe2a2cbf961d0bbdb39b1961dccdbe7e86",
+    "native/fixed-canvas/Program.cs": "6400c6f453c7aa4a8ed1628e58263f458cd654170e19433cc901492dcb258caf",
+    "native/fixed-canvas/SceneBoundary.cs": "a80d0c19105be0edc2164499ffcf21dd50b30613b5a249978e6e2e7ead39e163",
+    "native/fixed-canvas/SceneBoundaryTests.cs": "0768b0c3ac399161630c247a3394d06663a6ae52df25486c003b37dc67d419d7",
+    "native/fixed-canvas/SceneEvidence.cs": "c9e236390f80294b1029f6309753506e02510b2b75f6d8eb0ffcbc5b0a9f5dfe",
+    "native/fixed-canvas/SelfTests.cs": "00f8aed69960e824d931fcaadffc1a1d29faac98b0e103ea18318df15b3a3d1f",
+    "native/fixed-canvas/SurfaceWatch.cs": "bb05a932368a538786bdc6ecb568967bc4bc806c8a979750be8c23d15a4f8e95",
+    "native/fixed-canvas/WallpaperClientProof.cs": "3d997c0a57f6932321916edde4691a137679c2e60050f5b8560c56a7462bb9f9",
+    "native/wallpaper-probe/AtomicFile.cs": "7fef3f716657afe09e662e29a29ff7139d6f39f6ab1f03e59b42b41cb5aa4777",
+    "native/wallpaper-probe/CaptureArguments.cs": "f2a8f59174fc6e6882253e41e359cca3d0022d71e7620f6d38d7d87647d876a7",
+    "native/wallpaper-probe/FrameLog.cs": "09b7ceb5f2e0775e0fbff25ffc53932dfb7072e84f50da576c7f37c9e6726dc0",
+    "native/wallpaper-probe/FramePipe.cs": "c716ada8a353591747a8c4c59db8a8b9226a9a189fb85a322efc419c8a2632e9",
+    "native/wallpaper-probe/KernelWaitTimer.cs": "0525013d23f7b67a08e03a4aaad31d934993c0ee86759ef13368a030d83cce6e",
+    "native/wallpaper-probe/NativePacingDelay.cs": "513ed01abbbf2ea30bec42ebf8f35ca3950f526b047a64bf1337ebd5198b56e1",
+    "native/wallpaper-probe/NativePacingTracker.cs": "a93eb92582a2139d3821075b8ac1de84cad5982dd6cddc02149bae36373886cd",
+    "native/wallpaper-probe/ParentStopChannel.cs": "c63be4f34f821cc4d795fc3885d3a6c5b333b85bb99fe216a5d5d26f34c5563a",
+    "native/wallpaper-probe/ProbeJournal.cs": "11f933cd035b0dc2926d6ce422eaef2d4f2ee53a41b999bf23a2a5f9699123e5",
+    "native/wallpaper-probe/Program.cs": "97e239e61a6f62dc78a6c60dacc4ce70d477cadec2aee9652e8adc985bf5259d",
+    "native/wallpaper-probe/SourceWindowHelper.cs": "0bd28bd3b6d1293ddd0200f482c38a94f674b2b204c10a24ca2666bacb62bbbf",
+    "native/wallpaper-probe/StagingReadback.cs": "27cbaf7db5d0afe056e669bf46cd760dc3d771faae19195708280913bdfdb76a",
+    "native/wallpaper-probe/TaskbarHideRuntime.cs": "edcc670dc5a65ea4bda9064c30e0966ef7d2da0c1278c467c29f732cf5bad59d",
+    "native/wallpaper-probe/TaskbarHideStrategy.cs": "a806c5a5c1b79524c84da924a918a305baa2b5f58d01e39c623562f00f33374a",
+    "native/wallpaper-probe/TaskbarList.cs": "cf8b33d704c9a56b1bf12eed81ab18c67757b1d12a37c3aa579e4ce5da93045a",
+    "native/wallpaper-probe/TaskbarTiming.cs": "a2ed8551006c6645768c0a63ddd1966e74ac26b8ec6cf2f0014095580fe75803",
+    "native/wallpaper-probe/TaskbarWorker.cs": "b563f64b2b5cc7f26ee3fda9ed8f98286545da5718e2ca02b42ee2cfb5db6b97",
+    "native/wallpaper-probe/WallpaperProbe.csproj": "32123c545db38b0ad8501acb6be83bc7fdca5a959178b4391e65e7e63a23143b",
+    "native/wallpaper-probe/WindowIdentity.cs": "68d106509190c850927aeaf5f75ac93328c7325eb4fd9306c20e8d7ce963c7ca"
+  },
+  "followNativeManifestSha256": "35ebf4fda1b9eea98f345aefc4c8a0b09f1f61fce4e3fa3525ad9cd1255fbdad"
+}

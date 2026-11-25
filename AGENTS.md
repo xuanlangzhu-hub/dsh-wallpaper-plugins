@@ -1,5 +1,11 @@
 # 插件工作区协作约定
 
+## 当前发行与开发入口
+
+0.6.1 的交付源码和包白名单在 [release-sources/0.6.1](release-sources/0.6.1/README.md)。根 [README](README.md) 说明安装， [项目状态](docs/PROJECT_STATUS.md) 记录已验证的范围。本机下一步见忽略的 NEXT_TASK.md。
+
+共享开发目录里的旧 manifest 仅用于开发检查。发版从固定版本目录构建，核对包成员、原生来源与许可。阶段性 QA、个人路径、实测、配置、备份和失败记录留在本机。提交和发布按本轮用户授权执行。操作真实 DSH 或 WE 的新一轮须先确认当时方便，按关闭态备份流程执行。
+
 ## 2026-11-02 正式版发布完成
 
 用户授权的0.6.0正式发行已完成：GitHub Release431020229公开Latest，tag固定2f0c6ded；npm0.6.0公开、latest=0.6.0，next保留历史rc.53。两渠道同一tgz匿名下载核对一致，45原运行文件／14资产不变，内部诊断保留rc.61代码build身份。详见 [发布记录](docs/STABLE_060_PUBLICATION_20261102.md)。

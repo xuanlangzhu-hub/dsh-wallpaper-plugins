@@ -1,0 +1,21 @@
+{
+  "runtimeScope": "desktop-follow-runtime-console-v1",
+  "environmentBootstrapSupported": true,
+  "conptyRuntimeSupported": true,
+  "sources": {
+    "BootstrapLogic.cs": "25423d44f9883f9845293552fbcde04bbb80e8a56001356f5a72a5bb91a0a7c1",
+    "Capture.cs": "6f50f0a7d23ab6b5dc9cc6f8aa9460758ea0c7e8b6fd84d80bc325ecefa52c4c",
+    "ConsoleBridge.cs": "4ccafc6c96b7d947ac5d1ec948dde0bea053f319a891984a1634fba40d2f45a0",
+    "Native.cs": "04747ef3a4b23e1ec7f4931510c94dbc461eff6e11fd40d9ada5dd32ad4e95f5",
+    "NativeRuntime.cs": "e8387323f0f9549bc47887052af2fd18bf6db1c944cd344f6cc1ba5cfd7fbf4e",
+    "QueryCore.cs": "31a136e59a8deb37055a490925764d6745e808f73d47a75358c0bd9d7e46f269",
+    "RuntimeQuery.csproj": "8c2c37fbc0b875d37e9cd6407a1d0072b6d39486f3f395fce3bc659a1c035133",
+    "WindowsRuntime.cs": "f9b778f49783e090a275c2838b4dc0faba5cc41c758cacb868860b83a33c8afa"
+  },
+  "native": {
+    "DesktopRuntimeQuery.deps.json": "b225ec65d0eee0985ab6bcbdea58d7a3b20f815617a5561ccc5e171dd54114fa",
+    "DesktopRuntimeQuery.dll": "ba11e38e30333ecee7e46a5841af6b281f22f4a8332c8292c8c847dcdcb08e53",
+    "DesktopRuntimeQuery.exe": "709507f869fb2a8f22dabd8b864eda4af7ed1ee6c2eeb11ea3ad6bf43828be25",
+    "DesktopRuntimeQuery.runtimeconfig.json": "c230a317a54dd960bcbeb5f347f52e18dc665a26f7efda2159fced9a5ac7e097"
+  }
+}

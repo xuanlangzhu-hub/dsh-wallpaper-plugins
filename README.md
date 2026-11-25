@@ -4,67 +4,40 @@
 
 ## 功能
 
-- **主题与配色**：鲸雾浅色、鲸渊深色主题，自定义强调色与文字可读性。
-- **背景调节**：亮度、遮罩、模糊、界面透明度和聊天底色，支持按壁纸保存外观预设。
-- **壁纸图库**：缩略图浏览、搜索、年龄分级筛选，选择和播放分开操作。
-- **作者参数**：在右侧外观栏修改壁纸公开的设置，支持的参数修改后即时下发。
-- **多种背景**：本地图片／视频，以及 Wallpaper Engine 的场景、视频和网页壁纸。
+- 鲸雾、鲸渊主题和文字配色，支持本地图片与视频背景。
+- Wallpaper Engine 图库支持搜索和分级筛选，可调整亮度、遮罩、模糊、界面透明度和支持的作者参数。
+- 「跟随桌面壁纸」随主显示器选择更新 DSH 背景。「固定取景」按 DSH 窗口位置显示壁纸区域，支持移动和缩放。
 
 ## 安装
 
-当前正式版本为 **0.6.0**，已验证宿主 **DSH 0.2.1-rc.3 · Windows x64**。开发进度与本机试用版本见[项目状态](docs/PROJECT_STATUS.md)。
+**0.6.1** 面向 Windows x64，桌面实测使用 **DSH 0.2.2-rc.5**。
 
 ### 从 GitHub 下载
 
-前往 [Releases](https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.0)，下载：
-
-- `dsh-whale-mist-0.6.0-windows-x64.zip`
-- 同名的 `.zip.sha256` 校验文件
-
-核对校验值后解压，按包内 `INSTALL.md` 安装。安装前正常退出 DSH 并备份设置。GitHub 自动生成的 `Source code.zip` 是源码压缩包。
+前往 [0.6.1 发行页](https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.1)，下载 `dsh-whale-mist-0.6.1-windows-x64.zip` 和同名 `.zip.sha256` 校验文件。正常退出 DSH 并备份设置。核对校验值后解压，按包内 `INSTALL.md` 安装。
 
 ### 从 npm 安装
 
-正常退出 DSH 并备份设置后，在终端运行：
+当前 npm 已发布 [0.6.0](https://www.npmjs.com/package/dsh-whale-mist/v/0.6.0)。
 
 ```powershell
 dsh plugin --profile desktop add dsh-whale-mist@0.6.0
 ```
 
-[npm 版本](https://www.npmjs.com/package/dsh-whale-mist/v/0.6.0)与 GitHub ZIP 内的 tgz 保持同一字节。两种安装方式任选其一。
-
-使用 Wallpaper Engine 集成还需要安装 **Wallpaper Engine 和 .NET 10 运行时**，并在本机准备壁纸；项目不附带 Wallpaper Engine 或壁纸资源。
-
 ## 使用
 
-从 DSH 顶栏打开 **Whale 外观**，在右侧栏浏览、选择和播放壁纸，再进入“壁纸参数”调整画面及作者公开的设置。“界面”页用于主题、配色与文字设置。
+从 DSH 顶栏进入 **Whale 外观**。Wallpaper Engine 集成需要另装 Wallpaper Engine、对应壁纸和 **.NET 10 x64 运行时**。若使用非默认 Steam 库，将 Windows 用户环境变量 `WM_STEAM_LIBRARY` 设为包含 `steamapps` 的库目录，然后重新启动 DSH。
 
-自动播放仅对已验证的 Lucy 开放，其它壁纸请手动开始；不同壁纸公开的作者参数与实际兼容情况会有差异。
+「跟随桌面壁纸」使用主显示器的选择，并在 DSH 内独立播放。跟随查询限于已验证的 Wallpaper Engine 可执行文件版本。使用「固定取景」时请选择日常档并关闭跟随。单屏 2560 × 1440 下已测试场景、MP4 和网页代表壁纸。
 
-## 已知限制
-
-- 三体实时演算壁纸有突然加减速的现象，在独立、无采集的源窗口中也能观察到，原因尚未解决。
-- 播放启动时，额外的壁纸任务栏图标可能短暂出现。
-- 曾收到长时间播放后快速拖动作者参数滑块容易失败的反馈，仍在观察中。
-- application 类型壁纸不在当前支持范围；通用鼠标／点击转发与壁纸音频尚未纳入兼容验证。
-
-日常使用有问题，可附上插件版本、壁纸名称和复现步骤反馈。其它低优先级调查与历史故障见[项目状态](docs/PROJECT_STATUS.md)。
+已知限制与版本变更见 [0.6.1 发行说明](release-sources/0.6.1/RELEASE_NOTES.md)。反馈时可提供插件版本、壁纸名称和复现步骤。
 
 ## 开发
 
-主要开发目录为 `dsh-whale-mist/`，固定版本来源与构建配方在 `release-sources/`。开发源码含实验功能，manifest／原生资产基线与日常试用版本不同；发行包从固定版本准备，不直接整体打包开发目录。
-
-基础检查：
-
-```powershell
-cd dsh-whale-mist
-npm run check
-```
-
-[开发计划](docs/POST_RELEASE_DEVELOPMENT_PLAN_20261028.md) · [当前状态](docs/PROJECT_STATUS.md) · [维护记录](docs/WORKSPACE_MAINTENANCE_20261102.md) · [插件详细说明](dsh-whale-mist/README.md)
+当前交付的运行源码、原生源码与构建配方见 [0.6.1 发行材料](release-sources/0.6.1/README.md)。[项目状态](docs/PROJECT_STATUS.md)记录实测范围。共享开发目录 `dsh-whale-mist/` 中的旧 manifest 用于开发检查。
 
 ## 许可
 
 项目源码采用 [MIT](LICENSE) 许可，随包组件见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
-本项目从 [dsh-desktop](https://github.com/xuanlangzhu-hub/dsh-desktop) 工作区拆分，当前聚焦官方 DSH 桌面端插件。
+本项目从 [dsh-desktop](https://github.com/xuanlangzhu-hub/dsh-desktop) 工作区拆分。

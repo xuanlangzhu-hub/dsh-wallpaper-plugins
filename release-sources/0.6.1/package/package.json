@@ -1,0 +1,160 @@
+{
+  "name": "dsh-whale-mist",
+  "version": "0.6.1",
+  "description": "Whale Appearance themes and wallpaper backgrounds for DeepSeek Harness Desktop",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "dsh": "0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5",
+    "@deepseek-ai/dsh-client-ui-theme": "0.1.0-rc.6 || 0.1.1-rc.1 || 0.1.1-rc.2 || 0.1.5-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5",
+    "@deepseek-ai/dsh-client-ui-sidebar-right": "0.2.1-rc.3 || 0.2.2-rc.1 || 0.2.2-rc.5"
+  },
+  "files": [
+    "BUILD_PROVENANCE.json",
+    "LICENSE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "assets/DeepSeek-Harness.ico",
+    "assets/desktop-follow/manifest.json",
+    "assets/desktop-follow/native/DesktopRuntimeQuery.deps.json",
+    "assets/desktop-follow/native/DesktopRuntimeQuery.dll",
+    "assets/desktop-follow/native/DesktopRuntimeQuery.exe",
+    "assets/desktop-follow/native/DesktopRuntimeQuery.runtimeconfig.json",
+    "assets/wallpaper/DailyFixedCanvas.deps.json",
+    "assets/wallpaper/DailyFixedCanvas.dll",
+    "assets/wallpaper/DailyFixedCanvas.exe",
+    "assets/wallpaper/DailyFixedCanvas.runtimeconfig.json",
+    "assets/wallpaper/Microsoft.Windows.SDK.NET.dll",
+    "assets/wallpaper/SharpGen.Runtime.COM.dll",
+    "assets/wallpaper/SharpGen.Runtime.dll",
+    "assets/wallpaper/Vortice.DXGI.dll",
+    "assets/wallpaper/Vortice.Direct3D11.dll",
+    "assets/wallpaper/Vortice.DirectX.dll",
+    "assets/wallpaper/Vortice.Mathematics.dll",
+    "assets/wallpaper/WallpaperProbe.deps.json",
+    "assets/wallpaper/WallpaperProbe.dll",
+    "assets/wallpaper/WallpaperProbe.exe",
+    "assets/wallpaper/WallpaperProbe.runtimeconfig.json",
+    "assets/wallpaper/WinRT.Runtime.dll",
+    "assets/whale-icon-helper.exe",
+    "cordis.patch.yml",
+    "license-sources.json",
+    "licenses/DeepSeek-Harness-MIT.txt",
+    "licenses/Microsoft-components-terms.md",
+    "licenses/SharpGenTools-MIT.txt",
+    "licenses/Vortice.Mathematics-MIT.txt",
+    "licenses/Vortice.Windows-MIT.txt",
+    "licenses/Windows-SDK-license.rtf",
+    "package.json",
+    "src/appearance-contract.js",
+    "src/appearance-service-host.js",
+    "src/client.js",
+    "src/index.js",
+    "src/sidebar-host.js",
+    "src/wallpaper/author-diagnostic-build.js",
+    "src/wallpaper/author-diagnostic-export.js",
+    "src/wallpaper/author-diagnostic-lifecycle.js",
+    "src/wallpaper/author-diagnostics.js",
+    "src/wallpaper/author-properties-apply.js",
+    "src/wallpaper/author-properties-contract.js",
+    "src/wallpaper/author-properties-host.js",
+    "src/wallpaper/author-properties-panel.js",
+    "src/wallpaper/author-properties-schema.js",
+    "src/wallpaper/bootstrap-port.js",
+    "src/wallpaper/bootstrap-service.js",
+    "src/wallpaper/catalog.js",
+    "src/wallpaper/close-fence.js",
+    "src/wallpaper/console-output-decode.js",
+    "src/wallpaper/desktop-follow-controller.js",
+    "src/wallpaper/desktop-follow-library.js",
+    "src/wallpaper/desktop-follow-selection.js",
+    "src/wallpaper/fixed-canvas/fixed-canvas-native.mjs",
+    "src/wallpaper/fixed-canvas/fixed-canvas-runtime.mjs",
+    "src/wallpaper/fixed-canvas/fixed-canvas-service.mjs",
+    "src/wallpaper/fixed-canvas/layout-timing.mjs",
+    "src/wallpaper/fixed-canvas/live-layout/surface-layout.mjs",
+    "src/wallpaper/fixed-canvas/manual-fixed-canvas.mjs",
+    "src/wallpaper/fixed-canvas/media-source-evidence.mjs",
+    "src/wallpaper/fixed-canvas/packaged-fixed-canvas.mjs",
+    "src/wallpaper/fixed-canvas/renderer-surface.mjs",
+    "src/wallpaper/fixed-canvas/source-evidence.mjs",
+    "src/wallpaper/fixed-canvas/viewport-observation.mjs",
+    "src/wallpaper/fixed-source.js",
+    "src/wallpaper/frame-hub.js",
+    "src/wallpaper/frame-protocol.js",
+    "src/wallpaper/library.js",
+    "src/wallpaper/managed-window.js",
+    "src/wallpaper/media-bridge-permissions.js",
+    "src/wallpaper/media-bridge.js",
+    "src/wallpaper/native-config.js",
+    "src/wallpaper/native-query-decode.js",
+    "src/wallpaper/native-runtime-port.js",
+    "src/wallpaper/native-worker-launcher.js",
+    "src/wallpaper/probe-log.js",
+    "src/wallpaper/query-lifecycle.js",
+    "src/wallpaper/runtime-console-decode.js",
+    "src/wallpaper/runtime-service.js",
+    "src/wallpaper/scenes.js",
+    "src/wallpaper/scheduled-service.js",
+    "src/wallpaper/scheduler.js",
+    "src/wallpaper/session.js",
+    "src/wallpaper/steam-library.js",
+    "src/wallpaper/task-service.js",
+    "src/wallpaper/worker-launcher.js",
+    "src/windows/WhaleDesktopIcon.cs",
+    "third-party-inventory.json"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins.git"
+  },
+  "homepage": "https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins#readme",
+  "bugs": {
+    "url": "https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "theme",
+    "wallpaper-engine"
+  ],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "latest"
+  }
+}
