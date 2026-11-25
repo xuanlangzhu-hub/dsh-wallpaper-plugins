@@ -18,10 +18,10 @@
 
 ### 从 npm 安装
 
-当前 npm 已发布 [0.6.0](https://www.npmjs.com/package/dsh-whale-mist/v/0.6.0)。
+正常退出 DSH 并备份设置后，在终端运行以下命令。 [npm 0.6.1](https://www.npmjs.com/package/dsh-whale-mist/v/0.6.1)
 
 ```powershell
-dsh plugin --profile desktop add dsh-whale-mist@0.6.0
+dsh plugin --profile desktop add dsh-whale-mist@0.6.1
 ```
 
 ## 使用

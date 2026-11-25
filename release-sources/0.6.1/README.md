@@ -18,3 +18,5 @@ node --test release-sources/0.6.1/steam-library.test.mjs
 ```
 
 测试仅运行路径解析和登记在包里的只读摘要核对，无需启动 DSH 或 Wallpaper Engine。
+
+GitHub 与 npm 的公开下载已校验为同一 tgz。 [发布记录](publication.json)

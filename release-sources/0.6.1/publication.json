@@ -1,0 +1,38 @@
+{
+  "version": "0.6.1",
+  "github": {
+    "version": "0.6.1",
+    "url": "https://github.com/xuanlangzhu-hub/dsh-wallpaper-plugins/releases/tag/dsh-whale-mist-v0.6.1",
+    "releaseId": 457748048,
+    "targetCommit": "1f37c008e8c75d4cd97d48733bb25981734b6eb6",
+    "latest": true,
+    "publishedAt": "2026-11-25T06:53:09Z",
+    "anonymousAssets": [
+      {
+        "file": "dsh-whale-mist-0.6.1-windows-x64.zip",
+        "bytes": 7614467,
+        "sha256": "1cf9105e92046d418c66f3694d3d0ba6a09ef616c87bef2aca52767aa15f9918"
+      },
+      {
+        "file": "dsh-whale-mist-0.6.1-windows-x64.zip.sha256",
+        "bytes": 103,
+        "sha256": "0a092e3181fcfb5207529f865c830dec0efb97dd0199ee3ecca6cf59497d44bd"
+      }
+    ]
+  },
+  "npm": {
+    "version": "0.6.1",
+    "url": "https://www.npmjs.com/package/dsh-whale-mist/v/0.6.1",
+    "tags": {
+      "next": "0.6.0-rc.53.npm.1",
+      "latest": "0.6.1"
+    },
+    "publishedAt": "2026-11-25T07:03:31.094Z",
+    "archiveBytes": 7842682,
+    "sha256": "c55053c1d37ce1dc326955ac6c658b7580a66990d72ae4fface61f31d13f811d",
+    "shasum": "447c017ed7a0841554c6f586a0c3aadaed45e004",
+    "integrity": "sha512-Y0iMSAn8lUP8t7UEnB0BNGx7NpC90DcW1V64Tv+nnTS5GfWaPRaPmJRgk9A+x7/fmxnCP4QeKTFbPGT3ilcX/A==",
+    "anonymousDownloadIdentical": true
+  },
+  "desktopAcceptance": "0.6.1-rc.49 / DeepSeek Harness 0.2.2-rc.5"
+}
